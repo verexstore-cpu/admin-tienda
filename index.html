@@ -789,20 +789,35 @@
 // ═════════════════════════════════════════════
 const API_URL    = "https://verex-api.verexstore.workers.dev/";
 const SECRET_KEY = ""; // Moved to Worker
-const ADMIN_PASS = "verex2026";
+let PASS_HASH = "288c61b77753c1b1d08c4fb0a7a11dfbb2abd5c3fd6ceaf405fa09300afe4fe5";
+let _sessionPass = null;
+function sanitizar(str) {
+    return String(str ?? "")
+        .replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;")
+        .replace(/"/g,"&quot;").replace(/'/g,"&#039;");
+}
+function jsArg(val) {
+    return JSON.stringify(String(val ?? "")).replace(/"/g,"&quot;");
+}
+function safeParseJSON(str, fallback) {
+    try { return JSON.parse(str); } catch(_) { return fallback; }
+}
 
 let cfg = {
     tiendaActiva: true,
     reglasEnvio: [{ min:0, max:49.99, costo:2 }, { min:50, max:9999, costo:0 }]
 };
 let productos=[], pedidos=[], cupones=[];
-let notifLeidas = new Set(JSON.parse(localStorage.getItem("vx_notif")||"[]"));
+let notifLeidas = new Set(safeParseJSON(localStorage.getItem("vx_notif"), []));
 
 // ═════════════════════════════════════════════
 //  AUTH
 // ═════════════════════════════════════════════
-function login() {
-    if (document.getElementById("in-pass").value === ADMIN_PASS) {
+async function login() {
+    const pass = document.getElementById("in-pass").value;
+    const hash = await hashStr(pass);
+    if (hash === PASS_HASH) {
+        _sessionPass = pass;
         sessionStorage.setItem("vxa","1");
         document.getElementById("login-screen").style.display = "none";
         document.getElementById("panel").style.display = "block";
@@ -812,7 +827,7 @@ function login() {
         document.getElementById("in-pass").value = "";
     }
 }
-function logout() { sessionStorage.clear(); location.reload(); }
+function logout() { sessionStorage.clear(); _sessionPass = null; location.reload(); }
 if (sessionStorage.getItem("vxa")==="1") {
     document.getElementById("login-screen").style.display = "none";
     document.getElementById("panel").style.display = "block";
@@ -847,7 +862,7 @@ function toast(msg, bg) {
 // ═════════════════════════════════════════════
 async function init() {
     const saved = localStorage.getItem("vx_cfg");
-    if (saved) cfg = JSON.parse(saved);
+    if (saved) cfg = safeParseJSON(saved, cfg);
     renderEstado(); renderEnvio(); actualizarNombre();
     await cargarDatos();
     setInterval(()=>cargarDatos(true), 45000);
@@ -855,7 +870,7 @@ async function init() {
 
 async function cargarDatos(silencioso=false) {
     try {
-        const res  = await fetch(API_URL, { method:'POST', body: JSON.stringify({ accion:"GET_TIENDA", _pass: ADMIN_PASS }) });
+        const res  = await fetch(API_URL, { method:'POST', body: JSON.stringify({ accion:"GET_TIENDA", _pass: _sessionPass }) });
         const data = await res.json();
         productos = data.productos || [];
         pedidos   = (data.pedidos || []).reverse();
@@ -921,7 +936,7 @@ function renderTop() {
     cont.innerHTML = top.length ? top.map(([n,v],i)=>`
         <div style="display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid var(--borde);">
             <span style="font-size:17px;font-weight:800;color:var(--azul);min-width:22px;">${i+1}</span>
-            <span style="flex:1;font-size:13px;">${n}</span>
+            <span style="flex:1;font-size:13px;">${sanitizar(n)}</span>
             <span class="badge baz2">${v} pedido${v>1?'s':''}</span>
         </div>`).join('')
     : '<p style="color:#aaa;font-size:13px;">Sin datos aún.</p>';
@@ -996,25 +1011,25 @@ function renderPedidos() {
         return `<tr>
             <td style="color:#aaa;">${list.length-i}</td>
             <td>
-                <span style="font-family:monospace;font-size:12px;color:var(--azul);font-weight:700;">${p.numeroPedido||"—"}</span>
+                <span style="font-family:monospace;font-size:12px;color:var(--azul);font-weight:700;">${sanitizar(p.numeroPedido||"—")}</span>
             </td>
             <td style="white-space:nowrap;">${fecha}</td>
-            <td><b>${p.cliente||"—"}</b></td>
+            <td><b>${sanitizar(p.cliente||"—")}</b></td>
             <td><a href="https://wa.me/${tel}" target="_blank"
-                   style="color:var(--verde);font-weight:600;text-decoration:none;">${p.telefono||"—"}</a></td>
-            <td>${p.municipio||"—"}</td>
+                   style="color:var(--verde);font-weight:600;text-decoration:none;">${sanitizar(p.telefono||"—")}</a></td>
+            <td>${sanitizar(p.municipio||"—")}</td>
             <td style="font-size:12px;color:#555;max-width:160px;white-space:nowrap;
-                       overflow:hidden;text-overflow:ellipsis;">${p.productos||"—"}</td>
-            <td><b style="color:var(--verde)">${p.total||"—"}</b></td>
-            <td style="font-size:12px;">${p.metodoPago||"—"}</td>
-            <td><select class="es" onchange="cambiarEstado(this,'${p.cliente}','${p.fecha}')">${opts}</select></td>
+                       overflow:hidden;text-overflow:ellipsis;">${sanitizar(p.productos||"—")}</td>
+            <td><b style="color:var(--verde)">${sanitizar(p.total||"—")}</b></td>
+            <td style="font-size:12px;">${sanitizar(p.metodoPago||"—")}</td>
+            <td><select class="es" onchange="cambiarEstado(this,${jsArg(p.cliente)},${jsArg(p.fecha)})">${opts}</select></td>
             <td style="white-space:nowrap;display:flex;gap:6px;padding:6px 4px;align-items:center;">
                 <button class="btn" style="background:#ef4444;color:#fff;padding:6px 12px;font-size:12px;font-weight:700;"
-                    onclick='generarPDFAdmin(${i},"${p.numeroPedido||""}")'>📄 PDF</button>
+                    onclick="generarPDFAdmin(${i},${jsArg(p.numeroPedido||'')})">📄 PDF</button>
                 <button class="btn" style="background:#00875A;color:#fff;padding:6px 12px;font-size:12px;font-weight:700;"
-                    onclick='event.stopPropagation();mostrarGuiaC807("${p.numeroPedido||""}")'>📋 C807</button>
+                    onclick="event.stopPropagation();mostrarGuiaC807(${jsArg(p.numeroPedido||'')})">📋 C807</button>
                 <button class="btn br" style="padding:6px 10px;font-size:12px;"
-                    onclick='eliminarPedido("${p.numeroPedido||""}")'>🗑️</button>
+                    onclick="eliminarPedido(${jsArg(p.numeroPedido||'')})">🗑️</button>
             </td>
         </tr>`;
     }).join('');
@@ -1029,26 +1044,26 @@ function renderPedidos() {
         const estColor = {"Pendiente":"bam2","En camino":"baz2","Entregado":"bv2","Cancelado":"br2"};
         return `<div class="ped-card">
             <div class="ped-card-header">
-                <span class="ped-card-num">${p.numeroPedido||"—"}</span>
+                <span class="ped-card-num">${sanitizar(p.numeroPedido||"—")}</span>
                 <span class="ped-card-fecha">${fecha}</span>
             </div>
             <div class="ped-card-body">
-                <span>👤 <b>${p.cliente||"—"}</b></span>
-                <span>📱 <a href="https://wa.me/${tel}" target="_blank" style="color:var(--verde);font-weight:600;text-decoration:none;">${p.telefono||"—"}</a></span>
-                <span>📍 ${p.municipio||"—"}</span>
-                <span>🛍️ ${p.productos||"—"}</span>
-                <span>💰 <b style="color:var(--verde)">${p.total||"—"}</b></span>
-                <span>💳 ${p.metodoPago||"—"}</span>
+                <span>👤 <b>${sanitizar(p.cliente||"—")}</b></span>
+                <span>📱 <a href="https://wa.me/${tel}" target="_blank" style="color:var(--verde);font-weight:600;text-decoration:none;">${sanitizar(p.telefono||"—")}</a></span>
+                <span>📍 ${sanitizar(p.municipio||"—")}</span>
+                <span>🛍️ ${sanitizar(p.productos||"—")}</span>
+                <span>💰 <b style="color:var(--verde)">${sanitizar(p.total||"—")}</b></span>
+                <span>💳 ${sanitizar(p.metodoPago||"—")}</span>
             </div>
             <div class="ped-card-footer">
-                <select class="es" onchange="cambiarEstado(this,'${p.cliente}','${p.fecha}')">${opts}</select>
+                <select class="es" onchange="cambiarEstado(this,${jsArg(p.cliente)},${jsArg(p.fecha)})">${opts}</select>
                 <div style="display:flex;gap:6px;">
                     <button class="btn" style="background:#ef4444;color:#fff;padding:6px 12px;font-size:12px;"
-                        onclick='generarPDFAdmin(${i},"${p.numeroPedido||""}")'>📄 PDF</button>
+                        onclick="generarPDFAdmin(${i},${jsArg(p.numeroPedido||'')})">📄 PDF</button>
                     <button class="btn" style="background:#00875A;color:#fff;padding:6px 12px;font-size:12px;"
-                        onclick='mostrarGuiaC807("${p.numeroPedido||""}")'>📋 C807</button>
+                        onclick="mostrarGuiaC807(${jsArg(p.numeroPedido||'')})">📋 C807</button>
                     <button class="btn br" style="padding:6px 10px;font-size:12px;"
-                        onclick='eliminarPedido("${p.numeroPedido||""}")'>🗑️</button>
+                        onclick="eliminarPedido(${jsArg(p.numeroPedido||'')})">🗑️</button>
                 </div>
             </div>
         </div>`;
@@ -1078,14 +1093,14 @@ function renderClientes() {
         const tel   = String(c.telefono||"").replace(/\D/g,"");
         const fecha = c.fechaRegistro ? new Date(c.fechaRegistro).toLocaleDateString("es-SV") : "—";
         return `<tr>
-            <td><span style="font-family:monospace;font-weight:700;color:var(--azul);">${c.codigo||"—"}</span></td>
-            <td><b>${c.nombre||"—"}</b></td>
-            <td><a href="https://wa.me/${tel}" target="_blank" style="color:var(--verde);font-weight:600;text-decoration:none;">${c.telefono||"—"}</a></td>
-            <td>${c.municipio||"—"}</td>
+            <td><span style="font-family:monospace;font-weight:700;color:var(--azul);">${sanitizar(c.codigo||"—")}</span></td>
+            <td><b>${sanitizar(c.nombre||"—")}</b></td>
+            <td><a href="https://wa.me/${tel}" target="_blank" style="color:var(--verde);font-weight:600;text-decoration:none;">${sanitizar(c.telefono||"—")}</a></td>
+            <td>${sanitizar(c.municipio||"—")}</td>
             <td style="text-align:center;"><b>${c.totalPedidos||0}</b></td>
             <td style="font-size:12px;color:#888;">${fecha}</td>
             <td><button class="btn" style="background:#111;color:#fff;padding:4px 10px;font-size:12px;"
-                onclick='generarCuponCliente("${c.codigo}","${c.nombre}","${c.telefono}")'>🎫 Generar</button></td>
+                onclick="generarCuponCliente(${jsArg(c.codigo)},${jsArg(c.nombre)},${jsArg(c.telefono)})">🎫 Generar</button></td>
         </tr>`;
     }).join('');
 
@@ -1096,18 +1111,18 @@ function renderClientes() {
         const fecha = c.fechaRegistro ? new Date(c.fechaRegistro).toLocaleDateString("es-SV") : "—";
         return `<div class="ped-card">
             <div class="ped-card-header">
-                <span class="ped-card-num">${c.codigo||"—"}</span>
+                <span class="ped-card-num">${sanitizar(c.codigo||"—")}</span>
                 <span class="ped-card-fecha">${fecha}</span>
             </div>
             <div class="ped-card-body">
-                <span>👤 <b>${c.nombre||"—"}</b></span>
-                <span>📱 <a href="https://wa.me/${tel}" target="_blank" style="color:var(--verde);font-weight:600;text-decoration:none;">${c.telefono||"—"}</a></span>
-                <span>📍 ${c.municipio||"—"}</span>
+                <span>👤 <b>${sanitizar(c.nombre||"—")}</b></span>
+                <span>📱 <a href="https://wa.me/${tel}" target="_blank" style="color:var(--verde);font-weight:600;text-decoration:none;">${sanitizar(c.telefono||"—")}</a></span>
+                <span>📍 ${sanitizar(c.municipio||"—")}</span>
                 <span>🛍️ <b>${c.totalPedidos||0}</b> pedidos</span>
             </div>
             <div class="ped-card-footer">
                 <button class="btn" style="background:#111;color:#fff;padding:6px 14px;font-size:13px;width:100%;"
-                    onclick='generarCuponCliente("${c.codigo}","${c.nombre}","${c.telefono}")'>🎫 Generar Cupón</button>
+                    onclick="generarCuponCliente(${jsArg(c.codigo)},${jsArg(c.nombre)},${jsArg(c.telefono)})">🎫 Generar Cupón</button>
             </div>
         </div>`;
     }).join('');
@@ -1118,7 +1133,7 @@ async function generarCuponCliente(codigo, nombre, telefono) {
     if (!descuento || isNaN(descuento)) return;
     const codigoCupon = `${codigo}-${Math.random().toString(36).substr(2,4).toUpperCase()}`;
     const datos = {
-        accion: "CREAR_CUPON", _pass: ADMIN_PASS,
+        accion: "CREAR_CUPON", _pass: _sessionPass,
         codigo: codigoCupon, tipo: "porcentaje",
         descuento: parseFloat(descuento), categorias: "",
         montoMinimo: 0, limiteUsos: 1, activo: true,
@@ -1387,9 +1402,9 @@ function actualizarNotif(sil=false) {
         if (sil) toast(`🔔 ${nuevos.length} pedido${nuevos.length>1?"s":""} nuevo${nuevos.length>1?"s":""}`, "#00BFFF");
     } else badge.style.display="none";
     document.getElementById("notif-lista").innerHTML = rec.length
-        ? rec.map(p=>`<div class="notif-item ${!notifLeidas.has(String(p.fecha)+p.cliente)?"nueva":""}" onclick="irPedido('${p.cliente}')">
-                <b>${p.cliente||"—"}</b> — ${p.total||""}
-                <div class="nt">${p.fecha?new Date(p.fecha).toLocaleString("es-SV"):""} · ${p.municipio||""}</div>
+        ? rec.map(p=>`<div class="notif-item ${!notifLeidas.has(String(p.fecha)+p.cliente)?"nueva":""}" onclick="irPedido(${jsArg(p.cliente)})">
+                <b>${sanitizar(p.cliente||"—")}</b> — ${sanitizar(p.total||"")}
+                <div class="nt">${p.fecha?new Date(p.fecha).toLocaleString("es-SV"):""} · ${sanitizar(p.municipio||"")}</div>
             </div>`).join('')
         : '<p style="padding:14px;color:#aaa;font-size:13px;">Sin pedidos aún.</p>';
 }
@@ -1428,12 +1443,12 @@ function renderProductos() {
         return `<div class="pc">
             <img src="${p.img||''}" alt="" onerror="this.style.display='none'">
             <div class="pi">
-                <div class="pn">${p.nombre||"—"} ${dest?'<span class="badge bam2">⭐ Destacado</span>':''}</div>
-                <div class="pd">Ref: ${p.codigo||"—"} · $${parseFloat(p.precio||0).toFixed(2)} · ${stock}</div>
+                <div class="pn">${sanitizar(p.nombre||"—")} ${dest?'<span class="badge bam2">⭐ Destacado</span>':''}</div>
+                <div class="pd">Ref: ${sanitizar(p.codigo||"—")} · $${parseFloat(p.precio||0).toFixed(2)} · ${stock}</div>
             </div>
             <div class="pa">
-                <button class="btn bg" onclick='abrirEditar(${JSON.stringify(p)})'>✏️</button>
-                <button class="btn ${dest?'bam':'bg'}" onclick="toggleDest('${p.codigo}',${!dest})" title="${dest?'Quitar':'Marcar'} destacado">⭐</button>
+                <button class="btn bg" onclick="abrirEditar(${JSON.stringify(p).replace(/"/g,'&quot;')})">✏️</button>
+                <button class="btn ${dest?'bam':'bg'}" onclick="toggleDest(${jsArg(p.codigo)},${!dest})" title="${dest?'Quitar':'Marcar'} destacado">⭐</button>
             </div>
         </div>`;
     }).join('');
@@ -1488,7 +1503,7 @@ async function guardarEdicion() {
     }
 
     const datos = {
-        accion: "EDITAR_PRODUCTO", _pass: ADMIN_PASS,
+        accion: "EDITAR_PRODUCTO", _pass: _sessionPass,
         codigo: document.getElementById("ed-cod").value,
         nombre: document.getElementById("ed-nom").value,
         precio: document.getElementById("ed-prec").value,
@@ -1891,8 +1906,8 @@ function mostrarGuiaC807(numeroPedido) {
         <div style="margin-bottom:10px;">
             <div style="font-size:11px;color:#888;font-weight:600;text-transform:uppercase;">${c.label}</div>
             <div style="display:flex;align-items:center;gap:8px;background:#f5f5f5;border-radius:6px;padding:8px 10px;margin-top:3px;">
-                <span style="flex:1;font-size:14px;font-weight:500;">${c.valor}</span>
-                <button onclick="navigator.clipboard.writeText('${c.valor.replace(/'/g,"\\'")}');this.textContent='✅';setTimeout(()=>this.textContent='📋',1500)"
+                <span style="flex:1;font-size:14px;font-weight:500;">${sanitizar(c.valor)}</span>
+                <button onclick="navigator.clipboard.writeText(${jsArg(c.valor)});this.textContent='✅';setTimeout(()=>this.textContent='📋',1500)"
                     style="background:none;border:none;font-size:16px;cursor:pointer;flex-shrink:0;">📋</button>
             </div>
         </div>`).join('');
@@ -1987,13 +2002,16 @@ async function guardarNuevaClave() {
     if (!actual || !nueva || !confirmar) { errEl.textContent = "⚠️ Completa todos los campos"; errEl.style.display = "block"; return; }
     if (nueva.length < 6) { errEl.textContent = "⚠️ Mínimo 6 caracteres"; errEl.style.display = "block"; return; }
     if (nueva !== confirmar) { errEl.textContent = "⚠️ Las contraseñas no coinciden"; errEl.style.display = "block"; return; }
-    if (actual !== ADMIN_PASS) { errEl.textContent = "⚠️ Contraseña actual incorrecta"; errEl.style.display = "block"; return; }
+    const actualHash = await hashStr(actual);
+    if (actualHash !== PASS_HASH) { errEl.textContent = "⚠️ Contraseña actual incorrecta"; errEl.style.display = "block"; return; }
 
     const btn = document.querySelector("#modal-pass button:last-child");
     btn.textContent = "⏳ Guardando..."; btn.disabled = true;
     try {
         const nuevoHash = await hashStr(nueva);
-        await fetch(API_URL, { method:'POST', body: JSON.stringify({ accion:"ACTUALIZAR_PASS_HASH", _pass: ADMIN_PASS, nuevoHash }) });
+        await fetch(API_URL, { method:'POST', body: JSON.stringify({ accion:"ACTUALIZAR_PASS_HASH", _pass: _sessionPass, nuevoHash }) });
+        PASS_HASH = nuevoHash;
+        _sessionPass = nueva;
         toast("✅ Contraseña actualizada. Úsala en tu próximo login.", "#22c55e");
         document.getElementById("modal-pass").style.display = "none";
     } catch(e) {
