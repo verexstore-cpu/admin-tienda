@@ -819,6 +819,7 @@ async function login() {
     if (hash === PASS_HASH) {
         _sessionPass = pass;
         sessionStorage.setItem("vxa","1");
+        localStorage.setItem("vxa_session", pass);
         document.getElementById("login-screen").style.display = "none";
         document.getElementById("panel").style.display = "block";
         init();
@@ -827,11 +828,20 @@ async function login() {
         document.getElementById("in-pass").value = "";
     }
 }
-function logout() { sessionStorage.clear(); _sessionPass = null; location.reload(); }
-if (sessionStorage.getItem("vxa")==="1") {
+function logout() { sessionStorage.clear(); localStorage.removeItem("vxa_session"); _sessionPass = null; location.reload(); }
+
+// Auto-login si hay sesión guardada
+(async () => {
+    const saved = localStorage.getItem("vxa_session");
+    if (!saved) return;
+    const hash = await hashStr(saved);
+    if (hash !== PASS_HASH) { localStorage.removeItem("vxa_session"); return; }
+    _sessionPass = saved;
+    sessionStorage.setItem("vxa","1");
     document.getElementById("login-screen").style.display = "none";
     document.getElementById("panel").style.display = "block";
-}
+    init();
+})();
 
 // ═════════════════════════════════════════════
 //  TABS
