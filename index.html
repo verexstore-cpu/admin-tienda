@@ -1449,16 +1449,21 @@ function renderProductos() {
         let stock="";
         try { const s=JSON.parse(p.caracteristicas||"{}"); const t=Object.values(s).reduce((a,b)=>a+Number(b),0); stock=t>0?`Stock: ${t}`:`<span style="color:var(--rojo)">Agotado</span>`; }
         catch(_){ stock="Sin tallas"; }
-        const dest = p.destacado===true||p.destacado==="TRUE";
+        const dest    = p.destacado===true||p.destacado==="TRUE";
+        const visible = p.enCatalogo===true||p.enCatalogo==="true"||p.enCatalogo===1;
         return `<div class="pc">
-            <img src="${p.img||''}" alt="" onerror="this.style.display='none'">
+            <img src="${p.foto||p.img||''}" alt="" onerror="this.style.display='none'">
             <div class="pi">
-                <div class="pn">${sanitizar(p.nombre||"—")} ${dest?'<span class="badge bam2">⭐ Destacado</span>':''}</div>
+                <div class="pn">${sanitizar(p.nombre||"—")}
+                    ${dest?'<span class="badge bam2">⭐ Destacado</span>':''}
+                    ${visible?'<span class="badge bv2">👁️ Visible</span>':'<span class="badge br2">🙈 Oculto</span>'}
+                </div>
                 <div class="pd">Ref: ${sanitizar(p.codigo||"—")} · $${parseFloat(p.precio||0).toFixed(2)} · ${stock}</div>
             </div>
             <div class="pa">
                 <button class="btn bg" onclick="abrirEditar(${JSON.stringify(p).replace(/"/g,'&quot;')})">✏️</button>
                 <button class="btn ${dest?'bam':'bg'}" onclick="toggleDest(${jsArg(p.codigo)},${!dest})" title="${dest?'Quitar':'Marcar'} destacado">⭐</button>
+                <button class="btn ${visible?'bv':'bg'}" onclick="toggleVisible(${jsArg(p.codigo)},${!visible})" title="${visible?'Ocultar del':'Mostrar en'} catálogo">${visible?'👁️':'🙈'}</button>
             </div>
         </div>`;
     }).join('');
@@ -1468,7 +1473,7 @@ function abrirEditar(p) {
     document.getElementById("ed-cod").value  = p.codigo;
     document.getElementById("ed-nom").value  = p.nombre;
     document.getElementById("ed-prec").value = p.precio;
-    document.getElementById("ed-img").value  = p.img;
+    document.getElementById("ed-img").value  = p.foto || p.img || "";
 
     // Mostrar tallas solo para anillos
     const esAnillo = (p.codigo || "").startsWith("AN-");
@@ -1539,6 +1544,12 @@ async function toggleDest(codigo, destacado) {
     await cargarDatos(true);
 }
 
+async function toggleVisible(codigo, enCatalogo) {
+    await fetch(API_URL,{method:'POST',mode:'no-cors',body:JSON.stringify({accion:"EDITAR_PRODUCTO",_pass:_sessionPass,codigo,enCatalogo})});
+    toast(enCatalogo?"👁️ Producto visible en catálogo":"🙈 Producto oculto del catálogo", enCatalogo?"#22c55e":"#f97316");
+    await cargarDatos(true);
+}
+
 // Nuevo producto
 function togglePareja() {
     const esPareja = document.getElementById("chk-pareja").checked;
@@ -1581,7 +1592,7 @@ async function publicarProducto() {
     const btn=document.querySelector("#tab-2 .bfull");
     btn.textContent="Publicando..."; btn.disabled=true;
     try {
-        await fetch(API_URL,{method:'POST',mode:'no-cors',body:JSON.stringify({accion:"CREAR_PRODUCTO",_pass:_sessionPass,nombre,precio,img,codigo,caracteristicas:JSON.stringify(stocks)})});
+        await fetch(API_URL,{method:'POST',mode:'no-cors',body:JSON.stringify({accion:"CREAR_PRODUCTO",_pass:_sessionPass,nombre,precio,img,codigo,caracteristicas:JSON.stringify(stocks),enCatalogo:true})});
         toast("✅ Producto publicado","#22c55e");
         document.getElementById("in-prec").value=document.getElementById("in-img").value=document.getElementById("in-det").value="";
         document.querySelectorAll(".ts").forEach(i=>i.value=0);
