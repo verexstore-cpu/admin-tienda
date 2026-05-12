@@ -1632,9 +1632,10 @@ async function publicarProducto() {
     const btn=document.querySelector("#tab-2 .bfull");
     btn.textContent="Publicando..."; btn.disabled=true;
     try {
+        const categoria = document.getElementById("sel-tipo").value; // AN, AR, CD, PL, CN, RL, OT
         await fetch(API_URL,{method:'POST',mode:'no-cors',body:JSON.stringify({
             accion:"CREAR_PRODUCTO",_pass:_sessionPass,
-            nombre,precio,img,codigo,
+            nombre,precio,img,codigo,categoria,
             caracteristicas:JSON.stringify(stocks),
             cantidad,
             enCatalogo:true
