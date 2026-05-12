@@ -374,9 +374,15 @@
     <div class="tab-content" id="tab-2">
         <div class="card">
             <h2>📦 Catálogo Actual</h2>
-            <div class="sb">
-                <input type="text" id="bus-prod" placeholder="Buscar..." oninput="renderProductos()">
+            <div class="sb" style="flex-wrap:wrap;gap:8px;">
+                <input type="text" id="bus-prod" placeholder="Buscar por nombre o código..." oninput="renderProductos()" style="flex:1;min-width:180px;">
+                <select id="fil-visib" onchange="renderProductos()" style="width:160px;">
+                    <option value="todos">📋 Todos</option>
+                    <option value="catalogo">👁️ En catálogo</option>
+                    <option value="ocultos">🙈 Ocultos</option>
+                </select>
             </div>
+            <p id="resumen-prod" style="font-size:12px;color:#888;margin:8px 0 4px;"></p>
             <div id="lista-prod"></div>
         </div>
 
@@ -1441,9 +1447,23 @@ document.addEventListener("click", e=>{
 //  PRODUCTOS
 // ═════════════════════════════════════════════
 function renderProductos() {
-    const busq = document.getElementById("bus-prod").value.toLowerCase();
-    const cont = document.getElementById("lista-prod");
-    const list = productos.filter(p=>!busq||(p.nombre||"").toLowerCase().includes(busq)||(p.codigo||"").toLowerCase().includes(busq));
+    const busq  = document.getElementById("bus-prod").value.toLowerCase();
+    const visib = document.getElementById("fil-visib")?.value || "todos";
+    const cont  = document.getElementById("lista-prod");
+
+    let list = productos.filter(p => {
+        if (busq && !(p.nombre||"").toLowerCase().includes(busq) && !(p.codigo||"").toLowerCase().includes(busq)) return false;
+        const visible = p.enCatalogo===true||p.enCatalogo==="true"||p.enCatalogo===1;
+        if (visib === "catalogo") return visible;
+        if (visib === "ocultos")  return !visible;
+        return true;
+    });
+
+    const total   = productos.length;
+    const enCat   = productos.filter(p=>p.enCatalogo===true||p.enCatalogo==="true"||p.enCatalogo===1).length;
+    const ocultos = total - enCat;
+    const resumen = document.getElementById("resumen-prod");
+    if (resumen) resumen.textContent = `${total} productos · ${enCat} en catálogo · ${ocultos} ocultos`;
     if (!list.length) { cont.innerHTML='<p style="color:#aaa;font-size:13px;">Sin productos.</p>'; return; }
     cont.innerHTML = list.map(p=>{
         let stock="";
