@@ -417,6 +417,14 @@
                 <div><label>Precio ($)</label><input type="number" id="in-prec" step="0.01" placeholder="0.00"></div>
                 <div><label>URL Imagen</label><input type="text" id="in-img" placeholder="https://ik.imagekit.io/..."></div>
             </div>
+
+            <!-- Cantidad para productos que no son anillos -->
+            <div id="sec-cantidad" style="display:none;">
+                <label>📦 Cantidad en bodega</label>
+                <input type="number" id="in-cant" placeholder="0" min="0" value="0"
+                       style="max-width:160px;">
+            </div>
+
             <div id="sec-tallas">
                 <!-- Checkbox pareja -->
                 <label style="display:flex;align-items:center;gap:8px;margin-bottom:12px;
@@ -1590,8 +1598,9 @@ function actualizarNombre() {
     if (!window._c || !window._c.startsWith(pref+"-"))
         window._c = `${pref}-${Math.floor(1000+Math.random()*9000)}`;
     document.getElementById("out-cod").textContent = window._c;
-    // Tallas solo para Anillos
-    document.getElementById("sec-tallas").style.display = pref==="AN" ? "block" : "none";
+    // Tallas para anillos / Cantidad simple para el resto
+    document.getElementById("sec-tallas").style.display   = pref==="AN" ? "block" : "none";
+    document.getElementById("sec-cantidad").style.display = pref==="AN" ? "none"  : "block";
 }
 
 async function publicarProducto() {
@@ -1600,22 +1609,43 @@ async function publicarProducto() {
     const img=document.getElementById("in-img").value.trim();
     const codigo=document.getElementById("out-cod").textContent;
     if (!precio||!img) return toast("⚠️ Falta precio o imagen","#f97316");
+    const esAnillo = document.getElementById("sel-tipo").value === "AN";
     const esPareja = document.getElementById("chk-pareja")?.checked;
+
+    // Construir stocks por talla (anillos) o cantidad simple (resto)
     const stocks = {};
-    if (esPareja) {
-        // Guardar tallas dama (D5-D14) y caballero (H5-H14)
-        document.querySelectorAll(".ts-d").forEach(i => { const v=parseInt(i.value); if(v>0) stocks[i.dataset.t]=v; });
-        document.querySelectorAll(".ts-h").forEach(i => { const v=parseInt(i.value); if(v>0) stocks[i.dataset.t]=v; });
+    let cantidad = 0;
+    if (esAnillo) {
+        if (esPareja) {
+            document.querySelectorAll(".ts-d").forEach(i => { const v=parseInt(i.value); if(v>0) stocks[i.dataset.t]=v; });
+            document.querySelectorAll(".ts-h").forEach(i => { const v=parseInt(i.value); if(v>0) stocks[i.dataset.t]=v; });
+        } else {
+            document.querySelectorAll(".ts").forEach(i => { const v=parseInt(i.value); if(v>0) stocks[i.dataset.t]=v; });
+        }
+        // stock_bodega = suma total de tallas
+        cantidad = Object.values(stocks).reduce((s,v)=>s+v, 0);
     } else {
-        document.querySelectorAll(".ts").forEach(i => { const v=parseInt(i.value); if(v>0) stocks[i.dataset.t]=v; });
+        cantidad = parseInt(document.getElementById("in-cant").value) || 0;
+        if (!cantidad) return toast("⚠️ Ingresa la cantidad en bodega","#f97316");
     }
+
     const btn=document.querySelector("#tab-2 .bfull");
     btn.textContent="Publicando..."; btn.disabled=true;
     try {
-        await fetch(API_URL,{method:'POST',mode:'no-cors',body:JSON.stringify({accion:"CREAR_PRODUCTO",_pass:_sessionPass,nombre,precio,img,codigo,caracteristicas:JSON.stringify(stocks),enCatalogo:true})});
+        await fetch(API_URL,{method:'POST',mode:'no-cors',body:JSON.stringify({
+            accion:"CREAR_PRODUCTO",_pass:_sessionPass,
+            nombre,precio,img,codigo,
+            caracteristicas:JSON.stringify(stocks),
+            cantidad,
+            enCatalogo:true
+        })});
         toast("✅ Producto publicado","#22c55e");
-        document.getElementById("in-prec").value=document.getElementById("in-img").value=document.getElementById("in-det").value="";
-        document.querySelectorAll(".ts").forEach(i=>i.value=0);
+        // Limpiar formulario
+        document.getElementById("in-prec").value="";
+        document.getElementById("in-img").value="";
+        document.getElementById("in-det").value="";
+        document.getElementById("in-cant").value="0";
+        document.querySelectorAll(".ts,.ts-d,.ts-h").forEach(i=>i.value=0);
         window._c=null;
         const chkP = document.getElementById("chk-pareja");
         if (chkP) { chkP.checked=false; togglePareja(); }
