@@ -719,6 +719,12 @@
         <label>Precio ($)</label><input type="number" id="ed-prec" step="0.01">
         <label>URL Imagen</label><input type="text" id="ed-img">
 
+        <!-- Cantidad en bodega (solo productos sin tallas) -->
+        <div id="ed-sec-cantidad" style="display:none;margin-top:12px;">
+            <label>📦 Cantidad en bodega</label>
+            <input type="number" id="ed-cant" min="0" value="0" style="max-width:160px;">
+        </div>
+
         <!-- Tallas visuales (solo anillos) -->
         <div id="ed-sec-tallas" style="display:none;margin-top:12px;">
             <!-- Simple -->
@@ -1503,10 +1509,11 @@ function abrirEditar(p) {
     document.getElementById("ed-prec").value = p.precio;
     document.getElementById("ed-img").value  = p.foto || p.img || "";
 
-    // Mostrar tallas solo para anillos
+    // Mostrar tallas para anillos / cantidad para el resto
     const esAnillo = (p.codigo || "").startsWith("AN-");
-    const secTallas = document.getElementById("ed-sec-tallas");
-    secTallas.style.display = esAnillo ? "block" : "none";
+    document.getElementById("ed-sec-tallas").style.display   = esAnillo ? "block" : "none";
+    document.getElementById("ed-sec-cantidad").style.display = esAnillo ? "none"  : "block";
+    document.getElementById("ed-cant").value = esAnillo ? 0 : (parseInt(p.stock_bodega) || 0);
     document.getElementById("ed-es-anillo").value = esAnillo ? "1" : "0";
 
     // Rellenar inputs de tallas con stock actual
@@ -1531,10 +1538,14 @@ function abrirEditar(p) {
 function cerrarModal() { document.getElementById("modal-edit").classList.remove("open"); }
 
 async function guardarEdicion() {
-    // Leer stock desde inputs visuales si es anillo
-    let caracteristicas = undefined;
     const edTipo = document.getElementById("ed-es-anillo").value;
-    if (edTipo === "1" || edTipo === "pareja") {
+    const esAnillo = edTipo === "1" || edTipo === "pareja";
+
+    // Anillos: stock por talla en caracteristicas + calcular stock_bodega total
+    let caracteristicas = undefined;
+    let stock_bodega    = undefined;
+
+    if (esAnillo) {
         const stocks = {};
         if (edTipo === "pareja") {
             document.querySelectorAll(".ed-ts-d").forEach(i => { const v=parseInt(i.value); if(v>0) stocks[i.dataset.t]=v; });
@@ -1543,6 +1554,10 @@ async function guardarEdicion() {
             document.querySelectorAll(".ed-ts").forEach(inp => { const v=parseInt(inp.value); if(v>0) stocks[inp.dataset.t]=v; });
         }
         caracteristicas = JSON.stringify(stocks);
+        stock_bodega = Object.values(stocks).reduce((s,v)=>s+v, 0);
+    } else {
+        // No-anillo: cantidad simple
+        stock_bodega = parseInt(document.getElementById("ed-cant").value) || 0;
     }
 
     const datos = {
@@ -1551,6 +1566,7 @@ async function guardarEdicion() {
         nombre: document.getElementById("ed-nom").value,
         precio: document.getElementById("ed-prec").value,
         img:    document.getElementById("ed-img").value,
+        stock_bodega,
         ...(caracteristicas !== undefined && { caracteristicas }),
     };
     await fetch(API_URL,{method:'POST',mode:'no-cors',body:JSON.stringify(datos)});
