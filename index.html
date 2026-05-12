@@ -811,7 +811,6 @@
 // ═════════════════════════════════════════════
 const API_URL    = "https://verex-api.verexstore.workers.dev/";
 const SECRET_KEY = ""; // Moved to Worker
-let PASS_HASH = "288c61b77753c1b1d08c4fb0a7a11dfbb2abd5c3fd6ceaf405fa09300afe4fe5";
 let _sessionPass = null;
 function sanitizar(str) {
     return String(str ?? "")
@@ -836,34 +835,65 @@ let notifLeidas = new Set(safeParseJSON(localStorage.getItem("vx_notif"), []));
 //  AUTH
 // ═════════════════════════════════════════════
 async function login() {
-    const pass = document.getElementById("in-pass").value;
-    const hash = await hashStr(pass);
-    if (hash === PASS_HASH) {
-        _sessionPass = pass;
-        sessionStorage.setItem("vxa","1");
-        localStorage.setItem("vxa_session", pass);
-        document.getElementById("login-screen").style.display = "none";
-        document.getElementById("panel").style.display = "block";
-        init();
-    } else {
-        document.getElementById("login-err").style.display = "block";
-        document.getElementById("in-pass").value = "";
+    const errEl = document.getElementById("login-err");
+    errEl.style.display = "none";
+
+    // Comprobar bloqueo por intentos fallidos
+    const lockUntil = parseInt(localStorage.getItem("vxa_lock_until") || "0");
+    if (Date.now() < lockUntil) {
+        const segs = Math.ceil((lockUntil - Date.now()) / 1000);
+        errEl.textContent = `⛔ Demasiados intentos. Espera ${segs}s`;
+        errEl.style.display = "block";
+        return;
+    }
+
+    const pass = document.getElementById("in-pass").value.trim();
+    if (!pass) return;
+
+    const btn = document.querySelector("#login-screen button");
+    btn.textContent = "Verificando..."; btn.disabled = true;
+    try {
+        const res  = await fetch(API_URL, { method:'POST', body: JSON.stringify({ accion:"VERIFICAR_PASS", _pass: pass }) });
+        const data = await res.json();
+        if (data.ok) {
+            localStorage.removeItem("vxa_attempts");
+            localStorage.removeItem("vxa_lock_until");
+            _sessionPass = pass;
+            sessionStorage.setItem("vxa", "1");
+            sessionStorage.setItem("vxa_pass", pass);
+            document.getElementById("login-screen").style.display = "none";
+            document.getElementById("panel").style.display = "block";
+            init();
+        } else {
+            const attempts = parseInt(localStorage.getItem("vxa_attempts") || "0") + 1;
+            if (attempts >= 5) {
+                const bloqueadoHasta = Date.now() + 5 * 60 * 1000;
+                localStorage.setItem("vxa_lock_until", bloqueadoHasta);
+                localStorage.removeItem("vxa_attempts");
+                errEl.textContent = "⛔ 5 intentos fallidos. Bloqueado 5 minutos.";
+            } else {
+                localStorage.setItem("vxa_attempts", attempts);
+                errEl.textContent = `⚠️ Contraseña incorrecta (intento ${attempts}/5)`;
+            }
+            errEl.style.display = "block";
+            document.getElementById("in-pass").value = "";
+        }
+    } catch(e) {
+        errEl.textContent = "⚠️ Error de conexión. Intenta de nuevo.";
+        errEl.style.display = "block";
+    } finally {
+        btn.textContent = "INGRESAR"; btn.disabled = false;
     }
 }
-function logout() { sessionStorage.clear(); localStorage.removeItem("vxa_session"); _sessionPass = null; location.reload(); }
+function logout() { sessionStorage.clear(); _sessionPass = null; location.reload(); }
 
-// Auto-login si hay sesión guardada
-(async () => {
-    const saved = localStorage.getItem("vxa_session");
-    if (!saved) return;
-    const hash = await hashStr(saved);
-    if (hash !== PASS_HASH) { localStorage.removeItem("vxa_session"); return; }
-    _sessionPass = saved;
-    sessionStorage.setItem("vxa","1");
+// Auto-login si hay sesión activa en esta ventana
+const _savedPass = sessionStorage.getItem("vxa_pass");
+if (_savedPass && sessionStorage.getItem("vxa") === "1") {
+    _sessionPass = _savedPass;
     document.getElementById("login-screen").style.display = "none";
     document.getElementById("panel").style.display = "block";
-    init();
-})();
+}
 
 // ═════════════════════════════════════════════
 //  TABS
@@ -2131,17 +2161,21 @@ async function guardarNuevaClave() {
     if (!actual || !nueva || !confirmar) { errEl.textContent = "⚠️ Completa todos los campos"; errEl.style.display = "block"; return; }
     if (nueva.length < 6) { errEl.textContent = "⚠️ Mínimo 6 caracteres"; errEl.style.display = "block"; return; }
     if (nueva !== confirmar) { errEl.textContent = "⚠️ Las contraseñas no coinciden"; errEl.style.display = "block"; return; }
-    const actualHash = await hashStr(actual);
-    if (actualHash !== PASS_HASH) { errEl.textContent = "⚠️ Contraseña actual incorrecta"; errEl.style.display = "block"; return; }
 
     const btn = document.querySelector("#modal-pass button:last-child");
-    btn.textContent = "⏳ Guardando..."; btn.disabled = true;
+    btn.textContent = "⏳ Verificando..."; btn.disabled = true;
     try {
+        // Verificar contraseña actual contra el worker (nunca local)
+        const verif = await fetch(API_URL, { method:'POST', body: JSON.stringify({ accion:"VERIFICAR_PASS", _pass: actual }) });
+        const vData = await verif.json();
+        if (!vData.ok) { errEl.textContent = "⚠️ Contraseña actual incorrecta"; errEl.style.display = "block"; btn.textContent = "💾 Guardar Nueva Contraseña"; btn.disabled = false; return; }
+
+        btn.textContent = "⏳ Guardando...";
         const nuevoHash = await hashStr(nueva);
         await fetch(API_URL, { method:'POST', body: JSON.stringify({ accion:"ACTUALIZAR_PASS_HASH", _pass: _sessionPass, nuevoHash }) });
-        PASS_HASH = nuevoHash;
         _sessionPass = nueva;
-        toast("✅ Contraseña actualizada. Úsala en tu próximo login.", "#22c55e");
+        sessionStorage.setItem("vxa_pass", nueva);
+        toast("✅ Contraseña de sesión actualizada.", "#22c55e");
         document.getElementById("modal-pass").style.display = "none";
     } catch(e) {
         errEl.textContent = "⚠️ Error al guardar"; errEl.style.display = "block";
