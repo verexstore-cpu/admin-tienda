@@ -1032,7 +1032,7 @@ function renderPedidos() {
                        overflow:hidden;text-overflow:ellipsis;">${sanitizar(p.productos||"—")}</td>
             <td><b style="color:var(--verde)">${sanitizar(p.total||"—")}</b></td>
             <td style="font-size:12px;">${sanitizar(p.metodoPago||"—")}</td>
-            <td><select class="es" onchange="cambiarEstado(this,${jsArg(p.cliente)},${jsArg(p.fecha)})">${opts}</select></td>
+            <td><select class="es" onchange="cambiarEstado(this,${jsArg(p.numeroPedido||'')})">${opts}</select></td>
             <td style="white-space:nowrap;display:flex;gap:6px;padding:6px 4px;align-items:center;">
                 <button class="btn" style="background:#ef4444;color:#fff;padding:6px 12px;font-size:12px;font-weight:700;"
                     onclick="generarPDFAdmin(${i},${jsArg(p.numeroPedido||'')})">📄 PDF</button>
@@ -1066,7 +1066,7 @@ function renderPedidos() {
                 <span>💳 ${sanitizar(p.metodoPago||"—")}</span>
             </div>
             <div class="ped-card-footer">
-                <select class="es" onchange="cambiarEstado(this,${jsArg(p.cliente)},${jsArg(p.fecha)})">${opts}</select>
+                <select class="es" onchange="cambiarEstado(this,${jsArg(p.numeroPedido||'')})">${opts}</select>
                 <div style="display:flex;gap:6px;">
                     <button class="btn" style="background:#ef4444;color:#fff;padding:6px 12px;font-size:12px;"
                         onclick="generarPDFAdmin(${i},${jsArg(p.numeroPedido||'')})">📄 PDF</button>
@@ -1347,7 +1347,7 @@ async function eliminarPedido(numeroPedido) {
     if (idx >= 0) pedidos.splice(idx, 1);
     renderPedidos();
     await fetch(API_URL, { method:'POST', mode:'no-cors',
-        body: JSON.stringify({ accion:"ELIMINAR_PEDIDO", _pass:ADMIN_PASS, numeroPedido })
+        body: JSON.stringify({ accion:"ELIMINAR_PEDIDO", _pass:_sessionPass, numeroPedido })
     });
     toast("🗑️ Pedido eliminado", "#ef4444");
 }
@@ -1381,13 +1381,13 @@ function mensajeWhatsApp(estado, p) {
     return null;
 }
 
-async function cambiarEstado(sel, cliente, fecha) {
+async function cambiarEstado(sel, numeroPedido) {
     const estado = sel.value;
-    const p = pedidos.find(p => p.cliente === cliente && String(p.fecha) === String(fecha));
+    const p = pedidos.find(p => p.numeroPedido === numeroPedido);
     if (p) p.estado = estado;
 
     await fetch(API_URL, { method:'POST', mode:'no-cors',
-        body: JSON.stringify({ accion:"ACTUALIZAR_ESTADO_PEDIDO", _pass:ADMIN_PASS, cliente, fecha, estado })
+        body: JSON.stringify({ accion:"ACTUALIZAR_ESTADO_PEDIDO", _pass:_sessionPass, numeroPedido, estado })
     });
 
     // Enviar mensaje de WhatsApp si aplica
@@ -1528,13 +1528,13 @@ async function guardarEdicion() {
 async function desactivarProducto() {
     const cod=document.getElementById("ed-cod").value;
     if (!confirm(`¿Desactivar ${cod}?`)) return;
-    await fetch(API_URL,{method:'POST',mode:'no-cors',body:JSON.stringify({accion:"ELIMINAR_PRODUCTO",_pass:ADMIN_PASS,codigo:cod})});
+    await fetch(API_URL,{method:'POST',mode:'no-cors',body:JSON.stringify({accion:"ELIMINAR_PRODUCTO",_pass:_sessionPass,codigo:cod})});
     cerrarModal(); toast("🗑️ Producto desactivado");
     await cargarDatos(true);
 }
 
 async function toggleDest(codigo, destacado) {
-    await fetch(API_URL,{method:'POST',mode:'no-cors',body:JSON.stringify({accion:"EDITAR_PRODUCTO",_pass:ADMIN_PASS,codigo,destacado})});
+    await fetch(API_URL,{method:'POST',mode:'no-cors',body:JSON.stringify({accion:"EDITAR_PRODUCTO",_pass:_sessionPass,codigo,destacado})});
     toast(destacado?"⭐ Marcado como destacado":"Quitado de destacados");
     await cargarDatos(true);
 }
@@ -1581,7 +1581,7 @@ async function publicarProducto() {
     const btn=document.querySelector("#tab-2 .bfull");
     btn.textContent="Publicando..."; btn.disabled=true;
     try {
-        await fetch(API_URL,{method:'POST',mode:'no-cors',body:JSON.stringify({accion:"CREAR_PRODUCTO",_pass:ADMIN_PASS,nombre,precio,img,codigo,caracteristicas:JSON.stringify(stocks)})});
+        await fetch(API_URL,{method:'POST',mode:'no-cors',body:JSON.stringify({accion:"CREAR_PRODUCTO",_pass:_sessionPass,nombre,precio,img,codigo,caracteristicas:JSON.stringify(stocks)})});
         toast("✅ Producto publicado","#22c55e");
         document.getElementById("in-prec").value=document.getElementById("in-img").value=document.getElementById("in-det").value="";
         document.querySelectorAll(".ts").forEach(i=>i.value=0);
@@ -1758,20 +1758,20 @@ async function crearCupon() {
     document.getElementById("cup-preview").style.display = "none";
 
     await fetch(API_URL, { method:'POST', mode:'no-cors',
-        body: JSON.stringify({ accion:"CREAR_CUPON", _pass:ADMIN_PASS, ...nuevo }) });
+        body: JSON.stringify({ accion:"CREAR_CUPON", _pass:_sessionPass, ...nuevo }) });
     toast("✅ Cupón creado", "#22c55e");
 }
 
 async function toggleCupon(i) {
     cupones[i].activo=!cupones[i].activo; renderCupones();
-    await fetch(API_URL,{method:'POST',mode:'no-cors',body:JSON.stringify({accion:"TOGGLE_CUPON",_pass:ADMIN_PASS,codigo:cupones[i].codigo,activo:cupones[i].activo})});
+    await fetch(API_URL,{method:'POST',mode:'no-cors',body:JSON.stringify({accion:"TOGGLE_CUPON",_pass:_sessionPass,codigo:cupones[i].codigo,activo:cupones[i].activo})});
     toast(cupones[i].activo?"✅ Cupón activado":"🔴 Cupón desactivado");
 }
 
 async function eliminarCupon(i) {
     if (!confirm(`¿Eliminar cupón "${cupones[i].codigo}"?`)) return;
     const cod=cupones[i].codigo; cupones.splice(i,1); renderCupones();
-    await fetch(API_URL,{method:'POST',mode:'no-cors',body:JSON.stringify({accion:"ELIMINAR_CUPON",_pass:ADMIN_PASS,codigo:cod})});
+    await fetch(API_URL,{method:'POST',mode:'no-cors',body:JSON.stringify({accion:"ELIMINAR_CUPON",_pass:_sessionPass,codigo:cod})});
     toast("🗑️ Cupón eliminado");
 }
 
@@ -1980,7 +1980,7 @@ function guardarCarrusel() {
 
 function saveConfig() {
     localStorage.setItem("vx_cfg",JSON.stringify(cfg));
-    fetch(API_URL,{method:'POST',mode:'no-cors',body:JSON.stringify({accion:"ACTUALIZAR_CONFIG",_pass:ADMIN_PASS,config:cfg})});
+    fetch(API_URL,{method:'POST',mode:'no-cors',body:JSON.stringify({accion:"ACTUALIZAR_CONFIG",_pass:_sessionPass,config:cfg})});
 }
 
 // ═════════════════════════════════════════════
