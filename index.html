@@ -497,9 +497,11 @@
     <div class="tab-content" id="tab-5">
         <div class="card">
             <h2>👥 Clientes Registrados</h2>
-            <div style="display:flex;gap:10px;margin-bottom:16px;flex-wrap:wrap;">
+            <div style="display:flex;gap:10px;margin-bottom:12px;flex-wrap:wrap;align-items:center;">
                 <input id="bus-cli" type="text" placeholder="Buscar por nombre, teléfono o código..."
                     oninput="renderClientes()" style="flex:1;min-width:200px;">
+                <button class="btn ba" style="padding:7px 16px;font-size:12px;flex-shrink:0;"
+                    onclick="exportarClientes()">📊 Exportar Excel</button>
             </div>
             <p id="resumen-cli" style="font-size:13px;color:#888;margin-bottom:12px;"></p>
 
@@ -1425,15 +1427,17 @@ async function cambiarEstado(sel, numeroPedido) {
 // ═════════════════════════════════════════════
 function actualizarNotif(sil=false) {
     const rec    = pedidos.slice(0,10);
-    const nuevos = rec.filter(p=>!notifLeidas.has(String(p.fecha)+p.cliente));
+    const nuevos = rec.filter(p=>!notifLeidas.has(p.numeroPedido||String(p.fecha)+p.cliente));
     const badge  = document.getElementById("notif-badge");
     if (nuevos.length) {
         badge.textContent=nuevos.length; badge.style.display="flex";
         if (sil) toast(`🔔 ${nuevos.length} pedido${nuevos.length>1?"s":""} nuevo${nuevos.length>1?"s":""}`, "#00BFFF");
     } else badge.style.display="none";
     document.getElementById("notif-lista").innerHTML = rec.length
-        ? rec.map(p=>`<div class="notif-item ${!notifLeidas.has(String(p.fecha)+p.cliente)?"nueva":""}" onclick="irPedido(${jsArg(p.cliente)})">
-                <b>${sanitizar(p.cliente||"—")}</b> — ${sanitizar(p.total||"")}
+        ? rec.map(p=>`<div class="notif-item ${!notifLeidas.has(p.numeroPedido||String(p.fecha)+p.cliente)?"nueva":""}" onclick="irPedido(${jsArg(p.numeroPedido||'')})">
+                <b>${sanitizar(p.cliente||"—")}</b>
+                <span style="font-size:11px;color:var(--azul);margin-left:6px;">${sanitizar(p.numeroPedido||"")}</span>
+                — ${sanitizar(p.total||"")}
                 <div class="nt">${p.fecha?new Date(p.fecha).toLocaleString("es-SV"):""} · ${sanitizar(p.municipio||"")}</div>
             </div>`).join('')
         : '<p style="padding:14px;color:#aaa;font-size:13px;">Sin pedidos aún.</p>';
@@ -1442,13 +1446,17 @@ function actualizarNotif(sil=false) {
 function toggleNotif() { document.getElementById("notif-panel").classList.toggle("open"); }
 
 function marcarLeidos() {
-    pedidos.slice(0,10).forEach(p=>notifLeidas.add(String(p.fecha)+p.cliente));
+    pedidos.slice(0,10).forEach(p=>notifLeidas.add(p.numeroPedido||String(p.fecha)+p.cliente));
     localStorage.setItem("vx_notif",JSON.stringify([...notifLeidas]));
     actualizarNotif(); document.getElementById("notif-panel").classList.remove("open");
 }
 
-function irPedido(cliente) {
-    tab(1); document.getElementById("bus-ped").value=cliente; renderPedidos();
+function irPedido(numeroPedido) {
+    tab(1);
+    document.getElementById("bus-ped").value = numeroPedido;
+    document.getElementById("fil-estado").value = "";
+    document.getElementById("fil-periodo").value = "todo";
+    renderPedidos();
     document.getElementById("notif-panel").classList.remove("open");
 }
 
@@ -1922,6 +1930,39 @@ function exportarExcel() {
 
     XLSX.writeFile(wb, `Verex_Ventas_${nombrePeriodo}.xlsx`);
     toast(`✅ Excel exportado: ${list.length} pedidos`, "#22c55e");
+}
+
+function exportarClientes() {
+    const busq = (document.getElementById("bus-cli")?.value || "").toLowerCase();
+    const list = clientes.filter(c =>
+        !busq ||
+        (c.nombre||"").toLowerCase().includes(busq) ||
+        (c.telefono||"").toString().includes(busq) ||
+        (c.codigo||"").toLowerCase().includes(busq)
+    );
+    if (!list.length) return toast("⚠️ No hay clientes para exportar", "#f97316");
+
+    const rows = list.map(c => ({
+        "Código":       c.codigo        || "—",
+        "Cliente":      c.nombre        || "—",
+        "WhatsApp":     c.telefono      || "—",
+        "Municipio":    c.municipio     || "—",
+        "Departamento": c.departamento  || "—",
+        "Dirección":    c.direccion     || "—",
+        "Correo":       c.correo        || "—",
+        "Pedidos":      c.totalPedidos  || 0,
+        "Registro":     c.fechaRegistro ? new Date(c.fechaRegistro).toLocaleDateString("es-SV") : "—",
+    }));
+
+    const wb = XLSX.utils.book_new();
+    const ws = XLSX.utils.json_to_sheet(rows);
+    ws["!cols"] = [
+        {wch:12},{wch:22},{wch:14},{wch:18},{wch:16},{wch:28},{wch:24},{wch:8},{wch:14}
+    ];
+    XLSX.utils.book_append_sheet(wb, ws, "Clientes");
+    const hoy = new Date();
+    XLSX.writeFile(wb, `Verex_Clientes_${hoy.getDate()}-${hoy.getMonth()+1}-${hoy.getFullYear()}.xlsx`);
+    toast(`✅ ${list.length} clientes exportados`, "#22c55e");
 }
 
 // ── BANNER ──────────────────────────────────────────────────────────
