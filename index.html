@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+<!DOCTYPE html><!-- VEREX Admin v2 -->
 <html lang="es">
 <head>
     <link rel="icon" type="image/svg+xml" href="favicon.svg">
@@ -1216,9 +1216,25 @@ async function generarCuponCliente(codigo, nombre, telefono) {
 }
 
 // ═════════════════════════════════════════════
+// ═════════════════════════════════════════════
+//  ENVÍO DIRECTO A VEREX IMPRESIÓN (localhost:7891)
+// ═════════════════════════════════════════════
+async function enviarAImpresion(doc, endpoint, nombre) {
+    try {
+        const pdfBase64 = doc.output('datauristring').split(',')[1]
+        const r = await fetch(`http://127.0.0.1:7891${endpoint}`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ pdfBase64, nombre }),
+            signal: AbortSignal.timeout(3000),
+        })
+        return r.ok
+    } catch { return false }
+}
+
 //  PDF DE PEDIDO
 // ═════════════════════════════════════════════
-function generarPDFAdmin(idx, numeroPedido) {
+async function generarPDFAdmin(idx, numeroPedido) {
     // Reconstruir lista filtrada igual que renderPedidos
     const busq = document.getElementById("bus-ped").value.toLowerCase();
     const fil  = document.getElementById("fil-estado").value;
@@ -1268,9 +1284,15 @@ function generarPDFAdmin(idx, numeroPedido) {
     };
 
     try {
-        const doc = generarPDF(datos);
-        doc.save(`Verex_${datos.numeroPedido.replace(/#/g,"")}.pdf`);
-        toast("📄 PDF generado correctamente", "#22c55e");
+        const doc    = generarPDF(datos);
+        const nombre = `Verex_${datos.numeroPedido.replace(/#/g,"")}`;
+        const enviado = await enviarAImpresion(doc, '/print-guia', nombre);
+        if (enviado) {
+            toast("📦 Guía enviada a VEREX Impresión", "#22c55e");
+        } else {
+            doc.save(`${nombre}.pdf`);
+            toast("📄 PDF descargado — abre VEREX Impresión para envío directo", "#f59e0b");
+        }
     } catch(e) {
         console.error(e);
         toast("⚠️ Error generando PDF", "#ef4444");
@@ -1402,7 +1424,7 @@ function generarPDF(datos) {
 // ═════════════════════════════════════════════
 //  RECIBO TÉRMICO 62mm (Brother QL-810W)
 // ═════════════════════════════════════════════
-function generarPDFAdminTermico(idx, numeroPedido) {
+async function generarPDFAdminTermico(idx, numeroPedido) {
     const busq = document.getElementById("bus-ped").value.toLowerCase();
     const fil  = document.getElementById("fil-estado").value;
     let list = pedidos.filter(p =>
@@ -1443,9 +1465,15 @@ function generarPDFAdminTermico(idx, numeroPedido) {
     };
 
     try {
-        const doc = generarPDFTermico(datos);
-        doc.save(`Recibo_Termico_${datos.numeroPedido.replace(/#/g,"")}.pdf`);
-        toast("🖨️ Recibo térmico generado", "#22c55e");
+        const doc    = generarPDFTermico(datos);
+        const nombre = `Recibo_${datos.numeroPedido.replace(/#/g,"")}`;
+        const enviado = await enviarAImpresion(doc, '/print-recibo', nombre);
+        if (enviado) {
+            toast("🖨️ Recibo enviado a VEREX Impresión", "#22c55e");
+        } else {
+            doc.save(`${nombre}.pdf`);
+            toast("📥 PDF descargado — abre VEREX Impresión para envío directo", "#f59e0b");
+        }
     } catch(e) {
         console.error(e);
         toast("⚠️ Error generando recibo térmico", "#ef4444");
