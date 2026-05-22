@@ -1088,6 +1088,9 @@ function renderPedidos() {
             <td style="white-space:nowrap;display:flex;gap:6px;padding:6px 4px;align-items:center;">
                 <button class="btn" style="background:#ef4444;color:#fff;padding:6px 12px;font-size:12px;font-weight:700;"
                     onclick="generarPDFAdmin(${i},${jsArg(p.numeroPedido||'')})">📄 PDF</button>
+                <button class="btn" style="background:#7c3aed;color:#fff;padding:6px 10px;font-size:12px;font-weight:700;"
+                    title="Imprimir recibo térmico 62mm"
+                    onclick="generarPDFAdminTermico(${i},${jsArg(p.numeroPedido||'')})">🖨️</button>
                 <button class="btn" style="background:#00875A;color:#fff;padding:6px 12px;font-size:12px;font-weight:700;"
                     onclick="event.stopPropagation();mostrarGuiaC807(${jsArg(p.numeroPedido||'')})">📋 C807</button>
                 <button class="btn br" style="padding:6px 10px;font-size:12px;"
@@ -1122,6 +1125,9 @@ function renderPedidos() {
                 <div style="display:flex;gap:6px;">
                     <button class="btn" style="background:#ef4444;color:#fff;padding:6px 12px;font-size:12px;"
                         onclick="generarPDFAdmin(${i},${jsArg(p.numeroPedido||'')})">📄 PDF</button>
+                    <button class="btn" style="background:#7c3aed;color:#fff;padding:6px 10px;font-size:12px;"
+                        title="Imprimir recibo térmico 62mm"
+                        onclick="generarPDFAdminTermico(${i},${jsArg(p.numeroPedido||'')})">🖨️</button>
                     <button class="btn" style="background:#00875A;color:#fff;padding:6px 12px;font-size:12px;"
                         onclick="mostrarGuiaC807(${jsArg(p.numeroPedido||'')})">📋 C807</button>
                     <button class="btn br" style="padding:6px 10px;font-size:12px;"
@@ -1388,6 +1394,174 @@ function generarPDF(datos) {
     doc.setTextColor(120, 120, 120);
     doc.text("Gracias por tu compra.", pageW / 2, 5.68, { align: "center" });
     doc.text("El mundo es mejor cuando tu brillas.", pageW / 2, 5.81, { align: "center" });
+    doc.setTextColor(0, 0, 0);
+
+    return doc;
+}
+
+// ═════════════════════════════════════════════
+//  RECIBO TÉRMICO 62mm (Brother QL-810W)
+// ═════════════════════════════════════════════
+function generarPDFAdminTermico(idx, numeroPedido) {
+    const busq = document.getElementById("bus-ped").value.toLowerCase();
+    const fil  = document.getElementById("fil-estado").value;
+    let list = pedidos.filter(p =>
+        (!busq || (p.cliente||"").toLowerCase().includes(busq) ||
+                  (p.productos||"").toLowerCase().includes(busq) ||
+                  (p.numeroPedido||"").toLowerCase().includes(busq)) &&
+        (!fil  || p.estado === fil)
+    );
+    list = filtrarPorPeriodo(list);
+    const p = list[idx];
+    if (!p) return toast("⚠️ Pedido no encontrado", "#ef4444");
+
+    let items = [];
+    try { items = typeof p.items === "string" ? JSON.parse(p.items) : (p.items || []); } catch(_) {}
+    if (!items.length && p.productos) {
+        String(p.productos || "").split(",").forEach(prod => {
+            const match = prod.trim().match(/^(.+?)\s*\((.+?)\)$/);
+            items.push({
+                codigo:      p.numeroPedido || "—",
+                nombre:      match ? match[1].trim() : prod.trim(),
+                tallaElegida: match ? match[2].trim() : "",
+                precioNum:   0,
+            });
+        });
+    }
+
+    const datos = {
+        nombre:       p.cliente      || "—",
+        tel:          p.telefono     || "—",
+        ubicacion:    p.municipio    || "—",
+        direccion:    p.direccion    || "—",
+        metodoPago:   p.metodoPago   || "",
+        numeroPedido: p.numeroPedido || numeroPedido || "—",
+        items,
+        cuponUsado:   p.cuponUsado   || "",
+        descMonto:    parseFloat(p.descMonto || 0),
+        envio:        parseFloat(p.envio     || 0),
+    };
+
+    try {
+        const doc = generarPDFTermico(datos);
+        doc.save(`Recibo_Termico_${datos.numeroPedido.replace(/#/g,"")}.pdf`);
+        toast("🖨️ Recibo térmico generado", "#22c55e");
+    } catch(e) {
+        console.error(e);
+        toast("⚠️ Error generando recibo térmico", "#ef4444");
+    }
+}
+
+function generarPDFTermico(datos) {
+    const { jsPDF } = window.jspdf;
+    const W  = 62;      // ancho rollo mm
+    const mL = 3;       // margen izquierdo
+    const mR = W - 3;   // margen derecho
+    const cW = mR - mL; // ancho de contenido (56mm)
+    const lh = 4.8;     // interlineado
+
+    const items     = datos.items    || [];
+    const cupon     = datos.cuponUsado || "";
+    const envio     = datos.envio    ?? 0;
+    const descMonto = datos.descMonto ?? 0;
+
+    // Calcular altura total necesaria
+    const altItems = items.reduce((acc, it) => {
+        const nombre = it.nombre || "";
+        const lines  = Math.ceil(nombre.length / 28);
+        return acc + lines * lh + 1;
+    }, 0);
+    const H = 55 + (items.length > 0 ? altItems : 10) + (descMonto > 0 ? lh : 0) + 30;
+
+    const doc = new jsPDF({ unit: 'mm', format: [W, H], orientation: 'portrait' });
+
+    let y = 8;
+
+    // ── ENCABEZADO ────────────────────────────────────────────────
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(9);
+    doc.text("Nota de Pedido", W / 2, y, { align: "center" }); y += 5;
+    doc.setFontSize(13);
+    doc.text("VEREX STORE", W / 2, y, { align: "center" }); y += 5;
+
+    doc.setDrawColor(150);
+    doc.setLineWidth(0.3);
+    doc.line(mL, y, mR, y); y += 4;
+
+    // ── N° PEDIDO ─────────────────────────────────────────────────
+    doc.setFont("helvetica", "normal");
+    doc.setFontSize(8);
+    doc.text(`N°: ${datos.numeroPedido}`, W / 2, y, { align: "center" }); y += lh + 1;
+
+    // ── DATOS CLIENTE ─────────────────────────────────────────────
+    const campo = (label, valor, maxW) => {
+        doc.setFont("helvetica", "bold");   doc.setFontSize(8);
+        doc.text(label, mL, y);
+        doc.setFont("helvetica", "normal"); doc.setFontSize(8);
+        const lines = doc.splitTextToSize(String(valor), maxW || cW - 16);
+        doc.text(lines[0], mL + 14, y); y += lh;
+        if (lines[1]) { doc.text(lines[1], mL + 14, y); y += lh; }
+    };
+    campo("Cliente:", datos.nombre);
+    campo("Tel:",     datos.tel);
+    campo("Ubic.:",   datos.ubicacion);
+    campo("Dir.:",    datos.direccion);
+    if (datos.metodoPago) campo("Pago:", datos.metodoPago);
+
+    // ── SEPARADOR ─────────────────────────────────────────────────
+    y += 1;
+    doc.line(mL, y, mR, y); y += 4;
+
+    // ── ITEMS ─────────────────────────────────────────────────────
+    let subtotal = 0;
+    items.forEach(item => {
+        const talla = item.tallaElegida || item.talla || "";
+        const tEsUnica = talla === "Única" || talla === "";
+        const tCorta   = tEsUnica ? "" : " T" + talla.replace(/[^0-9]/g, "");
+        const nombreItem = `${item.nombre || ""}${tCorta}`;
+        const precio     = parseFloat(item.precioNum || item.precio || 0);
+        subtotal += precio;
+
+        const lines = doc.splitTextToSize(nombreItem, cW - 16);
+        doc.setFont("helvetica", "normal"); doc.setFontSize(8);
+        doc.text(lines[0], mL, y);
+        doc.setFont("helvetica", "bold");
+        doc.text(`$${precio.toFixed(2)}`, mR, y, { align: "right" });
+        y += lh;
+        if (lines[1]) { doc.setFont("helvetica", "normal"); doc.text(lines[1], mL, y); y += lh; }
+    });
+
+    // ── SEPARADOR ─────────────────────────────────────────────────
+    y += 1;
+    doc.line(mL, y, mR, y); y += 4;
+
+    // ── TOTALES ───────────────────────────────────────────────────
+    const total = subtotal - descMonto + envio;
+
+    const fila = (label, valor, bold, grande) => {
+        doc.setFont("helvetica", bold ? "bold" : "normal");
+        doc.setFontSize(grande ? 10 : 8);
+        doc.text(label,  mL, y);
+        doc.text(valor,  mR, y, { align: "right" });
+        y += grande ? lh + 1 : lh;
+    };
+    fila("Subtotal:", `$${subtotal.toFixed(2)}`);
+    if (descMonto > 0) fila(`Desc.${cupon ? " ("+cupon+")" : ""}:`, `-$${descMonto.toFixed(2)}`);
+    fila("Envío:", envio > 0 ? `$${envio.toFixed(2)}` : "GRATIS");
+    y += 1;
+    fila("TOTAL:", `$${total.toFixed(2)}`, true, true);
+
+    // ── SEPARADOR ─────────────────────────────────────────────────
+    doc.setLineWidth(0.3);
+    doc.line(mL, y, mR, y); y += 5;
+
+    // ── FOOTER ────────────────────────────────────────────────────
+    doc.setFont("times", "italic");
+    doc.setFontSize(8);
+    doc.setTextColor(120, 120, 120);
+    doc.text("Gracias por tu compra.", W / 2, y, { align: "center" }); y += lh;
+    doc.text("El mundo es más extraordinario,", W / 2, y, { align: "center" }); y += lh;
+    doc.text("cuando brillas TU", W / 2, y, { align: "center" });
     doc.setTextColor(0, 0, 0);
 
     return doc;
