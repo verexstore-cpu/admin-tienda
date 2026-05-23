@@ -1452,14 +1452,14 @@ async function generarPDFAdminTermico(idx, numeroPedido) {
     }
 
     const datos = {
-        nombre:       p.cliente      || "—",
-        tel:          p.telefono     || "—",
-        ubicacion:    p.municipio    || "—",
-        direccion:    p.direccion    || "—",
-        metodoPago:   p.metodoPago   || "",
-        numeroPedido: p.numeroPedido || numeroPedido || "—",
+        nombre:       p.cliente       || "—",
+        tel:          p.telefono      || "—",
+        departamento: p.departamento  || "—",
+        ubicacion:    p.municipio     || "—",
+        metodoPago:   p.metodoPago    || "",
+        numeroPedido: p.numeroPedido  || numeroPedido || "—",
         items,
-        cuponUsado:   p.cuponUsado   || "",
+        cuponUsado:   p.cuponUsado    || "",
         descMonto:    parseFloat(p.descMonto || 0),
         envio:        parseFloat(p.envio     || 0),
     };
@@ -1497,7 +1497,8 @@ function generarPDFTermico(datos) {
     const altItems = items.reduce((acc, it) => {
         const nombre = it.nombre || "";
         const lines  = Math.ceil(nombre.length / 28);
-        return acc + lines * lh + 1;
+        const showCode = it.codigo && it.codigo !== "—" && it.codigo !== (datos.numeroPedido || "");
+        return acc + lines * lh + 1 + (showCode ? 3.5 : 0);
     }, 0);
     const H = 55 + (items.length > 0 ? altItems : 10) + (descMonto > 0 ? lh : 0) + 30;
 
@@ -1532,8 +1533,8 @@ function generarPDFTermico(datos) {
     };
     campo("Cliente:", datos.nombre);
     campo("Tel:",     datos.tel);
-    campo("Ubic.:",   datos.ubicacion);
-    campo("Dir.:",    datos.direccion);
+    campo("Dep.:",    datos.departamento);
+    campo("Mun.:",    datos.ubicacion);
     if (datos.metodoPago) campo("Pago:", datos.metodoPago);
 
     // ── SEPARADOR ─────────────────────────────────────────────────
@@ -1557,6 +1558,16 @@ function generarPDFTermico(datos) {
         doc.text(`$${precio.toFixed(2)}`, mR, y, { align: "right" });
         y += lh;
         if (lines[1]) { doc.setFont("helvetica", "normal"); doc.text(lines[1], mL, y); y += lh; }
+
+        // Código del producto (solo si es un código real, no el número de pedido)
+        const showCode = item.codigo && item.codigo !== "—" && item.codigo !== datos.numeroPedido;
+        if (showCode) {
+            doc.setFont("helvetica", "normal"); doc.setFontSize(7);
+            doc.setTextColor(140, 140, 140);
+            doc.text(`Ref: ${item.codigo}`, mL, y);
+            doc.setTextColor(0, 0, 0);
+            y += 3.5;
+        }
     });
 
     // ── SEPARADOR ─────────────────────────────────────────────────
