@@ -1,4 +1,4 @@
-<!DOCTYPE html><!-- VEREX Admin v2 -->
+<!DOCTYPE html>
 <html lang="es">
 <head>
     <link rel="icon" type="image/svg+xml" href="favicon.svg">
@@ -274,6 +274,8 @@
         <div class="tab" onclick="tab(5)">👥 Clientes</div>
         <div class="tab" onclick="tab(3)">🚚 Envío</div>
         <div class="tab" onclick="tab(4)">🎟️ Cupones</div>
+        <div class="tab" onclick="tab(6);cargarConsignacion()">👤 Vendedores</div>
+        <div class="tab" onclick="tab(7)" style="color:#c0392b;">⚙️ Sistema</div>
     </div>
 
     <!-- TAB 0: DASHBOARD -->
@@ -374,15 +376,9 @@
     <div class="tab-content" id="tab-2">
         <div class="card">
             <h2>📦 Catálogo Actual</h2>
-            <div class="sb" style="flex-wrap:wrap;gap:8px;">
-                <input type="text" id="bus-prod" placeholder="Buscar por nombre o código..." oninput="renderProductos()" style="flex:1;min-width:180px;">
-                <select id="fil-visib" onchange="renderProductos()" style="width:160px;">
-                    <option value="todos">📋 Todos</option>
-                    <option value="catalogo">👁️ En catálogo</option>
-                    <option value="ocultos">🙈 Ocultos</option>
-                </select>
+            <div class="sb">
+                <input type="text" id="bus-prod" placeholder="Buscar..." oninput="renderProductos()">
             </div>
-            <p id="resumen-prod" style="font-size:12px;color:#888;margin:8px 0 4px;"></p>
             <div id="lista-prod"></div>
         </div>
 
@@ -417,14 +413,6 @@
                 <div><label>Precio ($)</label><input type="number" id="in-prec" step="0.01" placeholder="0.00"></div>
                 <div><label>URL Imagen</label><input type="text" id="in-img" placeholder="https://ik.imagekit.io/..."></div>
             </div>
-
-            <!-- Cantidad para productos que no son anillos -->
-            <div id="sec-cantidad" style="display:none;">
-                <label>📦 Cantidad en bodega</label>
-                <input type="number" id="in-cant" placeholder="0" min="0" value="0"
-                       style="max-width:160px;">
-            </div>
-
             <div id="sec-tallas">
                 <!-- Checkbox pareja -->
                 <label style="display:flex;align-items:center;gap:8px;margin-bottom:12px;
@@ -497,11 +485,9 @@
     <div class="tab-content" id="tab-5">
         <div class="card">
             <h2>👥 Clientes Registrados</h2>
-            <div style="display:flex;gap:10px;margin-bottom:12px;flex-wrap:wrap;align-items:center;">
+            <div style="display:flex;gap:10px;margin-bottom:16px;flex-wrap:wrap;">
                 <input id="bus-cli" type="text" placeholder="Buscar por nombre, teléfono o código..."
                     oninput="renderClientes()" style="flex:1;min-width:200px;">
-                <button class="btn ba" style="padding:7px 16px;font-size:12px;flex-shrink:0;"
-                    onclick="exportarClientes()">📊 Exportar Excel</button>
             </div>
             <p id="resumen-cli" style="font-size:13px;color:#888;margin-bottom:12px;"></p>
 
@@ -710,6 +696,58 @@
     </div>
 </div>
 
+<!-- TAB 6: VENDEDORES / CONSIGNACIÓN -->
+<div class="tab-content" id="tab-6">
+    <div class="card">
+        <h2>👤 Vendedores — Ventas por Consignación</h2>
+        <div id="vend-loading" style="color:#888;font-size:13px;padding:10px 0;">⏳ Cargando...</div>
+        <div id="vend-lista"></div>
+    </div>
+</div>
+
+<!-- TAB 7: SISTEMA -->
+<div class="tab-content" id="tab-7">
+    <div class="card" style="border:2px solid #fecaca;background:#fff5f5;">
+        <h2 style="color:#c0392b;">⚠️ Zona de Peligro</h2>
+        <p style="color:#666;font-size:13px;margin-bottom:20px;">Estas acciones son <strong>irreversibles</strong>. Se generará un respaldo automático antes de borrar.</p>
+
+        <div style="background:#fff;border:1.5px solid #fecaca;border-radius:10px;padding:20px;margin-bottom:16px;">
+            <h3 style="font-size:15px;margin:0 0 8px;color:#c0392b;">🗑️ Resetear todo el sistema</h3>
+            <p style="font-size:13px;color:#666;margin:0 0 16px;">Borra stock, vendedores, consignaciones, ventas, pedidos, clientes, cupones y entregas. La configuración se conserva.</p>
+            <div style="background:#fef3c7;border-radius:8px;padding:12px;margin-bottom:16px;font-size:12px;color:#92400e;">
+                💾 Antes de borrar, se descargará automáticamente un archivo <strong>backup-verex.json</strong> con todos los datos.
+            </div>
+            <input type="password" id="reset-pass" placeholder="Ingresa tu contraseña para confirmar" style="width:100%;padding:10px 12px;border:1.5px solid #fecaca;border-radius:8px;font-size:14px;margin-bottom:12px;box-sizing:border-box;">
+            <button onclick="ejecutarReset()" style="background:#c0392b;color:#fff;border:none;padding:12px 24px;border-radius:8px;font-size:14px;font-weight:700;cursor:pointer;width:100%;">
+                🗑️ Descargar Respaldo y Resetear Sistema
+            </button>
+            <div id="reset-status" style="margin-top:12px;font-size:13px;text-align:center;"></div>
+        </div>
+    </div>
+</div>
+
+<!-- MODAL VENTAS VENDEDOR -->
+<div class="mo" id="modal-ventas-vend">
+    <div class="mb" style="max-width:660px;">
+        <button class="mc" onclick="cerrarModalVentas()">✕</button>
+        <h3 id="mv-titulo">Ventas del Vendedor</h3>
+        <div id="mv-stats" style="display:flex;gap:10px;margin-bottom:14px;flex-wrap:wrap;"></div>
+        <div class="sb">
+            <input type="text" id="mv-buscar" placeholder="Buscar producto..." oninput="filtrarVentasModal()">
+        </div>
+        <div class="tw">
+            <table>
+                <thead><tr>
+                    <th>Foto</th><th>Código</th><th>Producto</th>
+                    <th>Precio</th><th>Entregado</th><th>Vendido</th><th>Disponible</th>
+                </tr></thead>
+                <tbody id="mv-tbody"></tbody>
+            </table>
+        </div>
+        <p id="mv-vacio" style="display:none;color:#aaa;font-size:13px;text-align:center;padding:20px;">Sin ventas registradas.</p>
+    </div>
+</div>
+
 <!-- MODAL EDITAR PRODUCTO -->
 <div class="mo" id="modal-edit">
     <div class="mb">
@@ -720,12 +758,6 @@
         <label>Nombre</label><input type="text" id="ed-nom">
         <label>Precio ($)</label><input type="number" id="ed-prec" step="0.01">
         <label>URL Imagen</label><input type="text" id="ed-img">
-
-        <!-- Cantidad en bodega (solo productos sin tallas) -->
-        <div id="ed-sec-cantidad" style="display:none;margin-top:12px;">
-            <label>📦 Cantidad en bodega</label>
-            <input type="number" id="ed-cant" min="0" value="0" style="max-width:160px;">
-        </div>
 
         <!-- Tallas visuales (solo anillos) -->
         <div id="ed-sec-tallas" style="display:none;margin-top:12px;">
@@ -811,86 +843,31 @@
 // ═════════════════════════════════════════════
 const API_URL    = "https://verex-api.verexstore.workers.dev/";
 const SECRET_KEY = ""; // Moved to Worker
-let _sessionPass = null;
-function sanitizar(str) {
-    return String(str ?? "")
-        .replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;")
-        .replace(/"/g,"&quot;").replace(/'/g,"&#039;");
-}
-function jsArg(val) {
-    return JSON.stringify(String(val ?? "")).replace(/"/g,"&quot;");
-}
-function safeParseJSON(str, fallback) {
-    try { return JSON.parse(str); } catch(_) { return fallback; }
-}
+const ADMIN_PASS = "verex2026";
 
 let cfg = {
     tiendaActiva: true,
     reglasEnvio: [{ min:0, max:49.99, costo:2 }, { min:50, max:9999, costo:0 }]
 };
 let productos=[], pedidos=[], cupones=[];
-let notifLeidas = new Set(safeParseJSON(localStorage.getItem("vx_notif"), []));
+let notifLeidas = new Set(JSON.parse(localStorage.getItem("vx_notif")||"[]"));
 
 // ═════════════════════════════════════════════
 //  AUTH
 // ═════════════════════════════════════════════
-async function login() {
-    const errEl = document.getElementById("login-err");
-    errEl.style.display = "none";
-
-    // Comprobar bloqueo por intentos fallidos
-    const lockUntil = parseInt(localStorage.getItem("vxa_lock_until") || "0");
-    if (Date.now() < lockUntil) {
-        const segs = Math.ceil((lockUntil - Date.now()) / 1000);
-        errEl.textContent = `⛔ Demasiados intentos. Espera ${segs}s`;
-        errEl.style.display = "block";
-        return;
-    }
-
-    const pass = document.getElementById("in-pass").value.trim();
-    if (!pass) return;
-
-    const btn = document.querySelector("#login-screen button");
-    btn.textContent = "Verificando..."; btn.disabled = true;
-    try {
-        const res  = await fetch(API_URL, { method:'POST', body: JSON.stringify({ accion:"VERIFICAR_PASS", _pass: pass }) });
-        const data = await res.json();
-        if (data.ok) {
-            localStorage.removeItem("vxa_attempts");
-            localStorage.removeItem("vxa_lock_until");
-            _sessionPass = pass;
-            sessionStorage.setItem("vxa", "1");
-            sessionStorage.setItem("vxa_pass", pass);
-            document.getElementById("login-screen").style.display = "none";
-            document.getElementById("panel").style.display = "block";
-            init();
-        } else {
-            const attempts = parseInt(localStorage.getItem("vxa_attempts") || "0") + 1;
-            if (attempts >= 5) {
-                const bloqueadoHasta = Date.now() + 5 * 60 * 1000;
-                localStorage.setItem("vxa_lock_until", bloqueadoHasta);
-                localStorage.removeItem("vxa_attempts");
-                errEl.textContent = "⛔ 5 intentos fallidos. Bloqueado 5 minutos.";
-            } else {
-                localStorage.setItem("vxa_attempts", attempts);
-                errEl.textContent = `⚠️ Contraseña incorrecta (intento ${attempts}/5)`;
-            }
-            errEl.style.display = "block";
-            document.getElementById("in-pass").value = "";
-        }
-    } catch(e) {
-        errEl.textContent = "⚠️ Error de conexión. Intenta de nuevo.";
-        errEl.style.display = "block";
-    } finally {
-        btn.textContent = "INGRESAR"; btn.disabled = false;
+function login() {
+    if (document.getElementById("in-pass").value === ADMIN_PASS) {
+        sessionStorage.setItem("vxa","1");
+        document.getElementById("login-screen").style.display = "none";
+        document.getElementById("panel").style.display = "block";
+        init();
+    } else {
+        document.getElementById("login-err").style.display = "block";
+        document.getElementById("in-pass").value = "";
     }
 }
-function logout() { sessionStorage.clear(); _sessionPass = null; location.reload(); }
-
-// Auto-login si hay sesión activa en esta ventana
-const _savedPass = sessionStorage.getItem("vxa_pass");
-if (_savedPass && sessionStorage.getItem("vxa") === "1") {
-    _sessionPass = _savedPass;
+function logout() { sessionStorage.clear(); location.reload(); }
+if (sessionStorage.getItem("vxa")==="1") {
     document.getElementById("login-screen").style.display = "none";
     document.getElementById("panel").style.display = "block";
 }
@@ -924,7 +901,7 @@ function toast(msg, bg) {
 // ═════════════════════════════════════════════
 async function init() {
     const saved = localStorage.getItem("vx_cfg");
-    if (saved) cfg = safeParseJSON(saved, cfg);
+    if (saved) cfg = JSON.parse(saved);
     renderEstado(); renderEnvio(); actualizarNombre();
     await cargarDatos();
     setInterval(()=>cargarDatos(true), 45000);
@@ -932,7 +909,7 @@ async function init() {
 
 async function cargarDatos(silencioso=false) {
     try {
-        const res  = await fetch(API_URL, { method:'POST', body: JSON.stringify({ accion:"GET_TIENDA", _pass: _sessionPass }) });
+        const res  = await fetch(API_URL, { method:'POST', body: JSON.stringify({ accion:"GET_TIENDA", _pass: ADMIN_PASS }) });
         const data = await res.json();
         productos = data.productos || [];
         pedidos   = (data.pedidos || []).reverse();
@@ -998,7 +975,7 @@ function renderTop() {
     cont.innerHTML = top.length ? top.map(([n,v],i)=>`
         <div style="display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid var(--borde);">
             <span style="font-size:17px;font-weight:800;color:var(--azul);min-width:22px;">${i+1}</span>
-            <span style="flex:1;font-size:13px;">${sanitizar(n)}</span>
+            <span style="flex:1;font-size:13px;">${n}</span>
             <span class="badge baz2">${v} pedido${v>1?'s':''}</span>
         </div>`).join('')
     : '<p style="color:#aaa;font-size:13px;">Sin datos aún.</p>';
@@ -1073,28 +1050,25 @@ function renderPedidos() {
         return `<tr>
             <td style="color:#aaa;">${list.length-i}</td>
             <td>
-                <span style="font-family:monospace;font-size:12px;color:var(--azul);font-weight:700;">${sanitizar(p.numeroPedido||"—")}</span>
+                <span style="font-family:monospace;font-size:12px;color:var(--azul);font-weight:700;">${p.numeroPedido||"—"}</span>
             </td>
             <td style="white-space:nowrap;">${fecha}</td>
-            <td><b>${sanitizar(p.cliente||"—")}</b></td>
+            <td><b>${p.cliente||"—"}</b></td>
             <td><a href="https://wa.me/${tel}" target="_blank"
-                   style="color:var(--verde);font-weight:600;text-decoration:none;">${sanitizar(p.telefono||"—")}</a></td>
-            <td>${sanitizar(p.municipio||"—")}</td>
+                   style="color:var(--verde);font-weight:600;text-decoration:none;">${p.telefono||"—"}</a></td>
+            <td>${p.municipio||"—"}</td>
             <td style="font-size:12px;color:#555;max-width:160px;white-space:nowrap;
-                       overflow:hidden;text-overflow:ellipsis;">${sanitizar(p.productos||"—")}</td>
-            <td><b style="color:var(--verde)">${sanitizar(p.total||"—")}</b></td>
-            <td style="font-size:12px;">${sanitizar(p.metodoPago||"—")}</td>
-            <td><select class="es" onchange="cambiarEstado(this,${jsArg(p.numeroPedido||'')})">${opts}</select></td>
+                       overflow:hidden;text-overflow:ellipsis;">${p.productos||"—"}</td>
+            <td><b style="color:var(--verde)">${p.total||"—"}</b></td>
+            <td style="font-size:12px;">${p.metodoPago||"—"}</td>
+            <td><select class="es" onchange="cambiarEstado(this,'${p.cliente}','${p.fecha}')">${opts}</select></td>
             <td style="white-space:nowrap;display:flex;gap:6px;padding:6px 4px;align-items:center;">
                 <button class="btn" style="background:#ef4444;color:#fff;padding:6px 12px;font-size:12px;font-weight:700;"
-                    onclick="generarPDFAdmin(${i},${jsArg(p.numeroPedido||'')})">📄 PDF</button>
-                <button class="btn" style="background:#7c3aed;color:#fff;padding:6px 10px;font-size:12px;font-weight:700;"
-                    title="Imprimir recibo térmico 62mm"
-                    onclick="generarPDFAdminTermico(${i},${jsArg(p.numeroPedido||'')})">🖨️</button>
+                    onclick='generarPDFAdmin(${i},"${p.numeroPedido||""}")'>📄 PDF</button>
                 <button class="btn" style="background:#00875A;color:#fff;padding:6px 12px;font-size:12px;font-weight:700;"
-                    onclick="event.stopPropagation();mostrarGuiaC807(${jsArg(p.numeroPedido||'')})">📋 C807</button>
+                    onclick='event.stopPropagation();mostrarGuiaC807("${p.numeroPedido||""}")'>📋 C807</button>
                 <button class="btn br" style="padding:6px 10px;font-size:12px;"
-                    onclick="eliminarPedido(${jsArg(p.numeroPedido||'')})">🗑️</button>
+                    onclick='eliminarPedido("${p.numeroPedido||""}")'>🗑️</button>
             </td>
         </tr>`;
     }).join('');
@@ -1109,29 +1083,26 @@ function renderPedidos() {
         const estColor = {"Pendiente":"bam2","En camino":"baz2","Entregado":"bv2","Cancelado":"br2"};
         return `<div class="ped-card">
             <div class="ped-card-header">
-                <span class="ped-card-num">${sanitizar(p.numeroPedido||"—")}</span>
+                <span class="ped-card-num">${p.numeroPedido||"—"}</span>
                 <span class="ped-card-fecha">${fecha}</span>
             </div>
             <div class="ped-card-body">
-                <span>👤 <b>${sanitizar(p.cliente||"—")}</b></span>
-                <span>📱 <a href="https://wa.me/${tel}" target="_blank" style="color:var(--verde);font-weight:600;text-decoration:none;">${sanitizar(p.telefono||"—")}</a></span>
-                <span>📍 ${sanitizar(p.municipio||"—")}</span>
-                <span>🛍️ ${sanitizar(p.productos||"—")}</span>
-                <span>💰 <b style="color:var(--verde)">${sanitizar(p.total||"—")}</b></span>
-                <span>💳 ${sanitizar(p.metodoPago||"—")}</span>
+                <span>👤 <b>${p.cliente||"—"}</b></span>
+                <span>📱 <a href="https://wa.me/${tel}" target="_blank" style="color:var(--verde);font-weight:600;text-decoration:none;">${p.telefono||"—"}</a></span>
+                <span>📍 ${p.municipio||"—"}</span>
+                <span>🛍️ ${p.productos||"—"}</span>
+                <span>💰 <b style="color:var(--verde)">${p.total||"—"}</b></span>
+                <span>💳 ${p.metodoPago||"—"}</span>
             </div>
             <div class="ped-card-footer">
-                <select class="es" onchange="cambiarEstado(this,${jsArg(p.numeroPedido||'')})">${opts}</select>
+                <select class="es" onchange="cambiarEstado(this,'${p.cliente}','${p.fecha}')">${opts}</select>
                 <div style="display:flex;gap:6px;">
                     <button class="btn" style="background:#ef4444;color:#fff;padding:6px 12px;font-size:12px;"
-                        onclick="generarPDFAdmin(${i},${jsArg(p.numeroPedido||'')})">📄 PDF</button>
-                    <button class="btn" style="background:#7c3aed;color:#fff;padding:6px 10px;font-size:12px;"
-                        title="Imprimir recibo térmico 62mm"
-                        onclick="generarPDFAdminTermico(${i},${jsArg(p.numeroPedido||'')})">🖨️</button>
+                        onclick='generarPDFAdmin(${i},"${p.numeroPedido||""}")'>📄 PDF</button>
                     <button class="btn" style="background:#00875A;color:#fff;padding:6px 12px;font-size:12px;"
-                        onclick="mostrarGuiaC807(${jsArg(p.numeroPedido||'')})">📋 C807</button>
+                        onclick='mostrarGuiaC807("${p.numeroPedido||""}")'>📋 C807</button>
                     <button class="btn br" style="padding:6px 10px;font-size:12px;"
-                        onclick="eliminarPedido(${jsArg(p.numeroPedido||'')})">🗑️</button>
+                        onclick='eliminarPedido("${p.numeroPedido||""}")'>🗑️</button>
                 </div>
             </div>
         </div>`;
@@ -1161,14 +1132,14 @@ function renderClientes() {
         const tel   = String(c.telefono||"").replace(/\D/g,"");
         const fecha = c.fechaRegistro ? new Date(c.fechaRegistro).toLocaleDateString("es-SV") : "—";
         return `<tr>
-            <td><span style="font-family:monospace;font-weight:700;color:var(--azul);">${sanitizar(c.codigo||"—")}</span></td>
-            <td><b>${sanitizar(c.nombre||"—")}</b></td>
-            <td><a href="https://wa.me/${tel}" target="_blank" style="color:var(--verde);font-weight:600;text-decoration:none;">${sanitizar(c.telefono||"—")}</a></td>
-            <td>${sanitizar(c.municipio||"—")}</td>
+            <td><span style="font-family:monospace;font-weight:700;color:var(--azul);">${c.codigo||"—"}</span></td>
+            <td><b>${c.nombre||"—"}</b></td>
+            <td><a href="https://wa.me/${tel}" target="_blank" style="color:var(--verde);font-weight:600;text-decoration:none;">${c.telefono||"—"}</a></td>
+            <td>${c.municipio||"—"}</td>
             <td style="text-align:center;"><b>${c.totalPedidos||0}</b></td>
             <td style="font-size:12px;color:#888;">${fecha}</td>
             <td><button class="btn" style="background:#111;color:#fff;padding:4px 10px;font-size:12px;"
-                onclick="generarCuponCliente(${jsArg(c.codigo)},${jsArg(c.nombre)},${jsArg(c.telefono)})">🎫 Generar</button></td>
+                onclick='generarCuponCliente("${c.codigo}","${c.nombre}","${c.telefono}")'>🎫 Generar</button></td>
         </tr>`;
     }).join('');
 
@@ -1179,18 +1150,18 @@ function renderClientes() {
         const fecha = c.fechaRegistro ? new Date(c.fechaRegistro).toLocaleDateString("es-SV") : "—";
         return `<div class="ped-card">
             <div class="ped-card-header">
-                <span class="ped-card-num">${sanitizar(c.codigo||"—")}</span>
+                <span class="ped-card-num">${c.codigo||"—"}</span>
                 <span class="ped-card-fecha">${fecha}</span>
             </div>
             <div class="ped-card-body">
-                <span>👤 <b>${sanitizar(c.nombre||"—")}</b></span>
-                <span>📱 <a href="https://wa.me/${tel}" target="_blank" style="color:var(--verde);font-weight:600;text-decoration:none;">${sanitizar(c.telefono||"—")}</a></span>
-                <span>📍 ${sanitizar(c.municipio||"—")}</span>
+                <span>👤 <b>${c.nombre||"—"}</b></span>
+                <span>📱 <a href="https://wa.me/${tel}" target="_blank" style="color:var(--verde);font-weight:600;text-decoration:none;">${c.telefono||"—"}</a></span>
+                <span>📍 ${c.municipio||"—"}</span>
                 <span>🛍️ <b>${c.totalPedidos||0}</b> pedidos</span>
             </div>
             <div class="ped-card-footer">
                 <button class="btn" style="background:#111;color:#fff;padding:6px 14px;font-size:13px;width:100%;"
-                    onclick="generarCuponCliente(${jsArg(c.codigo)},${jsArg(c.nombre)},${jsArg(c.telefono)})">🎫 Generar Cupón</button>
+                    onclick='generarCuponCliente("${c.codigo}","${c.nombre}","${c.telefono}")'>🎫 Generar Cupón</button>
             </div>
         </div>`;
     }).join('');
@@ -1201,7 +1172,7 @@ async function generarCuponCliente(codigo, nombre, telefono) {
     if (!descuento || isNaN(descuento)) return;
     const codigoCupon = `${codigo}-${Math.random().toString(36).substr(2,4).toUpperCase()}`;
     const datos = {
-        accion: "CREAR_CUPON", _pass: _sessionPass,
+        accion: "CREAR_CUPON", _pass: ADMIN_PASS,
         codigo: codigoCupon, tipo: "porcentaje",
         descuento: parseFloat(descuento), categorias: "",
         montoMinimo: 0, limiteUsos: 1, activo: true,
@@ -1216,25 +1187,9 @@ async function generarCuponCliente(codigo, nombre, telefono) {
 }
 
 // ═════════════════════════════════════════════
-// ═════════════════════════════════════════════
-//  ENVÍO DIRECTO A VEREX IMPRESIÓN (localhost:7891)
-// ═════════════════════════════════════════════
-async function enviarAImpresion(doc, endpoint, nombre) {
-    try {
-        const pdfBase64 = doc.output('datauristring').split(',')[1]
-        const r = await fetch(`http://127.0.0.1:7891${endpoint}`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ pdfBase64, nombre }),
-            signal: AbortSignal.timeout(3000),
-        })
-        return r.ok
-    } catch { return false }
-}
-
 //  PDF DE PEDIDO
 // ═════════════════════════════════════════════
-async function generarPDFAdmin(idx, numeroPedido) {
+function generarPDFAdmin(idx, numeroPedido) {
     // Reconstruir lista filtrada igual que renderPedidos
     const busq = document.getElementById("bus-ped").value.toLowerCase();
     const fil  = document.getElementById("fil-estado").value;
@@ -1284,15 +1239,9 @@ async function generarPDFAdmin(idx, numeroPedido) {
     };
 
     try {
-        const doc    = generarPDF(datos);
-        const nombre = `Verex_${datos.numeroPedido.replace(/#/g,"")}`;
-        const enviado = await enviarAImpresion(doc, '/print-guia', nombre);
-        if (enviado) {
-            toast("📦 Guía enviada a VEREX Impresión", "#22c55e");
-        } else {
-            doc.save(`${nombre}.pdf`);
-            toast("📄 PDF descargado — abre VEREX Impresión para envío directo", "#f59e0b");
-        }
+        const doc = generarPDF(datos);
+        doc.save(`Verex_${datos.numeroPedido.replace(/#/g,"")}.pdf`);
+        toast("📄 PDF generado correctamente", "#22c55e");
     } catch(e) {
         console.error(e);
         toast("⚠️ Error generando PDF", "#ef4444");
@@ -1421,198 +1370,13 @@ function generarPDF(datos) {
     return doc;
 }
 
-// ═════════════════════════════════════════════
-//  RECIBO TÉRMICO 62mm (Brother QL-810W)
-// ═════════════════════════════════════════════
-async function generarPDFAdminTermico(idx, numeroPedido) {
-    const busq = document.getElementById("bus-ped").value.toLowerCase();
-    const fil  = document.getElementById("fil-estado").value;
-    let list = pedidos.filter(p =>
-        (!busq || (p.cliente||"").toLowerCase().includes(busq) ||
-                  (p.productos||"").toLowerCase().includes(busq) ||
-                  (p.numeroPedido||"").toLowerCase().includes(busq)) &&
-        (!fil  || p.estado === fil)
-    );
-    list = filtrarPorPeriodo(list);
-    const p = list[idx];
-    if (!p) return toast("⚠️ Pedido no encontrado", "#ef4444");
-
-    let items = [];
-    try { items = typeof p.items === "string" ? JSON.parse(p.items) : (p.items || []); } catch(_) {}
-    if (!items.length && p.productos) {
-        String(p.productos || "").split(",").forEach(prod => {
-            const match = prod.trim().match(/^(.+?)\s*\((.+?)\)$/);
-            items.push({
-                codigo:      p.numeroPedido || "—",
-                nombre:      match ? match[1].trim() : prod.trim(),
-                tallaElegida: match ? match[2].trim() : "",
-                precioNum:   0,
-            });
-        });
-    }
-
-    const datos = {
-        nombre:       p.cliente       || "—",
-        tel:          p.telefono      || "—",
-        departamento: p.departamento  || "—",
-        ubicacion:    p.municipio     || "—",
-        metodoPago:   p.metodoPago    || "",
-        numeroPedido: p.numeroPedido  || numeroPedido || "—",
-        items,
-        cuponUsado:   p.cuponUsado    || "",
-        descMonto:    parseFloat(p.descMonto || 0),
-        envio:        parseFloat(p.envio     || 0),
-    };
-
-    try {
-        const doc    = generarPDFTermico(datos);
-        const nombre = `Recibo_${datos.numeroPedido.replace(/#/g,"")}`;
-        const enviado = await enviarAImpresion(doc, '/print-recibo', nombre);
-        if (enviado) {
-            toast("🖨️ Recibo enviado a VEREX Impresión", "#22c55e");
-        } else {
-            doc.save(`${nombre}.pdf`);
-            toast("📥 PDF descargado — abre VEREX Impresión para envío directo", "#f59e0b");
-        }
-    } catch(e) {
-        console.error(e);
-        toast("⚠️ Error generando recibo térmico", "#ef4444");
-    }
-}
-
-function generarPDFTermico(datos) {
-    const { jsPDF } = window.jspdf;
-    const W  = 62;      // ancho rollo mm
-    const mL = 3;       // margen izquierdo
-    const mR = W - 3;   // margen derecho
-    const cW = mR - mL; // ancho de contenido (56mm)
-    const lh = 4.8;     // interlineado
-
-    const items     = datos.items    || [];
-    const cupon     = datos.cuponUsado || "";
-    const envio     = datos.envio    ?? 0;
-    const descMonto = datos.descMonto ?? 0;
-
-    // Calcular altura total necesaria
-    const altItems = items.reduce((acc, it) => {
-        const nombre = it.nombre || "";
-        const lines  = Math.ceil(nombre.length / 28);
-        const showCode = it.codigo && it.codigo !== "—" && it.codigo !== (datos.numeroPedido || "");
-        return acc + lines * lh + 1 + (showCode ? 3.5 : 0);
-    }, 0);
-    const H = 55 + (items.length > 0 ? altItems : 10) + (descMonto > 0 ? lh : 0) + 30;
-
-    const doc = new jsPDF({ unit: 'mm', format: [W, H], orientation: 'portrait' });
-
-    let y = 8;
-
-    // ── ENCABEZADO ────────────────────────────────────────────────
-    doc.setFont("helvetica", "bold");
-    doc.setFontSize(9);
-    doc.text("Nota de Pedido", W / 2, y, { align: "center" }); y += 5;
-    doc.setFontSize(13);
-    doc.text("VEREX STORE", W / 2, y, { align: "center" }); y += 5;
-
-    doc.setDrawColor(150);
-    doc.setLineWidth(0.3);
-    doc.line(mL, y, mR, y); y += 4;
-
-    // ── N° PEDIDO ─────────────────────────────────────────────────
-    doc.setFont("helvetica", "normal");
-    doc.setFontSize(8);
-    doc.text(`N°: ${datos.numeroPedido}`, W / 2, y, { align: "center" }); y += lh + 1;
-
-    // ── DATOS CLIENTE ─────────────────────────────────────────────
-    const campo = (label, valor, maxW) => {
-        doc.setFont("helvetica", "bold");   doc.setFontSize(8);
-        doc.text(label, mL, y);
-        doc.setFont("helvetica", "normal"); doc.setFontSize(8);
-        const lines = doc.splitTextToSize(String(valor), maxW || cW - 16);
-        doc.text(lines[0], mL + 14, y); y += lh;
-        if (lines[1]) { doc.text(lines[1], mL + 14, y); y += lh; }
-    };
-    campo("Cliente:", datos.nombre);
-    campo("Tel:",     datos.tel);
-    campo("Dep.:",    datos.departamento);
-    campo("Mun.:",    datos.ubicacion);
-    if (datos.metodoPago) campo("Pago:", datos.metodoPago);
-
-    // ── SEPARADOR ─────────────────────────────────────────────────
-    y += 1;
-    doc.line(mL, y, mR, y); y += 4;
-
-    // ── ITEMS ─────────────────────────────────────────────────────
-    let subtotal = 0;
-    items.forEach(item => {
-        const talla = item.tallaElegida || item.talla || "";
-        const tEsUnica = talla === "Única" || talla === "";
-        const tCorta   = tEsUnica ? "" : " T" + talla.replace(/[^0-9]/g, "");
-        const nombreItem = `${item.nombre || ""}${tCorta}`;
-        const precio     = parseFloat(item.precioNum || item.precio || 0);
-        subtotal += precio;
-
-        const lines = doc.splitTextToSize(nombreItem, cW - 16);
-        doc.setFont("helvetica", "normal"); doc.setFontSize(8);
-        doc.text(lines[0], mL, y);
-        doc.setFont("helvetica", "bold");
-        doc.text(`$${precio.toFixed(2)}`, mR, y, { align: "right" });
-        y += lh;
-        if (lines[1]) { doc.setFont("helvetica", "normal"); doc.text(lines[1], mL, y); y += lh; }
-
-        // Código del producto (solo si es un código real, no el número de pedido)
-        const showCode = item.codigo && item.codigo !== "—" && item.codigo !== datos.numeroPedido;
-        if (showCode) {
-            doc.setFont("helvetica", "normal"); doc.setFontSize(7);
-            doc.setTextColor(140, 140, 140);
-            doc.text(`Ref: ${item.codigo}`, mL, y);
-            doc.setTextColor(0, 0, 0);
-            y += 3.5;
-        }
-    });
-
-    // ── SEPARADOR ─────────────────────────────────────────────────
-    y += 1;
-    doc.line(mL, y, mR, y); y += 4;
-
-    // ── TOTALES ───────────────────────────────────────────────────
-    const total = subtotal - descMonto + envio;
-
-    const fila = (label, valor, bold, grande) => {
-        doc.setFont("helvetica", bold ? "bold" : "normal");
-        doc.setFontSize(grande ? 10 : 8);
-        doc.text(label,  mL, y);
-        doc.text(valor,  mR, y, { align: "right" });
-        y += grande ? lh + 1 : lh;
-    };
-    fila("Subtotal:", `$${subtotal.toFixed(2)}`);
-    if (descMonto > 0) fila(`Desc.${cupon ? " ("+cupon+")" : ""}:`, `-$${descMonto.toFixed(2)}`);
-    fila("Envío:", envio > 0 ? `$${envio.toFixed(2)}` : "GRATIS");
-    y += 1;
-    fila("TOTAL:", `$${total.toFixed(2)}`, true, true);
-
-    // ── SEPARADOR ─────────────────────────────────────────────────
-    doc.setLineWidth(0.3);
-    doc.line(mL, y, mR, y); y += 5;
-
-    // ── FOOTER ────────────────────────────────────────────────────
-    doc.setFont("times", "italic");
-    doc.setFontSize(8);
-    doc.setTextColor(120, 120, 120);
-    doc.text("Gracias por tu compra.", W / 2, y, { align: "center" }); y += lh;
-    doc.text("El mundo es más extraordinario,", W / 2, y, { align: "center" }); y += lh;
-    doc.text("cuando brillas TU", W / 2, y, { align: "center" });
-    doc.setTextColor(0, 0, 0);
-
-    return doc;
-}
-
 async function eliminarPedido(numeroPedido) {
     if (!confirm(`⚠️ VEREX STORE\n\n¿Eliminar el pedido ${numeroPedido}?\nEsta acción no se puede deshacer.`)) return;
     const idx = pedidos.findIndex(p => p.numeroPedido === numeroPedido);
     if (idx >= 0) pedidos.splice(idx, 1);
     renderPedidos();
     await fetch(API_URL, { method:'POST', mode:'no-cors',
-        body: JSON.stringify({ accion:"ELIMINAR_PEDIDO", _pass:_sessionPass, numeroPedido })
+        body: JSON.stringify({ accion:"ELIMINAR_PEDIDO", _pass:ADMIN_PASS, numeroPedido })
     });
     toast("🗑️ Pedido eliminado", "#ef4444");
 }
@@ -1646,13 +1410,13 @@ function mensajeWhatsApp(estado, p) {
     return null;
 }
 
-async function cambiarEstado(sel, numeroPedido) {
+async function cambiarEstado(sel, cliente, fecha) {
     const estado = sel.value;
-    const p = pedidos.find(p => p.numeroPedido === numeroPedido);
+    const p = pedidos.find(p => p.cliente === cliente && String(p.fecha) === String(fecha));
     if (p) p.estado = estado;
 
     await fetch(API_URL, { method:'POST', mode:'no-cors',
-        body: JSON.stringify({ accion:"ACTUALIZAR_ESTADO_PEDIDO", _pass:_sessionPass, numeroPedido, estado })
+        body: JSON.stringify({ accion:"ACTUALIZAR_ESTADO_PEDIDO", _pass:ADMIN_PASS, cliente, fecha, estado })
     });
 
     // Enviar mensaje de WhatsApp si aplica
@@ -1670,18 +1434,16 @@ async function cambiarEstado(sel, numeroPedido) {
 // ═════════════════════════════════════════════
 function actualizarNotif(sil=false) {
     const rec    = pedidos.slice(0,10);
-    const nuevos = rec.filter(p=>!notifLeidas.has(p.numeroPedido||String(p.fecha)+p.cliente));
+    const nuevos = rec.filter(p=>!notifLeidas.has(String(p.fecha)+p.cliente));
     const badge  = document.getElementById("notif-badge");
     if (nuevos.length) {
         badge.textContent=nuevos.length; badge.style.display="flex";
         if (sil) toast(`🔔 ${nuevos.length} pedido${nuevos.length>1?"s":""} nuevo${nuevos.length>1?"s":""}`, "#00BFFF");
     } else badge.style.display="none";
     document.getElementById("notif-lista").innerHTML = rec.length
-        ? rec.map(p=>`<div class="notif-item ${!notifLeidas.has(p.numeroPedido||String(p.fecha)+p.cliente)?"nueva":""}" onclick="irPedido(${jsArg(p.numeroPedido||'')})">
-                <b>${sanitizar(p.cliente||"—")}</b>
-                <span style="font-size:11px;color:var(--azul);margin-left:6px;">${sanitizar(p.numeroPedido||"")}</span>
-                — ${sanitizar(p.total||"")}
-                <div class="nt">${p.fecha?new Date(p.fecha).toLocaleString("es-SV"):""} · ${sanitizar(p.municipio||"")}</div>
+        ? rec.map(p=>`<div class="notif-item ${!notifLeidas.has(String(p.fecha)+p.cliente)?"nueva":""}" onclick="irPedido('${p.cliente}')">
+                <b>${p.cliente||"—"}</b> — ${p.total||""}
+                <div class="nt">${p.fecha?new Date(p.fecha).toLocaleString("es-SV"):""} · ${p.municipio||""}</div>
             </div>`).join('')
         : '<p style="padding:14px;color:#aaa;font-size:13px;">Sin pedidos aún.</p>';
 }
@@ -1689,17 +1451,13 @@ function actualizarNotif(sil=false) {
 function toggleNotif() { document.getElementById("notif-panel").classList.toggle("open"); }
 
 function marcarLeidos() {
-    pedidos.slice(0,10).forEach(p=>notifLeidas.add(p.numeroPedido||String(p.fecha)+p.cliente));
+    pedidos.slice(0,10).forEach(p=>notifLeidas.add(String(p.fecha)+p.cliente));
     localStorage.setItem("vx_notif",JSON.stringify([...notifLeidas]));
     actualizarNotif(); document.getElementById("notif-panel").classList.remove("open");
 }
 
-function irPedido(numeroPedido) {
-    tab(1);
-    document.getElementById("bus-ped").value = numeroPedido;
-    document.getElementById("fil-estado").value = "";
-    document.getElementById("fil-periodo").value = "todo";
-    renderPedidos();
+function irPedido(cliente) {
+    tab(1); document.getElementById("bus-ped").value=cliente; renderPedidos();
     document.getElementById("notif-panel").classList.remove("open");
 }
 
@@ -1712,43 +1470,24 @@ document.addEventListener("click", e=>{
 //  PRODUCTOS
 // ═════════════════════════════════════════════
 function renderProductos() {
-    const busq  = document.getElementById("bus-prod").value.toLowerCase();
-    const visib = document.getElementById("fil-visib")?.value || "todos";
-    const cont  = document.getElementById("lista-prod");
-
-    let list = productos.filter(p => {
-        if (busq && !(p.nombre||"").toLowerCase().includes(busq) && !(p.codigo||"").toLowerCase().includes(busq)) return false;
-        const visible = p.enCatalogo===true||p.enCatalogo==="true"||p.enCatalogo===1;
-        if (visib === "catalogo") return visible;
-        if (visib === "ocultos")  return !visible;
-        return true;
-    });
-
-    const total   = productos.length;
-    const enCat   = productos.filter(p=>p.enCatalogo===true||p.enCatalogo==="true"||p.enCatalogo===1).length;
-    const ocultos = total - enCat;
-    const resumen = document.getElementById("resumen-prod");
-    if (resumen) resumen.textContent = `${total} productos · ${enCat} en catálogo · ${ocultos} ocultos`;
+    const busq = document.getElementById("bus-prod").value.toLowerCase();
+    const cont = document.getElementById("lista-prod");
+    const list = productos.filter(p=>!busq||(p.nombre||"").toLowerCase().includes(busq)||(p.codigo||"").toLowerCase().includes(busq));
     if (!list.length) { cont.innerHTML='<p style="color:#aaa;font-size:13px;">Sin productos.</p>'; return; }
     cont.innerHTML = list.map(p=>{
         let stock="";
         try { const s=JSON.parse(p.caracteristicas||"{}"); const t=Object.values(s).reduce((a,b)=>a+Number(b),0); stock=t>0?`Stock: ${t}`:`<span style="color:var(--rojo)">Agotado</span>`; }
         catch(_){ stock="Sin tallas"; }
-        const dest    = p.destacado===true||p.destacado==="TRUE";
-        const visible = p.enCatalogo===true||p.enCatalogo==="true"||p.enCatalogo===1;
+        const dest = p.destacado===true||p.destacado==="TRUE";
         return `<div class="pc">
-            <img src="${p.foto||p.img||''}" alt="" onerror="this.style.display='none'">
+            <img src="${p.img||''}" alt="" onerror="this.style.display='none'">
             <div class="pi">
-                <div class="pn">${sanitizar(p.nombre||"—")}
-                    ${dest?'<span class="badge bam2">⭐ Destacado</span>':''}
-                    ${visible?'<span class="badge bv2">👁️ Visible</span>':'<span class="badge br2">🙈 Oculto</span>'}
-                </div>
-                <div class="pd">Ref: ${sanitizar(p.codigo||"—")} · $${parseFloat(p.precio||0).toFixed(2)} · ${stock}</div>
+                <div class="pn">${p.nombre||"—"} ${dest?'<span class="badge bam2">⭐ Destacado</span>':''}</div>
+                <div class="pd">Ref: ${p.codigo||"—"} · $${parseFloat(p.precio||0).toFixed(2)} · ${stock}</div>
             </div>
             <div class="pa">
-                <button class="btn bg" onclick="abrirEditar(${JSON.stringify(p).replace(/"/g,'&quot;')})">✏️</button>
-                <button class="btn ${dest?'bam':'bg'}" onclick="toggleDest(${jsArg(p.codigo)},${!dest})" title="${dest?'Quitar':'Marcar'} destacado">⭐</button>
-                <button class="btn ${visible?'bv':'bg'}" onclick="toggleVisible(${jsArg(p.codigo)},${!visible})" title="${visible?'Ocultar del':'Mostrar en'} catálogo">${visible?'👁️':'🙈'}</button>
+                <button class="btn bg" onclick='abrirEditar(${JSON.stringify(p)})'>✏️</button>
+                <button class="btn ${dest?'bam':'bg'}" onclick="toggleDest('${p.codigo}',${!dest})" title="${dest?'Quitar':'Marcar'} destacado">⭐</button>
             </div>
         </div>`;
     }).join('');
@@ -1758,13 +1497,12 @@ function abrirEditar(p) {
     document.getElementById("ed-cod").value  = p.codigo;
     document.getElementById("ed-nom").value  = p.nombre;
     document.getElementById("ed-prec").value = p.precio;
-    document.getElementById("ed-img").value  = p.foto || p.img || "";
+    document.getElementById("ed-img").value  = p.img;
 
-    // Mostrar tallas para anillos / cantidad para el resto
+    // Mostrar tallas solo para anillos
     const esAnillo = (p.codigo || "").startsWith("AN-");
-    document.getElementById("ed-sec-tallas").style.display   = esAnillo ? "block" : "none";
-    document.getElementById("ed-sec-cantidad").style.display = esAnillo ? "none"  : "block";
-    document.getElementById("ed-cant").value = esAnillo ? 0 : (parseInt(p.stock_bodega) || 0);
+    const secTallas = document.getElementById("ed-sec-tallas");
+    secTallas.style.display = esAnillo ? "block" : "none";
     document.getElementById("ed-es-anillo").value = esAnillo ? "1" : "0";
 
     // Rellenar inputs de tallas con stock actual
@@ -1789,14 +1527,10 @@ function abrirEditar(p) {
 function cerrarModal() { document.getElementById("modal-edit").classList.remove("open"); }
 
 async function guardarEdicion() {
-    const edTipo = document.getElementById("ed-es-anillo").value;
-    const esAnillo = edTipo === "1" || edTipo === "pareja";
-
-    // Anillos: stock por talla en caracteristicas + calcular stock_bodega total
+    // Leer stock desde inputs visuales si es anillo
     let caracteristicas = undefined;
-    let stock_bodega    = undefined;
-
-    if (esAnillo) {
+    const edTipo = document.getElementById("ed-es-anillo").value;
+    if (edTipo === "1" || edTipo === "pareja") {
         const stocks = {};
         if (edTipo === "pareja") {
             document.querySelectorAll(".ed-ts-d").forEach(i => { const v=parseInt(i.value); if(v>0) stocks[i.dataset.t]=v; });
@@ -1805,19 +1539,14 @@ async function guardarEdicion() {
             document.querySelectorAll(".ed-ts").forEach(inp => { const v=parseInt(inp.value); if(v>0) stocks[inp.dataset.t]=v; });
         }
         caracteristicas = JSON.stringify(stocks);
-        stock_bodega = Object.values(stocks).reduce((s,v)=>s+v, 0);
-    } else {
-        // No-anillo: cantidad simple
-        stock_bodega = parseInt(document.getElementById("ed-cant").value) || 0;
     }
 
     const datos = {
-        accion: "EDITAR_PRODUCTO", _pass: _sessionPass,
+        accion: "EDITAR_PRODUCTO", _pass: ADMIN_PASS,
         codigo: document.getElementById("ed-cod").value,
         nombre: document.getElementById("ed-nom").value,
         precio: document.getElementById("ed-prec").value,
         img:    document.getElementById("ed-img").value,
-        stock_bodega,
         ...(caracteristicas !== undefined && { caracteristicas }),
     };
     await fetch(API_URL,{method:'POST',mode:'no-cors',body:JSON.stringify(datos)});
@@ -1828,20 +1557,14 @@ async function guardarEdicion() {
 async function desactivarProducto() {
     const cod=document.getElementById("ed-cod").value;
     if (!confirm(`¿Desactivar ${cod}?`)) return;
-    await fetch(API_URL,{method:'POST',mode:'no-cors',body:JSON.stringify({accion:"ELIMINAR_PRODUCTO",_pass:_sessionPass,codigo:cod})});
+    await fetch(API_URL,{method:'POST',mode:'no-cors',body:JSON.stringify({accion:"ELIMINAR_PRODUCTO",_pass:ADMIN_PASS,codigo:cod})});
     cerrarModal(); toast("🗑️ Producto desactivado");
     await cargarDatos(true);
 }
 
 async function toggleDest(codigo, destacado) {
-    await fetch(API_URL,{method:'POST',mode:'no-cors',body:JSON.stringify({accion:"EDITAR_PRODUCTO",_pass:_sessionPass,codigo,destacado})});
+    await fetch(API_URL,{method:'POST',mode:'no-cors',body:JSON.stringify({accion:"EDITAR_PRODUCTO",_pass:ADMIN_PASS,codigo,destacado})});
     toast(destacado?"⭐ Marcado como destacado":"Quitado de destacados");
-    await cargarDatos(true);
-}
-
-async function toggleVisible(codigo, enCatalogo) {
-    await fetch(API_URL,{method:'POST',mode:'no-cors',body:JSON.stringify({accion:"EDITAR_PRODUCTO",_pass:_sessionPass,codigo,enCatalogo})});
-    toast(enCatalogo?"👁️ Producto visible en catálogo":"🙈 Producto oculto del catálogo", enCatalogo?"#22c55e":"#f97316");
     await cargarDatos(true);
 }
 
@@ -1865,9 +1588,8 @@ function actualizarNombre() {
     if (!window._c || !window._c.startsWith(pref+"-"))
         window._c = `${pref}-${Math.floor(1000+Math.random()*9000)}`;
     document.getElementById("out-cod").textContent = window._c;
-    // Tallas para anillos / Cantidad simple para el resto
-    document.getElementById("sec-tallas").style.display   = pref==="AN" ? "block" : "none";
-    document.getElementById("sec-cantidad").style.display = pref==="AN" ? "none"  : "block";
+    // Tallas solo para Anillos
+    document.getElementById("sec-tallas").style.display = pref==="AN" ? "block" : "none";
 }
 
 async function publicarProducto() {
@@ -1876,44 +1598,22 @@ async function publicarProducto() {
     const img=document.getElementById("in-img").value.trim();
     const codigo=document.getElementById("out-cod").textContent;
     if (!precio||!img) return toast("⚠️ Falta precio o imagen","#f97316");
-    const esAnillo = document.getElementById("sel-tipo").value === "AN";
     const esPareja = document.getElementById("chk-pareja")?.checked;
-
-    // Construir stocks por talla (anillos) o cantidad simple (resto)
     const stocks = {};
-    let cantidad = 0;
-    if (esAnillo) {
-        if (esPareja) {
-            document.querySelectorAll(".ts-d").forEach(i => { const v=parseInt(i.value); if(v>0) stocks[i.dataset.t]=v; });
-            document.querySelectorAll(".ts-h").forEach(i => { const v=parseInt(i.value); if(v>0) stocks[i.dataset.t]=v; });
-        } else {
-            document.querySelectorAll(".ts").forEach(i => { const v=parseInt(i.value); if(v>0) stocks[i.dataset.t]=v; });
-        }
-        // stock_bodega = suma total de tallas
-        cantidad = Object.values(stocks).reduce((s,v)=>s+v, 0);
+    if (esPareja) {
+        // Guardar tallas dama (D5-D14) y caballero (H5-H14)
+        document.querySelectorAll(".ts-d").forEach(i => { const v=parseInt(i.value); if(v>0) stocks[i.dataset.t]=v; });
+        document.querySelectorAll(".ts-h").forEach(i => { const v=parseInt(i.value); if(v>0) stocks[i.dataset.t]=v; });
     } else {
-        cantidad = parseInt(document.getElementById("in-cant").value) || 0;
-        if (!cantidad) return toast("⚠️ Ingresa la cantidad en bodega","#f97316");
+        document.querySelectorAll(".ts").forEach(i => { const v=parseInt(i.value); if(v>0) stocks[i.dataset.t]=v; });
     }
-
     const btn=document.querySelector("#tab-2 .bfull");
     btn.textContent="Publicando..."; btn.disabled=true;
     try {
-        const categoria = document.getElementById("sel-tipo").value; // AN, AR, CD, PL, CN, RL, OT
-        await fetch(API_URL,{method:'POST',mode:'no-cors',body:JSON.stringify({
-            accion:"CREAR_PRODUCTO",_pass:_sessionPass,
-            nombre,precio,img,codigo,categoria,
-            caracteristicas:JSON.stringify(stocks),
-            cantidad,
-            enCatalogo:true
-        })});
+        await fetch(API_URL,{method:'POST',mode:'no-cors',body:JSON.stringify({accion:"CREAR_PRODUCTO",_pass:ADMIN_PASS,nombre,precio,img,codigo,caracteristicas:JSON.stringify(stocks)})});
         toast("✅ Producto publicado","#22c55e");
-        // Limpiar formulario
-        document.getElementById("in-prec").value="";
-        document.getElementById("in-img").value="";
-        document.getElementById("in-det").value="";
-        document.getElementById("in-cant").value="0";
-        document.querySelectorAll(".ts,.ts-d,.ts-h").forEach(i=>i.value=0);
+        document.getElementById("in-prec").value=document.getElementById("in-img").value=document.getElementById("in-det").value="";
+        document.querySelectorAll(".ts").forEach(i=>i.value=0);
         window._c=null;
         const chkP = document.getElementById("chk-pareja");
         if (chkP) { chkP.checked=false; togglePareja(); }
@@ -2087,20 +1787,20 @@ async function crearCupon() {
     document.getElementById("cup-preview").style.display = "none";
 
     await fetch(API_URL, { method:'POST', mode:'no-cors',
-        body: JSON.stringify({ accion:"CREAR_CUPON", _pass:_sessionPass, ...nuevo }) });
+        body: JSON.stringify({ accion:"CREAR_CUPON", _pass:ADMIN_PASS, ...nuevo }) });
     toast("✅ Cupón creado", "#22c55e");
 }
 
 async function toggleCupon(i) {
     cupones[i].activo=!cupones[i].activo; renderCupones();
-    await fetch(API_URL,{method:'POST',mode:'no-cors',body:JSON.stringify({accion:"TOGGLE_CUPON",_pass:_sessionPass,codigo:cupones[i].codigo,activo:cupones[i].activo})});
+    await fetch(API_URL,{method:'POST',mode:'no-cors',body:JSON.stringify({accion:"TOGGLE_CUPON",_pass:ADMIN_PASS,codigo:cupones[i].codigo,activo:cupones[i].activo})});
     toast(cupones[i].activo?"✅ Cupón activado":"🔴 Cupón desactivado");
 }
 
 async function eliminarCupon(i) {
     if (!confirm(`¿Eliminar cupón "${cupones[i].codigo}"?`)) return;
     const cod=cupones[i].codigo; cupones.splice(i,1); renderCupones();
-    await fetch(API_URL,{method:'POST',mode:'no-cors',body:JSON.stringify({accion:"ELIMINAR_CUPON",_pass:_sessionPass,codigo:cod})});
+    await fetch(API_URL,{method:'POST',mode:'no-cors',body:JSON.stringify({accion:"ELIMINAR_CUPON",_pass:ADMIN_PASS,codigo:cod})});
     toast("🗑️ Cupón eliminado");
 }
 
@@ -2175,39 +1875,6 @@ function exportarExcel() {
     toast(`✅ Excel exportado: ${list.length} pedidos`, "#22c55e");
 }
 
-function exportarClientes() {
-    const busq = (document.getElementById("bus-cli")?.value || "").toLowerCase();
-    const list = clientes.filter(c =>
-        !busq ||
-        (c.nombre||"").toLowerCase().includes(busq) ||
-        (c.telefono||"").toString().includes(busq) ||
-        (c.codigo||"").toLowerCase().includes(busq)
-    );
-    if (!list.length) return toast("⚠️ No hay clientes para exportar", "#f97316");
-
-    const rows = list.map(c => ({
-        "Código":       c.codigo        || "—",
-        "Cliente":      c.nombre        || "—",
-        "WhatsApp":     c.telefono      || "—",
-        "Municipio":    c.municipio     || "—",
-        "Departamento": c.departamento  || "—",
-        "Dirección":    c.direccion     || "—",
-        "Correo":       c.correo        || "—",
-        "Pedidos":      c.totalPedidos  || 0,
-        "Registro":     c.fechaRegistro ? new Date(c.fechaRegistro).toLocaleDateString("es-SV") : "—",
-    }));
-
-    const wb = XLSX.utils.book_new();
-    const ws = XLSX.utils.json_to_sheet(rows);
-    ws["!cols"] = [
-        {wch:12},{wch:22},{wch:14},{wch:18},{wch:16},{wch:28},{wch:24},{wch:8},{wch:14}
-    ];
-    XLSX.utils.book_append_sheet(wb, ws, "Clientes");
-    const hoy = new Date();
-    XLSX.writeFile(wb, `Verex_Clientes_${hoy.getDate()}-${hoy.getMonth()+1}-${hoy.getFullYear()}.xlsx`);
-    toast(`✅ ${list.length} clientes exportados`, "#22c55e");
-}
-
 // ── BANNER ──────────────────────────────────────────────────────────
 let bannerColor = "#111111";
 
@@ -2278,8 +1945,8 @@ function mostrarGuiaC807(numeroPedido) {
         <div style="margin-bottom:10px;">
             <div style="font-size:11px;color:#888;font-weight:600;text-transform:uppercase;">${c.label}</div>
             <div style="display:flex;align-items:center;gap:8px;background:#f5f5f5;border-radius:6px;padding:8px 10px;margin-top:3px;">
-                <span style="flex:1;font-size:14px;font-weight:500;">${sanitizar(c.valor)}</span>
-                <button onclick="navigator.clipboard.writeText(${jsArg(c.valor)});this.textContent='✅';setTimeout(()=>this.textContent='📋',1500)"
+                <span style="flex:1;font-size:14px;font-weight:500;">${c.valor}</span>
+                <button onclick="navigator.clipboard.writeText('${c.valor.replace(/'/g,"\\'")}');this.textContent='✅';setTimeout(()=>this.textContent='📋',1500)"
                     style="background:none;border:none;font-size:16px;cursor:pointer;flex-shrink:0;">📋</button>
             </div>
         </div>`).join('');
@@ -2342,7 +2009,7 @@ function guardarCarrusel() {
 
 function saveConfig() {
     localStorage.setItem("vx_cfg",JSON.stringify(cfg));
-    fetch(API_URL,{method:'POST',mode:'no-cors',body:JSON.stringify({accion:"ACTUALIZAR_CONFIG",_pass:_sessionPass,config:cfg})});
+    fetch(API_URL,{method:'POST',mode:'no-cors',body:JSON.stringify({accion:"ACTUALIZAR_CONFIG",_pass:ADMIN_PASS,config:cfg})});
 }
 
 // ═════════════════════════════════════════════
@@ -2374,21 +2041,14 @@ async function guardarNuevaClave() {
     if (!actual || !nueva || !confirmar) { errEl.textContent = "⚠️ Completa todos los campos"; errEl.style.display = "block"; return; }
     if (nueva.length < 6) { errEl.textContent = "⚠️ Mínimo 6 caracteres"; errEl.style.display = "block"; return; }
     if (nueva !== confirmar) { errEl.textContent = "⚠️ Las contraseñas no coinciden"; errEl.style.display = "block"; return; }
+    if (actual !== ADMIN_PASS) { errEl.textContent = "⚠️ Contraseña actual incorrecta"; errEl.style.display = "block"; return; }
 
     const btn = document.querySelector("#modal-pass button:last-child");
-    btn.textContent = "⏳ Verificando..."; btn.disabled = true;
+    btn.textContent = "⏳ Guardando..."; btn.disabled = true;
     try {
-        // Verificar contraseña actual contra el worker (nunca local)
-        const verif = await fetch(API_URL, { method:'POST', body: JSON.stringify({ accion:"VERIFICAR_PASS", _pass: actual }) });
-        const vData = await verif.json();
-        if (!vData.ok) { errEl.textContent = "⚠️ Contraseña actual incorrecta"; errEl.style.display = "block"; btn.textContent = "💾 Guardar Nueva Contraseña"; btn.disabled = false; return; }
-
-        btn.textContent = "⏳ Guardando...";
         const nuevoHash = await hashStr(nueva);
-        await fetch(API_URL, { method:'POST', body: JSON.stringify({ accion:"ACTUALIZAR_PASS_HASH", _pass: _sessionPass, nuevoHash }) });
-        _sessionPass = nueva;
-        sessionStorage.setItem("vxa_pass", nueva);
-        toast("✅ Contraseña de sesión actualizada.", "#22c55e");
+        await fetch(API_URL, { method:'POST', body: JSON.stringify({ accion:"ACTUALIZAR_PASS_HASH", _pass: ADMIN_PASS, nuevoHash }) });
+        toast("✅ Contraseña actualizada. Úsala en tu próximo login.", "#22c55e");
         document.getElementById("modal-pass").style.display = "none";
     } catch(e) {
         errEl.textContent = "⚠️ Error al guardar"; errEl.style.display = "block";
@@ -2401,6 +2061,166 @@ async function guardarNuevaClave() {
 // ═════════════════════════════════════════════
 if (sessionStorage.getItem("vxa")==="1") init();
 actualizarNombre();
+
+// ═════════════════════════════════════════════
+//  TAB 6 — VENDEDORES / CONSIGNACIÓN
+// ═════════════════════════════════════════════
+let _consigData = null;   // { vendedores, consignacion }
+let _vendorActual = null; // vendedor abierto en el modal
+
+async function cargarConsignacion(forzar = false) {
+    if (_consigData && !forzar) { renderVendedores(); return; }
+    document.getElementById("vend-loading").style.display = "block";
+    document.getElementById("vend-lista").innerHTML = "";
+    try {
+        const res  = await fetch(API_URL, { method:"POST", body: JSON.stringify({ accion:"GET_CONSIGNACION", _pass: ADMIN_PASS }) });
+        const data = await res.json();
+        if (!data.ok) throw new Error(data.error || "Error");
+        _consigData = data;
+        renderVendedores();
+    } catch(e) {
+        document.getElementById("vend-loading").style.display = "none";
+        document.getElementById("vend-lista").innerHTML = '<p style="color:#ef4444;font-size:13px;">⚠️ Error al cargar datos de consignación.</p>';
+    }
+}
+
+function renderVendedores() {
+    document.getElementById("vend-loading").style.display = "none";
+    const vendedores   = _consigData.vendedores   || [];
+    const consignacion = _consigData.consignacion  || [];
+
+    if (!vendedores.length) {
+        document.getElementById("vend-lista").innerHTML = '<p style="color:#aaa;font-size:13px;">No hay vendedores registrados.</p>';
+        return;
+    }
+
+    const html = vendedores.map(v => {
+        const items = consignacion.filter(c => String(c.vendedor) === String(v.codigo) && c.estado === "activo");
+        const totalEntregado = items.reduce((s,c) => s + (parseInt(c.cantidad)||0), 0);
+        const totalVendido   = items.reduce((s,c) => s + (parseInt(c.vendido)||0), 0);
+        const totalDisp      = totalEntregado - totalVendido;
+        const valorDisp      = items.reduce((s,c) => s + Math.max(0, (parseInt(c.cantidad)||0)-(parseInt(c.vendido)||0)) * parseFloat(c.precio||0), 0);
+        const hayVentas      = items.some(c => (parseInt(c.vendido)||0) > 0);
+
+        return `<div style="display:flex;align-items:center;gap:12px;padding:13px;background:var(--gris);border:1px solid var(--borde);border-radius:10px;margin-bottom:9px;flex-wrap:wrap;">
+            <div style="width:40px;height:40px;background:#111;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0;">👤</div>
+            <div style="flex:1;min-width:150px;">
+                <div style="font-weight:700;font-size:14px;">${v.nombre || v.codigo}</div>
+                <div style="font-size:12px;color:#888;margin-top:2px;">📱 ${v.telefono||"—"}</div>
+            </div>
+            <div style="display:flex;gap:14px;flex-wrap:wrap;font-size:12px;text-align:center;">
+                <div><div style="font-weight:800;font-size:16px;color:var(--azul);">${totalEntregado}</div><div style="color:#888;">Entregado</div></div>
+                <div><div style="font-weight:800;font-size:16px;color:var(--verde);">${totalVendido}</div><div style="color:#888;">Vendido</div></div>
+                <div><div style="font-weight:800;font-size:16px;color:var(--naranja);">${totalDisp}</div><div style="color:#888;">Disponible</div></div>
+                <div><div style="font-weight:800;font-size:16px;color:#7c3aed;">$${valorDisp.toFixed(2)}</div><div style="color:#888;">Valor</div></div>
+            </div>
+            <button class="btn ba" onclick="abrirVentasVendedor('${v.codigo}')" ${!hayVentas?'style="opacity:.5"':''}>
+                💰 Ver ventas
+            </button>
+        </div>`;
+    }).join("");
+
+    document.getElementById("vend-lista").innerHTML = html +
+        `<button class="btn bg" onclick="cargarConsignacion(true)" style="margin-top:6px;">🔄 Actualizar</button>`;
+}
+
+function abrirVentasVendedor(codigoVend) {
+    const vendedor     = (_consigData.vendedores||[]).find(v => String(v.codigo) === String(codigoVend));
+    const consignacion = _consigData.consignacion || [];
+    const items        = consignacion.filter(c => String(c.vendedor) === String(codigoVend) && c.estado === "activo");
+
+    _vendorActual = { codigo: codigoVend, nombre: vendedor?.nombre || codigoVend, items };
+
+    document.getElementById("mv-titulo").textContent = "💰 Ventas — " + (vendedor?.nombre || codigoVend);
+    document.getElementById("mv-buscar").value = "";
+
+    const totalVendido  = items.reduce((s,c) => s + (parseInt(c.vendido)||0), 0);
+    const totalIngresos = items.reduce((s,c) => s + (parseInt(c.vendido)||0) * parseFloat(c.precio||0), 0);
+    const totalDisp     = items.reduce((s,c) => s + Math.max(0,(parseInt(c.cantidad)||0)-(parseInt(c.vendido)||0)), 0);
+
+    document.getElementById("mv-stats").innerHTML = `
+        <div class="stat" style="min-width:100px;"><div class="num" style="font-size:20px;">${totalVendido}</div><div class="lbl">Unidades vendidas</div></div>
+        <div class="stat" style="min-width:100px;"><div class="num" style="font-size:20px;color:#22c55e;">$${totalIngresos.toFixed(2)}</div><div class="lbl">Ingresos totales</div></div>
+        <div class="stat" style="min-width:100px;"><div class="num" style="font-size:20px;color:#f97316;">${totalDisp}</div><div class="lbl">Aún disponibles</div></div>`;
+
+    renderFilasVentas(items);
+    document.getElementById("modal-ventas-vend").classList.add("open");
+}
+
+function renderFilasVentas(items) {
+    const vendidos = items.filter(c => (parseInt(c.vendido)||0) > 0);
+    document.getElementById("mv-vacio").style.display = vendidos.length ? "none" : "block";
+    document.getElementById("mv-tbody").innerHTML = vendidos.map(c => {
+        const cantidad = parseInt(c.cantidad)||0;
+        const vendido  = parseInt(c.vendido)||0;
+        const disp     = Math.max(0, cantidad - vendido);
+        const foto     = c.foto ? `<img src="${c.foto}" style="width:36px;height:36px;object-fit:cover;border-radius:6px;">` : `<div style="width:36px;height:36px;background:#eee;border-radius:6px;display:flex;align-items:center;justify-content:center;font-size:16px;">💍</div>`;
+        return `<tr>
+            <td>${foto}</td>
+            <td style="font-weight:700;font-size:12px;color:var(--azul);">${c.codigo||""}</td>
+            <td>${c.nombre||""}</td>
+            <td>$${parseFloat(c.precio||0).toFixed(2)}</td>
+            <td style="text-align:center;">${cantidad}</td>
+            <td style="text-align:center;font-weight:700;color:var(--verde);">${vendido}</td>
+            <td style="text-align:center;color:${disp>0?"var(--naranja)":"#aaa"};">${disp}</td>
+        </tr>`;
+    }).join("");
+}
+
+function filtrarVentasModal() {
+    if (!_vendorActual) return;
+    const busq = document.getElementById("mv-buscar").value.toLowerCase();
+    const filtrados = _vendorActual.items.filter(c =>
+        (c.nombre||"").toLowerCase().includes(busq) || (c.codigo||"").toLowerCase().includes(busq)
+    );
+    renderFilasVentas(filtrados);
+}
+
+function cerrarModalVentas() {
+    document.getElementById("modal-ventas-vend").classList.remove("open");
+}
+</script>
+
+<script>
+async function ejecutarReset() {
+    const pass = document.getElementById("reset-pass").value;
+    if (!pass) { alert("Ingresa tu contraseña para confirmar."); return; }
+
+    const confirm1 = confirm("⚠️ VEREX SISTEMA\n\n¿Estás seguro que quieres borrar TODO el sistema?\n\nEsto incluye: stock, vendedores, consignaciones, ventas, pedidos, clientes, cupones y entregas.\n\nSe descargará un respaldo antes de borrar.");
+    if (!confirm1) return;
+
+    const confirm2 = confirm("🔴 ÚLTIMA CONFIRMACIÓN\n\nEsta acción NO se puede deshacer.\n\n¿Confirmas el reset completo del sistema?");
+    if (!confirm2) return;
+
+    const status = document.getElementById("reset-status");
+    status.style.color = "#92400e";
+    status.textContent = "⏳ Generando respaldo y ejecutando reset...";
+
+    try {
+        const res = await fetch(API_URL, {
+            method: "POST",
+            body: JSON.stringify({ accion: "BACKUP_Y_RESET", _pass: pass })
+        });
+        const data = await res.json();
+        if (!data.ok) throw new Error(data.error || "Error en el servidor");
+
+        // Descargar backup automáticamente
+        const blob = new Blob([JSON.stringify(data.backup, null, 2)], { type: "application/json" });
+        const url  = URL.createObjectURL(blob);
+        const a    = document.createElement("a");
+        a.href     = url;
+        a.download = `backup-verex-${new Date().toISOString().slice(0,10)}.json`;
+        a.click();
+        URL.revokeObjectURL(url);
+
+        status.style.color = "#166534";
+        status.textContent = "✅ Sistema reseteado. Respaldo descargado correctamente.";
+        document.getElementById("reset-pass").value = "";
+    } catch(e) {
+        status.style.color = "#c0392b";
+        status.textContent = "❌ Error: " + e.message;
+    }
+}
 </script>
 
 <!-- Modal Cambiar Contraseña -->
