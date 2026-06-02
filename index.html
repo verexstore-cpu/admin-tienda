@@ -1458,7 +1458,7 @@ function renderProductos() {
         catch(_){ stock="Sin tallas"; }
         const dest = p.destacado===true||p.destacado==="TRUE";
         return `<div class="pc">
-            <img src="${p.img||''}" alt="" onerror="this.style.display='none'">
+            <img src="${p.foto||p.img||''}" alt="" onerror="this.style.display='none'">
             <div class="pi">
                 <div class="pn">${p.nombre||"—"} ${dest?'<span class="badge bam2">⭐ Destacado</span>':''}</div>
                 <div class="pd">Ref: ${p.codigo||"—"} · $${parseFloat(p.precio||0).toFixed(2)} · ${stock}</div>
@@ -1475,7 +1475,7 @@ function abrirEditar(p) {
     document.getElementById("ed-cod").value  = p.codigo;
     document.getElementById("ed-nom").value  = p.nombre;
     document.getElementById("ed-prec").value = p.precio;
-    document.getElementById("ed-img").value  = p.img;
+    document.getElementById("ed-img").value  = p.foto || p.img || "";
 
     // Mostrar tallas solo para anillos
     const esAnillo = (p.codigo || "").startsWith("AN-");
