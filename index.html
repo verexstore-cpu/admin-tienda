@@ -643,8 +643,7 @@
 
             <label>Tipo de Cupón</label>
             <select id="cup-tipo" onchange="cambiarTipoCupon()">
-                <option value="porcentaje_total">🏷️ Descuento % — Toda la tienda</option>
-                <option value="porcentaje_categoria">🏷️ Descuento % — Por categoría</option>
+                <option value="porcentaje_total">🏷️ Descuento %</option>
                 <option value="segundo_mitad">🎁 2do producto a mitad de precio</option>
                 <option value="monto_minimo">💰 Descuento por monto mínimo</option>
                 <option value="envio_gratis">🚚 Envío gratis</option>
@@ -663,7 +662,7 @@
                 <input type="number" id="cup-monto-fijo" placeholder="5.00" step="0.01" min="0.01">
             </div>
 
-            <!-- Monto mínimo (para tipo monto_minimo) -->
+            <!-- Monto mínimo -->
             <div id="sec-monto-min" style="display:none;margin-top:12px;">
                 <div class="g2">
                     <div>
@@ -677,24 +676,38 @@
                 </div>
             </div>
 
-            <!-- Categorías (para porcentaje por categoría) -->
-            <div id="sec-cats" style="display:none;margin-top:12px;">
-                <label>Aplica a categorías</label>
-                <div style="display:flex;flex-wrap:wrap;gap:8px;margin-top:8px;">
+            <!-- Aplica a -->
+            <div id="sec-cats" style="margin-top:14px;">
+                <label>Aplica a</label>
+                <div style="display:flex;gap:8px;margin:8px 0 10px;">
+                    <button type="button" id="btn-cats-todas" onclick="setCatsMode('todas')"
+                        style="flex:1;padding:8px;border-radius:8px;border:1.5px solid var(--verde);background:var(--verde);color:#fff;font-weight:700;font-size:13px;cursor:pointer;">
+                        ✅ Todas las categorías
+                    </button>
+                    <button type="button" id="btn-cats-sel" onclick="setCatsMode('seleccion')"
+                        style="flex:1;padding:8px;border-radius:8px;border:1.5px solid var(--borde);background:var(--gris);color:#aaa;font-weight:700;font-size:13px;cursor:pointer;">
+                        🎯 Categorías específicas
+                    </button>
+                </div>
+                <div id="sec-cats-detalle" style="display:none;display:flex;flex-wrap:wrap;gap:8px;">
                     <label style="display:flex;align-items:center;gap:5px;font-size:13px;text-transform:none;font-weight:500;margin:0;background:var(--gris);padding:7px 13px;border-radius:7px;border:1.5px solid var(--borde);cursor:pointer;">
-                        <input type="checkbox" class="cup-cat" value="AN"> Anillos</label>
+                        <input type="checkbox" class="cup-cat" value="AN"> 💍 Anillos</label>
                     <label style="display:flex;align-items:center;gap:5px;font-size:13px;text-transform:none;font-weight:500;margin:0;background:var(--gris);padding:7px 13px;border-radius:7px;border:1.5px solid var(--borde);cursor:pointer;">
-                        <input type="checkbox" class="cup-cat" value="AR"> Aretes</label>
+                        <input type="checkbox" class="cup-cat" value="AR"> ✨ Aretes</label>
                     <label style="display:flex;align-items:center;gap:5px;font-size:13px;text-transform:none;font-weight:500;margin:0;background:var(--gris);padding:7px 13px;border-radius:7px;border:1.5px solid var(--borde);cursor:pointer;">
-                        <input type="checkbox" class="cup-cat" value="CD"> Cadenas</label>
+                        <input type="checkbox" class="cup-cat" value="CO"> 📿 Collares</label>
                     <label style="display:flex;align-items:center;gap:5px;font-size:13px;text-transform:none;font-weight:500;margin:0;background:var(--gris);padding:7px 13px;border-radius:7px;border:1.5px solid var(--borde);cursor:pointer;">
-                        <input type="checkbox" class="cup-cat" value="PL"> Pulseras</label>
+                        <input type="checkbox" class="cup-cat" value="PU"> ⌚ Pulseras</label>
                     <label style="display:flex;align-items:center;gap:5px;font-size:13px;text-transform:none;font-weight:500;margin:0;background:var(--gris);padding:7px 13px;border-radius:7px;border:1.5px solid var(--borde);cursor:pointer;">
-                        <input type="checkbox" class="cup-cat" value="CN"> Conjuntos</label>
+                        <input type="checkbox" class="cup-cat" value="CJ"> 🎁 Conjuntos</label>
                     <label style="display:flex;align-items:center;gap:5px;font-size:13px;text-transform:none;font-weight:500;margin:0;background:var(--gris);padding:7px 13px;border-radius:7px;border:1.5px solid var(--borde);cursor:pointer;">
-                        <input type="checkbox" class="cup-cat" value="RL"> Relojes</label>
+                        <input type="checkbox" class="cup-cat" value="CD"> 🔗 Cadenas</label>
                     <label style="display:flex;align-items:center;gap:5px;font-size:13px;text-transform:none;font-weight:500;margin:0;background:var(--gris);padding:7px 13px;border-radius:7px;border:1.5px solid var(--borde);cursor:pointer;">
-                        <input type="checkbox" class="cup-cat" value="OT"> Otros</label>
+                        <input type="checkbox" class="cup-cat" value="DJ"> 🌟 Dijes</label>
+                    <label style="display:flex;align-items:center;gap:5px;font-size:13px;text-transform:none;font-weight:500;margin:0;background:var(--gris);padding:7px 13px;border-radius:7px;border:1.5px solid var(--borde);cursor:pointer;">
+                        <input type="checkbox" class="cup-cat" value="TB"> 🦶 Tobilleras</label>
+                    <label style="display:flex;align-items:center;gap:5px;font-size:13px;text-transform:none;font-weight:500;margin:0;background:var(--gris);padding:7px 13px;border-radius:7px;border:1.5px solid var(--borde);cursor:pointer;">
+                        <input type="checkbox" class="cup-cat" value="OT"> 📦 Varios</label>
                 </div>
             </div>
 
@@ -1706,12 +1719,30 @@ function renderCupones() {
     });
 }
 
+let _cupCatsMode = "todas"; // "todas" | "seleccion"
+
+function setCatsMode(mode) {
+    _cupCatsMode = mode;
+    const btnTodas = document.getElementById("btn-cats-todas");
+    const btnSel   = document.getElementById("btn-cats-sel");
+    const detalle  = document.getElementById("sec-cats-detalle");
+    btnTodas.style.background   = mode === "todas" ? "var(--verde)" : "var(--gris)";
+    btnTodas.style.color        = mode === "todas" ? "#fff" : "#aaa";
+    btnTodas.style.borderColor  = mode === "todas" ? "var(--verde)" : "var(--borde)";
+    btnSel.style.background     = mode === "seleccion" ? "var(--azul)" : "var(--gris)";
+    btnSel.style.color          = mode === "seleccion" ? "#fff" : "#aaa";
+    btnSel.style.borderColor    = mode === "seleccion" ? "var(--azul)" : "var(--borde)";
+    detalle.style.display       = mode === "seleccion" ? "flex" : "none";
+    actualizarPreviewCupon();
+}
+
 function cambiarTipoCupon() {
     const tipo = document.getElementById("cup-tipo").value;
     document.getElementById("sec-porc").style.display      = ["porcentaje_total","porcentaje_categoria"].includes(tipo) ? "block" : "none";
     document.getElementById("sec-fijo").style.display      = tipo === "descuento_fijo" ? "block" : "none";
     document.getElementById("sec-monto-min").style.display = tipo === "monto_minimo" ? "block" : "none";
-    document.getElementById("sec-cats").style.display      = ["porcentaje_categoria","segundo_mitad"].includes(tipo) ? "block" : "none";
+    // Siempre mostrar selector de categorías excepto envío gratis
+    document.getElementById("sec-cats").style.display      = tipo === "envio_gratis" ? "none" : "block";
     actualizarPreviewCupon();
 }
 
@@ -1722,8 +1753,10 @@ function actualizarPreviewCupon() {
     let texto  = "";
     switch(tipo) {
         case "porcentaje_total": {
-            const d = document.getElementById("cup-desc").value || "X";
-            texto = `Cupón <b>${cod}</b>: ${d}% de descuento en toda la tienda.`; break; }
+            const d    = document.getElementById("cup-desc").value || "X";
+            const donde = _cupCatsMode === "todas" ? "toda la tienda" :
+                ([...document.querySelectorAll(".cup-cat:checked")].map(x=>x.value).join(", ") || "ninguna categoría");
+            texto = `Cupón <b>${cod}</b>: ${d}% de descuento en ${donde}.`; break; }
         case "porcentaje_categoria": {
             const d    = document.getElementById("cup-desc").value || "X";
             const cats = [...document.querySelectorAll(".cup-cat:checked")].map(x=>x.value).join(", ") || "ninguna";
@@ -1754,7 +1787,14 @@ async function crearCupon() {
     if (!cod) return toast("⚠️ Ingresa un código de cupón", "#f97316");
     if (cupones.find(c => c.codigo === cod)) return toast("⚠️ Ese código ya existe", "#f97316");
 
-    const cats = [...document.querySelectorAll(".cup-cat:checked")].map(x => x.value).join(",");
+    // Categorías: vacío = todas, lista = específicas
+    const cats = _cupCatsMode === "todas" ? "" :
+        [...document.querySelectorAll(".cup-cat:checked")].map(x => x.value).join(",");
+    // Si es selección específica y no eligió nada, advertir
+    if (_cupCatsMode === "seleccion" && !cats && tipo !== "envio_gratis")
+        return toast("⚠️ Selecciona al menos una categoría", "#f97316");
+    // Unificar tipo: si hay cats específicas usar porcentaje_categoria, si no porcentaje_total
+    const tipoFinal = (tipo === "porcentaje_total" && cats) ? "porcentaje_categoria" : tipo;
 
     let descuento = 0, descuentoFijo = 0, montoMinimo = 0;
 
@@ -1781,7 +1821,7 @@ async function crearCupon() {
             break;
     }
 
-    const nuevo = { codigo:cod, tipo, descuento, descuentoFijo, montoMinimo,
+    const nuevo = { codigo:cod, tipo:tipoFinal, descuento, descuentoFijo, montoMinimo,
                     categorias:cats, limiteUsos:limite, usosActuales:0, activo:act };
     cupones.push(nuevo); renderCupones();
 
