@@ -1454,8 +1454,16 @@ function renderProductos() {
     if (!list.length) { cont.innerHTML='<p style="color:#aaa;font-size:13px;">Sin productos.</p>'; return; }
     cont.innerHTML = list.map(p=>{
         let stock="";
-        try { const s=JSON.parse(p.caracteristicas||"{}"); const t=Object.values(s).reduce((a,b)=>a+Number(b),0); stock=t>0?`Stock: ${t}`:`<span style="color:var(--rojo)">Agotado</span>`; }
-        catch(_){ stock="Sin tallas"; }
+        try {
+            const s = JSON.parse(p.caracteristicas||"{}");
+            const t = Object.values(s).reduce((a,b)=>a+Number(b),0);
+            if (t > 0) { stock = `Stock: ${t}`; }
+            else {
+                // Fallback: usar contadores reales de stock
+                const total = (parseInt(p.stock_bodega)||0) + (parseInt(p.stock_tienda)||0) + (parseInt(p.stock_consignacion)||0);
+                stock = total > 0 ? `Stock: ${total}` : `<span style="color:var(--rojo)">Agotado</span>`;
+            }
+        } catch(_){ stock="Sin tallas"; }
         const dest = p.destacado===true||p.destacado==="TRUE";
         return `<div class="pc">
             <img src="${p.foto||p.img||''}" alt="" onerror="this.style.display='none'">
