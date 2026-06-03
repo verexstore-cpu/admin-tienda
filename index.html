@@ -300,6 +300,14 @@
                 </div>
                 <div style="font-size:11px;color:var(--dorado);margin-top:6px;">⭐ Destacados siempre aparecen primero · El resto rota cada semana automáticamente</div>
             </div>
+            <!-- Varios -->
+            <div style="margin-top:14px;padding-top:14px;border-top:1px solid #333;display:flex;justify-content:space-between;align-items:center;">
+                <div>
+                    <div style="font-size:13px;font-weight:600;">📦 Categoría "Productos Varios"</div>
+                    <div style="font-size:11px;color:#888;margin-top:3px;">Muestra en el catálogo productos que no son joyería estándar</div>
+                </div>
+                <label class="tog"><input type="checkbox" id="tog-varios" onchange="guardarToggleVarios()"><span class="sl"></span></label>
+            </div>
         </div>
 
         <div class="stats" id="stats-grid">
@@ -928,6 +936,8 @@ function renderEstado() {
     document.getElementById("tog-tienda").checked = cfg.tiendaActiva;
     const limEl = document.getElementById("inp-limite-catalogo");
     if (limEl) limEl.value = cfg.limiteCatalogo || "";
+    const varEl = document.getElementById("tog-varios");
+    if (varEl) varEl.checked = cfg.mostrarVarios === true;
     document.getElementById("estado-info").innerHTML = cfg.tiendaActiva
         ? `<span class="badge bv2">✅ ABIERTA</span> <span style="margin-left:7px;">Clientes pueden ver y comprar.</span>`
         : `<span class="badge br2">🔴 CERRADA</span> <span style="margin-left:7px;">Catálogo oculto para clientes.</span>`;
@@ -1810,6 +1820,12 @@ function guardarConfig() {
     cfg.tiendaActiva=document.getElementById("tog-tienda").checked;
     saveConfig(); renderEstado();
     toast(cfg.tiendaActiva?"✅ Tienda activada":"🔴 Tienda desactivada", cfg.tiendaActiva?"#22c55e":"#ef4444");
+}
+
+function guardarToggleVarios() {
+    cfg.mostrarVarios = document.getElementById("tog-varios").checked;
+    saveConfig();
+    toast(cfg.mostrarVarios ? "✅ Categoría Varios activada" : "🔴 Categoría Varios desactivada", cfg.mostrarVarios ? "#22c55e" : "#ef4444");
 }
 
 function guardarLimiteCatalogo() {
