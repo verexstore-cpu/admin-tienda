@@ -1167,7 +1167,7 @@ function renderPedidos() {
             <td style="font-size:11px;color:#777;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${p.productos||"—"}</td>
             <td style="font-weight:700;color:var(--verde);white-space:nowrap;">$${parseFloat(String(p.total).replace(/[^0-9.]/g,"")||0).toFixed(2)}</td>
             <td style="font-size:11px;color:#aaa;">${pagoCorto}</td>
-            <td><select class="es" style="font-size:11px;padding:3px 4px;border-color:${estadoColor};color:${estadoColor};" onchange="cambiarEstado(this,'${p.cliente}','${p.fecha}')">${opts}</select></td>
+            <td><select class="es" style="font-size:11px;padding:3px 4px;border-color:${estadoColor};color:${estadoColor};" onchange="cambiarEstado(this,'${p.numeroPedido||""}','${p.cliente}','${p.fecha}')">${opts}</select></td>
             <td>
                 <div style="display:flex;gap:4px;">
                     <button class="btn" style="background:#ef4444;color:#fff;padding:4px 8px;font-size:11px;"
@@ -1201,7 +1201,7 @@ function renderPedidos() {
                 <span>💳 ${p.metodoPago||"—"}</span>
             </div>
             <div class="ped-card-footer">
-                <select class="es" onchange="cambiarEstado(this,'${p.cliente}','${p.fecha}')">${opts}</select>
+                <select class="es" onchange="cambiarEstado(this,'${p.numeroPedido||""}','${p.cliente}','${p.fecha}')">${opts}</select>
                 <div style="display:flex;gap:6px;">
                     <button class="btn" style="background:#ef4444;color:#fff;padding:6px 12px;font-size:12px;"
                         onclick='generarPDFAdmin(${i},"${p.numeroPedido||""}")'>📄 PDF</button>
@@ -1516,13 +1516,13 @@ function mensajeWhatsApp(estado, p) {
     return null;
 }
 
-async function cambiarEstado(sel, cliente, fecha) {
+async function cambiarEstado(sel, numeroPedido, cliente, fecha) {
     const estado = sel.value;
-    const p = pedidos.find(p => p.cliente === cliente && String(p.fecha) === String(fecha));
+    const p = pedidos.find(p => p.numeroPedido === numeroPedido || (p.cliente === cliente && String(p.fecha) === String(fecha)));
     if (p) p.estado = estado;
 
     await fetch(API_URL, { method:'POST', mode:'no-cors',
-        body: JSON.stringify({ accion:"ACTUALIZAR_ESTADO_PEDIDO", _pass:ADMIN_PASS, cliente, fecha, estado })
+        body: JSON.stringify({ accion:"ACTUALIZAR_ESTADO_PEDIDO", _pass:ADMIN_PASS, numeroPedido, cliente, fecha, estado })
     });
 
     // Enviar mensaje de WhatsApp si aplica
