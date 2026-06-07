@@ -1794,9 +1794,9 @@ async function cambiarEstado(sel, numeroPedido, cliente, fecha) {
         body: JSON.stringify({ accion:"ACTUALIZAR_ESTADO_PEDIDO", _pass:ADMIN_PASS, numeroPedido, cliente, fecha, estado })
     });
 
-    // Enviar mensaje de WhatsApp si aplica
+    // Enviar mensaje de WhatsApp solo si el pedido fue por WhatsApp (no por correo)
     const msg = mensajeWhatsApp(estado, p);
-    if (msg && p) {
+    if (msg && p && (p.canal || "whatsapp") !== "correo") {
         const tel = String(p.telefono || "").replace(/\D/g, "");
         if (tel) window.open(`https://wa.me/${tel}?text=${encodeURIComponent(msg)}`);
     }
