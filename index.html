@@ -1390,6 +1390,7 @@ function renderPedidos() {
             <td style="overflow:hidden;">
                 <div style="font-weight:700;font-size:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${esc(p.cliente)||"—"}</div>
                 <a href="https://wa.me/${tel}" target="_blank" style="color:var(--verde);font-size:11px;text-decoration:none;">${esc(p.telefono)||""}</a>
+                ${p.codigoCliente ? `<div style="font-size:10px;color:#C9A84C;font-weight:600;margin-top:1px;">${p.codigoCliente}</div>` : ""}
             </td>
             <td style="font-size:12px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${esc(p.municipio)||"—"}</td>
             <td style="font-size:11px;color:#777;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${esc(p.productos)||"—"}</td>
