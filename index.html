@@ -453,7 +453,7 @@
                 <select id="fil-estado" onchange="renderPedidos()" style="width:140px;">
                     <option value="">Todos los estados</option>
                     <option>Pendiente</option>
-                    <option>En camino</option>
+                    <option>Despachado</option>
                     <option>Entregado</option>
                     <option>Cancelado</option>
                 </select>
@@ -1319,7 +1319,7 @@ function renderTop() {
 // ═════════════════════════════════════════════
 //  PEDIDOS
 // ═════════════════════════════════════════════
-const EST_COLOR = { "Pendiente":"bam2","En camino":"baz2","Entregado":"bv2","Cancelado":"br2" };
+const EST_COLOR = { "Pendiente":"bam2","Despachado":"baz2","Entregado":"bv2","Cancelado":"br2" };
 
 function filtrarPorPeriodo(lista) {
     const periodo = document.getElementById("fil-periodo").value;
@@ -1380,10 +1380,10 @@ function renderPedidos() {
     tb.innerHTML = list.map((p,i) => {
         const fecha = p.fecha ? new Date(p.fecha).toLocaleDateString("es-SV",{day:"2-digit",month:"2-digit"}) : "—";
         const tel   = String(p.telefono||"").replace(/\D/g,"");
-        const opts  = ["Pendiente","En camino","Entregado","Cancelado","No entregado"]
+        const opts  = ["Pendiente","Despachado","Entregado","Cancelado","No entregado"]
             .map(s=>`<option value="${s}" ${p.estado===s?"selected":""}>${s}</option>`).join('');
         const pagoCorto = (p.metodoPago||"—").replace("Contra Entrega (Efectivo)","Efectivo").replace("Pago con Tarjeta","Tarjeta");
-        const estadoColor = {Pendiente:"#f97316","En camino":"#3b82f6",Entregado:"#22c55e",Cancelado:"#ef4444","No entregado":"#888"}[p.estado]||"#888";
+        const estadoColor = {Pendiente:"#f97316","Despachado":"#3b82f6",Entregado:"#22c55e",Cancelado:"#ef4444","No entregado":"#888"}[p.estado]||"#888";
         return `<tr>
             <td style="font-family:monospace;font-size:11px;color:var(--azul);font-weight:700;white-space:nowrap;">${p.numeroPedido||"—"}</td>
             <td style="font-size:12px;white-space:nowrap;color:#888;">${fecha}</td>
@@ -1414,9 +1414,9 @@ function renderPedidos() {
     cards.innerHTML = list.map((p,i) => {
         const fecha = p.fecha ? new Date(p.fecha).toLocaleDateString("es-SV") : "—";
         const tel   = String(p.telefono||"").replace(/\D/g,"");
-        const opts  = ["Pendiente","En camino","Entregado","Cancelado"]
+        const opts  = ["Pendiente","Despachado","Entregado","Cancelado"]
             .map(s=>`<option value="${s}" ${p.estado===s?"selected":""}>${s}</option>`).join('');
-        const estColor = {"Pendiente":"bam2","En camino":"baz2","Entregado":"bv2","Cancelado":"br2"};
+        const estColor = {"Pendiente":"bam2","Despachado":"baz2","Entregado":"bv2","Cancelado":"br2"};
         return `<div class="ped-card">
             <div class="ped-card-header">
                 <span class="ped-card-num">${p.numeroPedido||"—"}</span>
@@ -1772,7 +1772,7 @@ function mensajeWhatsApp(estado, p) {
     const numero = p.numeroPedido || "—";
     const metro  = esZonaMetro(p.municipio);
 
-    if (estado === "En camino") {
+    if (estado === "Despachado") {
         const tiempo = metro
             ? "Como estás cerca, lo tendrás en tus manos hoy o mañana."
             : "En 1 a 2 días hábiles estará en tus manos.";
