@@ -2313,10 +2313,11 @@ function mostrarGuiaC807(numeroPedido) {
     const tel = p.telLlamada || p.telefono || "—";
 
     const campos = [
-        { label: "Número de orden",     valor: String(p.numeroPedido || "—") },
-        { label: "Nombre",              valor: String(p.cliente      || "—") },
+        { label: "Número de orden",     valor: String(p.numeroPedido    || "—") },
+        { label: "Código de cliente",   valor: String(p.codigoCliente   || "—") },
+        { label: "Nombre",              valor: String(p.cliente         || "—") },
         { label: "Teléfono",            valor: String(tel) },
-        { label: "Correo",              valor: String(p.correo       || "—") },
+        { label: "Correo",              valor: String(p.correo          || "—") },
         { label: "Departamento",        valor: String(p.departamento || "—") },
         { label: "Municipio/Distrito",  valor: String(p.municipio    || "—") },
         { label: "Dirección",           valor: String(p.direccion    || "—") },
