@@ -436,6 +436,25 @@
             </div>
         </div>
 
+        <!-- Visitas al catálogo -->
+        <div class="card" style="margin-bottom:14px;">
+            <h2>👁 Visitas al Catálogo</h2>
+            <div style="display:flex;gap:12px;flex-wrap:wrap;margin-top:10px;">
+                <div style="flex:1;min-width:120px;background:rgba(201,168,76,0.08);border:1px solid rgba(201,168,76,0.2);border-radius:12px;padding:14px;text-align:center;">
+                    <div id="vis-hoy" style="font-size:28px;font-weight:800;color:#C9A84C;">—</div>
+                    <div style="font-size:12px;color:#aaa;margin-top:4px;">Hoy</div>
+                </div>
+                <div style="flex:1;min-width:120px;background:rgba(201,168,76,0.08);border:1px solid rgba(201,168,76,0.2);border-radius:12px;padding:14px;text-align:center;">
+                    <div id="vis-semana" style="font-size:28px;font-weight:800;color:#C9A84C;">—</div>
+                    <div style="font-size:12px;color:#aaa;margin-top:4px;">Esta semana</div>
+                </div>
+                <div style="flex:1;min-width:120px;background:rgba(201,168,76,0.08);border:1px solid rgba(201,168,76,0.2);border-radius:12px;padding:14px;text-align:center;">
+                    <div id="vis-total" style="font-size:28px;font-weight:800;color:#C9A84C;">—</div>
+                    <div style="font-size:12px;color:#aaa;margin-top:4px;">Total histórico</div>
+                </div>
+            </div>
+        </div>
+
         <!-- Métodos de pago + Pedidos recientes -->
         <div class="card">
             <h2>💳 Métodos de Pago</h2>
@@ -1209,6 +1228,17 @@ async function cargarEstadisticas() {
         } else {
             pagEl.innerHTML = '<p style="color:#888;font-size:13px;">Sin datos aún.</p>';
         }
+        // Visitas catálogo
+        try {
+            const resVis = await fetch(API_URL, { method:'POST', body: JSON.stringify({ accion:"GET_VISITAS", _pass: ADMIN_PASS }) });
+            const vis = await resVis.json();
+            if (vis.ok) {
+                document.getElementById("vis-hoy").textContent    = vis.hoy;
+                document.getElementById("vis-semana").textContent = vis.semana;
+                document.getElementById("vis-total").textContent  = vis.total;
+            }
+        } catch(_) {}
+
     } catch(e) {}
 }
 
