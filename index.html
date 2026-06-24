@@ -542,6 +542,7 @@
             <div class="sb">
                 <input type="text" id="bus-prod" placeholder="Buscar..." oninput="renderProductos()">
             </div>
+            <button class="btn ba" style="margin-bottom:14px;width:100%;justify-content:center;" onclick="abrirModalCatalogo()">📋 Generar catálogo para cliente</button>
             <div id="lista-prod"></div>
         </div>
 
@@ -2635,7 +2636,275 @@ function filtrarVentasModal() {
 function cerrarModalVentas() {
     document.getElementById("modal-ventas-vend").classList.remove("open");
 }
+
+// ═════════════════════════════════════════════
+//  CATÁLOGO PARA CLIENTE
+// ═════════════════════════════════════════════
+let _catFiltrada = [];
+
+function abrirModalCatalogo() {
+    document.getElementById("modal-catalogo").classList.add("open");
+    document.getElementById("cat-talla").value   = "";
+    document.getElementById("cat-genero").value  = "";
+    document.getElementById("cat-nombre").value  = "";
+    filtrarParaCatalogo();
+}
+
+function cerrarModalCatalogo() {
+    document.getElementById("modal-catalogo").classList.remove("open");
+}
+
+function filtrarParaCatalogo() {
+    const talla  = document.getElementById("cat-talla").value;
+    const genero = document.getElementById("cat-genero").value;
+    const cont   = document.getElementById("cat-lista");
+    const info   = document.getElementById("cat-info");
+
+    // Solo anillos
+    let lista = productos.filter(p => (p.codigo || "").startsWith("AN-"));
+
+    if (talla) {
+        lista = lista.filter(p => {
+            let s = {};
+            try { s = JSON.parse(p.caracteristicas || "{}"); } catch(_) {}
+            if (genero === "dama")      return (s["D" + talla] || 0) > 0;
+            if (genero === "caballero") return (s["H" + talla] || 0) > 0;
+            // sin filtro de género: stock simple o cualquier género
+            return (s[talla] || 0) > 0 || (s["D" + talla] || 0) > 0 || (s["H" + talla] || 0) > 0;
+        });
+    }
+
+    _catFiltrada = lista;
+    info.textContent = lista.length
+        ? `${lista.length} anillo(s) disponible(s)${talla ? " en talla " + talla : ""}. Marca los que quieres mostrar:`
+        : "";
+
+    if (!lista.length) {
+        cont.innerHTML = '<p style="color:#aaa;font-size:13px;text-align:center;padding:16px;">Sin anillos con stock para ese filtro.</p>';
+        return;
+    }
+
+    cont.innerHTML = lista.map(p => {
+        let stockLabel = "";
+        try {
+            const s = JSON.parse(p.caracteristicas || "{}");
+            if (talla) {
+                const esPareja = Object.keys(s).some(k => k.startsWith("D") || k.startsWith("H"));
+                if (esPareja) {
+                    const d = s["D" + talla] || 0;
+                    const h = s["H" + talla] || 0;
+                    stockLabel = [d > 0 ? `Dama: ${d}` : "", h > 0 ? `Cab: ${h}` : ""].filter(Boolean).join(" | ");
+                } else {
+                    const q = s[talla] || 0;
+                    stockLabel = q > 0 ? `Stock: ${q}` : "";
+                }
+            }
+        } catch(_) {}
+
+        const img = p.foto || p.img || "";
+        return `<label style="display:flex;align-items:center;gap:10px;padding:9px 10px;background:#fff;border-radius:7px;border:1px solid var(--borde);margin-bottom:6px;cursor:pointer;">
+            <input type="checkbox" class="cat-chk" data-cod="${p.codigo}" style="width:16px;height:16px;accent-color:var(--azul);flex-shrink:0;" checked>
+            ${img ? `<img src="${img}" style="width:46px;height:46px;object-fit:cover;border-radius:6px;flex-shrink:0;" onerror="this.style.display='none'">` : ""}
+            <div style="flex:1;min-width:0;">
+                <div style="font-weight:700;font-size:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${p.nombre || "—"}</div>
+                <div style="font-size:12px;color:#888;">$${parseFloat(p.precio || 0).toFixed(2)}${stockLabel ? " · " + stockLabel : ""}</div>
+            </div>
+        </label>`;
+    }).join("");
+}
+
+function seleccionarTodosCatalogo(sel) {
+    document.querySelectorAll(".cat-chk").forEach(c => c.checked = sel);
+}
+
+async function imgToBase64Cat(url) {
+    if (!url) return null;
+    return new Promise(resolve => {
+        const img = new Image();
+        img.crossOrigin = "anonymous";
+        img.onload = () => {
+            try {
+                const c = document.createElement("canvas");
+                c.width = img.naturalWidth; c.height = img.naturalHeight;
+                c.getContext("2d").drawImage(img, 0, 0);
+                resolve(c.toDataURL("image/jpeg", 0.85));
+            } catch(_) { resolve(null); }
+        };
+        img.onerror = () => resolve(null);
+        img.src = url;
+    });
+}
+
+async function generarPDFCatalogo() {
+    const codsSel = [...document.querySelectorAll(".cat-chk:checked")].map(c => c.dataset.cod);
+    if (!codsSel.length) return toast("⚠️ Selecciona al menos un producto", "#f97316");
+
+    const lista   = _catFiltrada.filter(p => codsSel.includes(p.codigo));
+    const talla   = document.getElementById("cat-talla").value;
+    const nombre  = document.getElementById("cat-nombre").value.trim();
+
+    const btn = document.getElementById("btn-gen-pdf");
+    btn.textContent = "⏳ Generando..."; btn.disabled = true;
+
+    try {
+        const { jsPDF } = window.jspdf;
+        const doc = new jsPDF({ unit: "mm", format: "a4" });
+
+        const PW = 210, PH = 297;
+        const mg = 14;
+        const gap = 7;
+        const cols = 2;
+        const colW = (PW - mg * 2 - gap * (cols - 1)) / cols;   // ~85.5 mm
+        const imgH = 52;
+        const cardH = imgH + 22;
+
+        // ── Encabezado ──
+        doc.setFillColor(17, 17, 17);
+        doc.rect(0, 0, PW, 30, "F");
+        doc.setFont("helvetica", "bold");
+        doc.setFontSize(18);
+        doc.setTextColor(0, 191, 255);
+        doc.text("VEREX STORE", PW / 2, 13, { align: "center" });
+        doc.setFont("helvetica", "normal");
+        doc.setFontSize(8);
+        doc.setTextColor(180, 180, 180);
+        doc.text("Joyería de calidad", PW / 2, 20, { align: "center" });
+
+        // Subtítulo
+        doc.setFont("helvetica", "italic");
+        doc.setFontSize(10);
+        doc.setTextColor(60, 60, 60);
+        let sub = nombre ? `Catálogo para: ${nombre}` : "Catálogo de productos";
+        if (talla) sub += `  ·  Talla ${talla}`;
+        doc.text(sub, PW / 2, 38, { align: "center" });
+
+        // ── Cuadrícula de productos ──
+        let y = 44, col = 0;
+
+        for (const p of lista) {
+            const x = mg + col * (colW + gap);
+
+            // Fondo tarjeta
+            doc.setFillColor(250, 250, 252);
+            doc.setDrawColor(220, 220, 225);
+            doc.roundedRect(x, y, colW, cardH, 3, 3, "FD");
+
+            // Imagen
+            const imgUrl = p.foto || p.img || "";
+            const b64 = await imgToBase64Cat(imgUrl);
+            if (b64) {
+                doc.addImage(b64, "JPEG", x + 2, y + 2, colW - 4, imgH - 2, undefined, "MEDIUM");
+            } else {
+                doc.setFillColor(235, 235, 240);
+                doc.rect(x + 2, y + 2, colW - 4, imgH - 2, "F");
+                doc.setFont("helvetica", "normal");
+                doc.setFontSize(8);
+                doc.setTextColor(180, 180, 180);
+                doc.text("Sin imagen", x + colW / 2, y + imgH / 2 + 2, { align: "center" });
+            }
+
+            // Nombre
+            doc.setFont("helvetica", "bold");
+            doc.setFontSize(7.5);
+            doc.setTextColor(30, 30, 30);
+            const lineas = doc.splitTextToSize(p.nombre || "—", colW - 6);
+            doc.text(lineas[0], x + colW / 2, y + imgH + 7, { align: "center" });
+
+            // Precio
+            doc.setFont("helvetica", "bold");
+            doc.setFontSize(9);
+            doc.setTextColor(0, 150, 200);
+            doc.text(`$${parseFloat(p.precio || 0).toFixed(2)}`, x + colW / 2, y + imgH + 15, { align: "center" });
+
+            col++;
+            if (col === cols) {
+                col = 0;
+                y += cardH + gap;
+            }
+
+            if (y + cardH > PH - 16) {
+                doc.addPage();
+                y = 16; col = 0;
+            }
+        }
+
+        // ── Pie de página (todas las hojas) ──
+        const total = doc.internal.getNumberOfPages();
+        for (let i = 1; i <= total; i++) {
+            doc.setPage(i);
+            doc.setFont("helvetica", "normal");
+            doc.setFontSize(7.5);
+            doc.setTextColor(190, 190, 190);
+            doc.text(
+                `VEREX STORE  ·  ${new Date().toLocaleDateString("es-CO")}  ·  Página ${i} de ${total}`,
+                PW / 2, PH - 5, { align: "center" }
+            );
+        }
+
+        const fname = nombre
+            ? `catalogo-${nombre.toLowerCase().replace(/\s+/g, "-")}.pdf`
+            : "catalogo-verex.pdf";
+        doc.save(fname);
+        toast("✅ PDF generado correctamente", "#22c55e");
+        cerrarModalCatalogo();
+    } catch (e) {
+        console.error(e);
+        toast("❌ Error al generar PDF", "#ef4444");
+    } finally {
+        btn.textContent = "📥 Generar PDF"; btn.disabled = false;
+    }
+}
 </script>
+
+<!-- MODAL CATÁLOGO CLIENTE -->
+<div class="mo" id="modal-catalogo">
+    <div class="mb" style="max-width:620px;">
+        <button class="mc" onclick="cerrarModalCatalogo()">✕</button>
+        <h3>📋 Generar catálogo para cliente</h3>
+
+        <div class="g2" style="margin-bottom:10px;">
+            <div>
+                <label>Talla</label>
+                <select id="cat-talla" onchange="filtrarParaCatalogo()">
+                    <option value="">— Todas —</option>
+                    <option value="5">Talla 5</option>
+                    <option value="6">Talla 6</option>
+                    <option value="7">Talla 7</option>
+                    <option value="8">Talla 8</option>
+                    <option value="9">Talla 9</option>
+                    <option value="10">Talla 10</option>
+                    <option value="11">Talla 11</option>
+                    <option value="12">Talla 12</option>
+                    <option value="13">Talla 13</option>
+                    <option value="14">Talla 14</option>
+                </select>
+            </div>
+            <div>
+                <label>Género (anillos pareja)</label>
+                <select id="cat-genero" onchange="filtrarParaCatalogo()">
+                    <option value="">— Todos —</option>
+                    <option value="dama">👩 Dama</option>
+                    <option value="caballero">👨 Caballero</option>
+                </select>
+            </div>
+        </div>
+
+        <div style="margin-bottom:12px;">
+            <label>Nombre del cliente (opcional)</label>
+            <input type="text" id="cat-nombre" placeholder="Ej: María, Juan...">
+        </div>
+
+        <div id="cat-info" style="font-size:12px;color:#888;margin-bottom:8px;"></div>
+        <div id="cat-lista" style="max-height:320px;overflow-y:auto;border:1px solid var(--borde);border-radius:8px;padding:8px;background:var(--gris);"></div>
+
+        <div style="display:flex;gap:8px;margin-top:10px;margin-bottom:12px;">
+            <button class="btn bg" style="flex:1;font-size:12px;" onclick="seleccionarTodosCatalogo(true)">✅ Todos</button>
+            <button class="btn bg" style="flex:1;font-size:12px;" onclick="seleccionarTodosCatalogo(false)">⬜ Ninguno</button>
+        </div>
+
+        <button class="btn bv bfull" id="btn-gen-pdf" onclick="generarPDFCatalogo()">📥 Generar PDF</button>
+    </div>
+</div>
 
 <!-- Modal Cambiar Contraseña -->
 <div id="modal-pass" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.75);z-index:10000;justify-content:center;align-items:center;padding:20px;">
