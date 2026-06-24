@@ -2660,18 +2660,26 @@ function filtrarParaCatalogo() {
     const cont   = document.getElementById("cat-lista");
     const info   = document.getElementById("cat-info");
 
-    // Solo anillos
-    let lista = productos.filter(p => (p.codigo || "").startsWith("AN-"));
+    // Detectar anillos: código empieza con AN (AN-, ANL, AN123, etc.)
+    const esAnillo = p => /^AN/i.test(p.codigo || "");
+
+    // Detectar talla: en caracteristicas JSON o embebida en el código (ej: T6, T06)
+    const tieneTalla = (p, t) => {
+        // 1) Buscar en JSON de caracteristicas
+        let s = {};
+        try { s = JSON.parse(p.caracteristicas || "{}"); } catch(_) {}
+        if (genero === "dama")      return (s["D" + t] || 0) > 0;
+        if (genero === "caballero") return (s["H" + t] || 0) > 0;
+        if ((s[t] || 0) > 0 || (s["D" + t] || 0) > 0 || (s["H" + t] || 0) > 0) return true;
+        // 2) Buscar en el código del producto (ej: ANL027T6, AN-T6-xxx)
+        const cod = (p.codigo || "").toUpperCase();
+        return cod.includes("T" + t) || cod.includes("T0" + t);
+    };
+
+    let lista = productos.filter(p => esAnillo(p));
 
     if (talla) {
-        lista = lista.filter(p => {
-            let s = {};
-            try { s = JSON.parse(p.caracteristicas || "{}"); } catch(_) {}
-            if (genero === "dama")      return (s["D" + talla] || 0) > 0;
-            if (genero === "caballero") return (s["H" + talla] || 0) > 0;
-            // sin filtro de género: stock simple o cualquier género
-            return (s[talla] || 0) > 0 || (s["D" + talla] || 0) > 0 || (s["H" + talla] || 0) > 0;
-        });
+        lista = lista.filter(p => tieneTalla(p, talla));
     }
 
     _catFiltrada = lista;
