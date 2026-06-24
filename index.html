@@ -2642,11 +2642,49 @@ function cerrarModalVentas() {
 // ═════════════════════════════════════════════
 let _catFiltrada = [];
 
+const CAT_MAP = {
+    AN: "💍 Anillos",
+    AR: "👂 Aretes",
+    CD: "⛓️ Cadenas",
+    PL: "💪 Pulseras",
+    CN: "✨ Conjuntos",
+    RL: "⌚ Relojes",
+    OT: "📦 Otros",
+};
+
+function getCatKey(codigo) {
+    const c = (codigo || "").toUpperCase();
+    for (const k of Object.keys(CAT_MAP)) {
+        if (c.startsWith(k)) return k;
+    }
+    return "OT";
+}
+
+function poblarCategorias() {
+    const sel = document.getElementById("cat-categoria");
+    const presentes = [...new Set(productos.map(p => getCatKey(p.codigo)))];
+    const orden = ["AN","AR","CD","PL","CN","RL","OT"];
+    sel.innerHTML = '<option value="">— Todas —</option>' +
+        orden.filter(k => presentes.includes(k))
+             .map(k => `<option value="${k}">${CAT_MAP[k]}</option>`).join("");
+}
+
+function onCategoriaChange() {
+    const cat = document.getElementById("cat-categoria").value;
+    document.getElementById("cat-sec-talla").style.display = cat === "AN" ? "block" : "none";
+    document.getElementById("cat-talla").value  = "";
+    document.getElementById("cat-genero").value = "";
+    filtrarParaCatalogo();
+}
+
 function abrirModalCatalogo() {
     document.getElementById("modal-catalogo").classList.add("open");
-    document.getElementById("cat-talla").value   = "";
-    document.getElementById("cat-genero").value  = "";
-    document.getElementById("cat-nombre").value  = "";
+    document.getElementById("cat-categoria").value = "";
+    document.getElementById("cat-talla").value     = "";
+    document.getElementById("cat-genero").value    = "";
+    document.getElementById("cat-nombre").value    = "";
+    document.getElementById("cat-sec-talla").style.display = "none";
+    poblarCategorias();
     filtrarParaCatalogo();
 }
 
@@ -2660,35 +2698,36 @@ function filtrarParaCatalogo() {
     const cont   = document.getElementById("cat-lista");
     const info   = document.getElementById("cat-info");
 
-    // Detectar anillos: código empieza con AN (AN-, ANL, AN123, etc.)
-    const esAnillo = p => /^AN/i.test(p.codigo || "");
+    const categoria = document.getElementById("cat-categoria").value;
 
-    // Detectar talla: en caracteristicas JSON o embebida en el código (ej: T6, T06)
+    // Filtrar por categoría (o mostrar todo si no hay selección)
+    let lista = categoria
+        ? productos.filter(p => getCatKey(p.codigo) === categoria)
+        : [...productos];
+
+    // Filtro de talla (solo aplica a anillos)
     const tieneTalla = (p, t) => {
-        // 1) Buscar en JSON de caracteristicas
         let s = {};
         try { s = JSON.parse(p.caracteristicas || "{}"); } catch(_) {}
         if (genero === "dama")      return (s["D" + t] || 0) > 0;
         if (genero === "caballero") return (s["H" + t] || 0) > 0;
         if ((s[t] || 0) > 0 || (s["D" + t] || 0) > 0 || (s["H" + t] || 0) > 0) return true;
-        // 2) Buscar en el código del producto (ej: ANL027T6, AN-T6-xxx)
         const cod = (p.codigo || "").toUpperCase();
         return cod.includes("T" + t) || cod.includes("T0" + t);
     };
 
-    let lista = productos.filter(p => esAnillo(p));
-
-    if (talla) {
+    if (categoria === "AN" && talla) {
         lista = lista.filter(p => tieneTalla(p, talla));
     }
 
     _catFiltrada = lista;
+    const catLabel = categoria ? CAT_MAP[categoria] : "Todos los productos";
     info.textContent = lista.length
-        ? `${lista.length} anillo(s) disponible(s)${talla ? " en talla " + talla : ""}. Marca los que quieres mostrar:`
+        ? `${lista.length} producto(s) — ${catLabel}${talla ? ", Talla " + talla : ""}. Marca los que quieres mostrar:`
         : "";
 
     if (!lista.length) {
-        cont.innerHTML = '<p style="color:#aaa;font-size:13px;text-align:center;padding:16px;">Sin anillos con stock para ese filtro.</p>';
+        cont.innerHTML = '<p style="color:#aaa;font-size:13px;text-align:center;padding:16px;">Sin productos para ese filtro.</p>';
         return;
     }
 
@@ -2878,30 +2917,39 @@ async function generarPDFCatalogo() {
         <button class="mc" onclick="cerrarModalCatalogo()">✕</button>
         <h3>📋 Generar catálogo para cliente</h3>
 
-        <div class="g2" style="margin-bottom:10px;">
-            <div>
-                <label>Talla</label>
-                <select id="cat-talla" onchange="filtrarParaCatalogo()">
-                    <option value="">— Todas —</option>
-                    <option value="5">Talla 5</option>
-                    <option value="6">Talla 6</option>
-                    <option value="7">Talla 7</option>
-                    <option value="8">Talla 8</option>
-                    <option value="9">Talla 9</option>
-                    <option value="10">Talla 10</option>
-                    <option value="11">Talla 11</option>
-                    <option value="12">Talla 12</option>
-                    <option value="13">Talla 13</option>
-                    <option value="14">Talla 14</option>
-                </select>
-            </div>
-            <div>
-                <label>Género (anillos pareja)</label>
-                <select id="cat-genero" onchange="filtrarParaCatalogo()">
-                    <option value="">— Todos —</option>
-                    <option value="dama">👩 Dama</option>
-                    <option value="caballero">👨 Caballero</option>
-                </select>
+        <div style="margin-bottom:10px;">
+            <label>Categoría</label>
+            <select id="cat-categoria" onchange="onCategoriaChange()">
+                <option value="">— Todas —</option>
+            </select>
+        </div>
+
+        <div id="cat-sec-talla" style="display:none;">
+            <div class="g2" style="margin-bottom:10px;">
+                <div>
+                    <label>Talla</label>
+                    <select id="cat-talla" onchange="filtrarParaCatalogo()">
+                        <option value="">— Todas —</option>
+                        <option value="5">Talla 5</option>
+                        <option value="6">Talla 6</option>
+                        <option value="7">Talla 7</option>
+                        <option value="8">Talla 8</option>
+                        <option value="9">Talla 9</option>
+                        <option value="10">Talla 10</option>
+                        <option value="11">Talla 11</option>
+                        <option value="12">Talla 12</option>
+                        <option value="13">Talla 13</option>
+                        <option value="14">Talla 14</option>
+                    </select>
+                </div>
+                <div>
+                    <label>Género (pareja)</label>
+                    <select id="cat-genero" onchange="filtrarParaCatalogo()">
+                        <option value="">— Todos —</option>
+                        <option value="dama">👩 Dama</option>
+                        <option value="caballero">👨 Caballero</option>
+                    </select>
+                </div>
             </div>
         </div>
 
