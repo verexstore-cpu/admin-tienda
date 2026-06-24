@@ -2770,7 +2770,7 @@ async function generarLinkCatalogo() {
 
         let finalUrl=fullUrl;
         try {
-            const r=await fetch(`https://is.gd/create.php?format=simple&url=${encodeURIComponent(fullUrl)}`);
+            const r=await fetch(`/shorten?url=${encodeURIComponent(fullUrl)}`);
             if(r.ok){ const s=(await r.text()).trim(); if(s.startsWith("http")) finalUrl=s; }
         } catch(_){}
 
