@@ -2637,6 +2637,153 @@ function cerrarModalVentas() {
     document.getElementById("modal-ventas-vend").classList.remove("open");
 }
 
+// ── Canvas helper ──
+function _rr(ctx, x, y, w, h, r) {
+    ctx.beginPath();
+    ctx.moveTo(x+r,y); ctx.lineTo(x+w-r,y);
+    ctx.arcTo(x+w,y,x+w,y+r,r); ctx.lineTo(x+w,y+h-r);
+    ctx.arcTo(x+w,y+h,x+w-r,y+h,r); ctx.lineTo(x+r,y+h);
+    ctx.arcTo(x,y+h,x,y+h-r,r); ctx.lineTo(x,y+r);
+    ctx.arcTo(x,y,x+r,y,r); ctx.closePath();
+}
+
+async function generarImagenCatalogo() {
+    const codsSel = [...document.querySelectorAll(".cat-chk:checked")].map(c => c.dataset.cod);
+    if (!codsSel.length) return toast("⚠️ Selecciona al menos un producto","#f97316");
+
+    const lista  = _catFiltrada.filter(p => codsSel.includes(p.codigo));
+    const nombre = document.getElementById("cat-nombre").value.trim();
+    const talla  = document.getElementById("cat-talla").value;
+    const dias   = parseInt(document.getElementById("cat-validez").value)||3;
+
+    const btn = document.getElementById("btn-gen-img");
+    btn.textContent = "⏳..."; btn.disabled = true;
+
+    try {
+        const CW=800, COLS=2, GAP=14, MG=14;
+        const CW2 = (CW - MG*2 - GAP) / 2;
+        const IH=210, TH=62, CH2=IH+TH;
+        const HDR=90, SUB=38, FOOT=34;
+        const rows = Math.ceil(lista.length/COLS);
+        const TOTAL_H = HDR+SUB+GAP + rows*(CH2+GAP) + FOOT;
+
+        const canvas = document.createElement("canvas");
+        canvas.width=CW; canvas.height=TOTAL_H;
+        const ctx = canvas.getContext("2d");
+
+        // Header
+        ctx.fillStyle="#111"; ctx.fillRect(0,0,CW,HDR);
+        ctx.textAlign="center";
+        ctx.fillStyle="#00BFFF"; ctx.font="bold 40px 'Segoe UI',Arial";
+        ctx.fillText("VEREX",CW/2,54);
+        ctx.fillStyle="#999"; ctx.font="15px 'Segoe UI',Arial";
+        ctx.fillText("La expresión de tu mejor versión",CW/2,78);
+
+        // Subtitle bar
+        ctx.fillStyle="#fff"; ctx.fillRect(0,HDR,CW,SUB);
+        ctx.fillStyle="#555"; ctx.font="italic 13px 'Segoe UI',Arial";
+        let sub=nombre?`Catálogo para: ${nombre}`:"Catálogo de productos";
+        if(talla) sub+=`  ·  Talla ${talla}`;
+        ctx.fillText(sub,CW/2,HDR+15);
+        ctx.fillStyle="#f97316"; ctx.font="bold 12px 'Segoe UI',Arial";
+        const expStr=new Date(Date.now()+dias*864e5).toLocaleDateString("es-CO");
+        ctx.fillText(`⏰ Válido hasta: ${expStr}`,CW/2,HDR+30);
+
+        // BG
+        ctx.fillStyle="#f0f2f5"; ctx.fillRect(0,HDR+SUB,CW,TOTAL_H-HDR-SUB-FOOT);
+
+        // Cards
+        for(let i=0;i<lista.length;i++){
+            const p=lista[i];
+            const col=i%COLS, row=Math.floor(i/COLS);
+            const x=MG+col*(CW2+GAP), y=HDR+SUB+GAP+row*(CH2+GAP);
+
+            ctx.fillStyle="rgba(0,0,0,0.06)"; _rr(ctx,x+2,y+3,CW2,CH2,10); ctx.fill();
+            ctx.fillStyle="#fff"; _rr(ctx,x,y,CW2,CH2,10); ctx.fill();
+
+            const b64=await imgToBase64Cat(p.foto||p.img||"");
+            if(b64){
+                const img=new Image();
+                await new Promise(r=>{img.onload=r;img.onerror=r;img.src=b64;});
+                ctx.save(); _rr(ctx,x,y,CW2,IH,10); ctx.clip();
+                const mw=CW2-8,mh=IH-8,ratio=img.width/img.height;
+                let dw,dh;
+                if(ratio>mw/mh){dw=mw;dh=mw/ratio;}else{dh=mh;dw=mh*ratio;}
+                ctx.drawImage(img,x+4+(mw-dw)/2,y+4+(mh-dh)/2,dw,dh);
+                ctx.restore();
+            } else {
+                ctx.fillStyle="#f0f0f0"; _rr(ctx,x,y,CW2,IH,10); ctx.fill();
+                ctx.fillStyle="#ccc"; ctx.font="28px sans-serif"; ctx.textAlign="center";
+                ctx.fillText("💍",x+CW2/2,y+IH/2+10);
+            }
+
+            ctx.fillStyle="#1a1a1a"; ctx.font="bold 14px 'Segoe UI',Arial"; ctx.textAlign="center";
+            const nm=(p.nombre||"—");
+            const nm2=nm.length>28?nm.substring(0,25)+"…":nm;
+            ctx.fillText(nm2,x+CW2/2,y+IH+22);
+
+            ctx.fillStyle="#00BFFF"; ctx.font="bold 17px 'Segoe UI',Arial";
+            ctx.fillText(`$${parseFloat(p.precio||0).toFixed(2)}`,x+CW2/2,y+IH+46);
+        }
+
+        // Footer
+        ctx.fillStyle="#fff"; ctx.fillRect(0,TOTAL_H-FOOT,CW,FOOT);
+        ctx.fillStyle="#aaa"; ctx.font="12px 'Segoe UI',Arial"; ctx.textAlign="center";
+        ctx.fillText("VEREX · La expresión de tu mejor versión",CW/2,TOTAL_H-10);
+
+        canvas.toBlob(blob=>{
+            const a=document.createElement("a");
+            a.href=URL.createObjectURL(blob);
+            a.download=nombre?`catalogo-${nombre.toLowerCase().replace(/\s+/g,"-")}.jpg`:"catalogo-verex.jpg";
+            a.click();
+            toast("✅ Imagen generada","#22c55e");
+        },"image/jpeg",0.92);
+
+    } catch(e){ console.error(e); toast("❌ Error al generar imagen","#ef4444"); }
+    finally { btn.textContent="🖼️ Imagen"; btn.disabled=false; }
+}
+
+async function generarLinkCatalogo() {
+    const codsSel=[...document.querySelectorAll(".cat-chk:checked")].map(c=>c.dataset.cod);
+    if(!codsSel.length) return toast("⚠️ Selecciona al menos un producto","#f97316");
+
+    const lista  =_catFiltrada.filter(p=>codsSel.includes(p.codigo));
+    const nombre =document.getElementById("cat-nombre").value.trim();
+    const talla  =document.getElementById("cat-talla").value;
+    const dias   =parseInt(document.getElementById("cat-validez").value)||3;
+
+    const btn=document.getElementById("btn-gen-link");
+    btn.textContent="⏳..."; btn.disabled=true;
+
+    try {
+        const data={
+            expiry: Date.now()+dias*864e5,
+            nombre, talla,
+            prods: lista.map(p=>({
+                n: p.nombre||"—",
+                p: parseFloat(p.precio||0).toFixed(2),
+                i: p.foto||p.img||""
+            }))
+        };
+        const encoded=btoa(unescape(encodeURIComponent(JSON.stringify(data))));
+        const fullUrl=`${location.origin}/catalogo.html?c=${encoded}`;
+
+        let finalUrl=fullUrl;
+        try {
+            const r=await fetch(`https://is.gd/create.php?format=simple&url=${encodeURIComponent(fullUrl)}`);
+            if(r.ok){ const s=(await r.text()).trim(); if(s.startsWith("http")) finalUrl=s; }
+        } catch(_){}
+
+        try { await navigator.clipboard.writeText(finalUrl); } catch(_){}
+
+        document.getElementById("cat-link-out").textContent=finalUrl;
+        document.getElementById("cat-link-box").style.display="block";
+        toast("🔗 Link listo — cópialo o compártelo por WhatsApp","#22c55e");
+
+    } catch(e){ console.error(e); toast("❌ Error al generar link","#ef4444"); }
+    finally { btn.textContent="🔗 Link"; btn.disabled=false; }
+}
+
 // ═════════════════════════════════════════════
 //  CATÁLOGO PARA CLIENTE
 // ═════════════════════════════════════════════
@@ -2684,6 +2831,7 @@ function abrirModalCatalogo() {
     document.getElementById("cat-genero").value    = "";
     document.getElementById("cat-nombre").value    = "";
     document.getElementById("cat-sec-talla").style.display = "none";
+    document.getElementById("cat-link-box").style.display  = "none";
     poblarCategorias();
     filtrarParaCatalogo();
 }
@@ -2789,6 +2937,8 @@ async function generarPDFCatalogo() {
     const lista   = _catFiltrada.filter(p => codsSel.includes(p.codigo));
     const talla   = document.getElementById("cat-talla").value;
     const nombre  = document.getElementById("cat-nombre").value.trim();
+    const dias    = parseInt(document.getElementById("cat-validez").value) || 3;
+    const expDate = new Date(Date.now() + dias * 864e5).toLocaleDateString("es-CO");
 
     const btn = document.getElementById("btn-gen-pdf");
     btn.textContent = "⏳ Generando..."; btn.disabled = true;
@@ -2891,7 +3041,7 @@ async function generarPDFCatalogo() {
             doc.setFontSize(7.5);
             doc.setTextColor(190, 190, 190);
             doc.text(
-                `VEREX  ·  ${new Date().toLocaleDateString("es-CO")}  ·  Página ${i} de ${total}`,
+                `VEREX  ·  Válido hasta: ${expDate}  ·  Página ${i} de ${total}`,
                 PW / 2, PH - 5, { align: "center" }
             );
         }
@@ -2959,14 +3109,39 @@ async function generarPDFCatalogo() {
         </div>
 
         <div id="cat-info" style="font-size:12px;color:#888;margin-bottom:8px;"></div>
-        <div id="cat-lista" style="max-height:320px;overflow-y:auto;border:1px solid var(--borde);border-radius:8px;padding:8px;background:var(--gris);"></div>
+        <div id="cat-lista" style="max-height:260px;overflow-y:auto;border:1px solid var(--borde);border-radius:8px;padding:8px;background:var(--gris);"></div>
 
         <div style="display:flex;gap:8px;margin-top:10px;margin-bottom:12px;">
             <button class="btn bg" style="flex:1;font-size:12px;" onclick="seleccionarTodosCatalogo(true)">✅ Todos</button>
             <button class="btn bg" style="flex:1;font-size:12px;" onclick="seleccionarTodosCatalogo(false)">⬜ Ninguno</button>
         </div>
 
-        <button class="btn bv bfull" id="btn-gen-pdf" onclick="generarPDFCatalogo()">📥 Generar PDF</button>
+        <div style="margin-bottom:12px;">
+            <label>Validez del catálogo</label>
+            <select id="cat-validez">
+                <option value="1">1 día</option>
+                <option value="2">2 días</option>
+                <option value="3" selected>3 días</option>
+                <option value="7">7 días</option>
+            </select>
+        </div>
+
+        <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:10px;">
+            <button class="btn bv" id="btn-gen-pdf"  onclick="generarPDFCatalogo()"    style="justify-content:center;padding:11px 6px;">📥 PDF</button>
+            <button class="btn bn" id="btn-gen-img"  onclick="generarImagenCatalogo()" style="justify-content:center;padding:11px 6px;">🖼️ Imagen</button>
+            <button class="btn ba" id="btn-gen-link" onclick="generarLinkCatalogo()"   style="justify-content:center;padding:11px 6px;">🔗 Link</button>
+        </div>
+
+        <div id="cat-link-box" style="display:none;background:#f0f2f5;border-radius:8px;padding:12px;border:1px solid var(--borde);">
+            <div style="font-size:11px;font-weight:700;color:#888;text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px;">Link generado</div>
+            <div id="cat-link-out" style="font-size:13px;color:#0277bd;word-break:break-all;margin-bottom:10px;font-weight:600;"></div>
+            <div style="display:flex;gap:8px;">
+                <button onclick="navigator.clipboard.writeText(document.getElementById('cat-link-out').textContent);toast('✅ Copiado','#22c55e')"
+                    style="flex:1;background:#111;color:#fff;border:none;padding:9px;border-radius:7px;font-size:12px;font-weight:700;cursor:pointer;">📋 Copiar</button>
+                <button onclick="window.open('https://wa.me/?text='+encodeURIComponent('Hola, aquí está tu catálogo VEREX: '+document.getElementById('cat-link-out').textContent))"
+                    style="flex:1;background:#25D366;color:#fff;border:none;padding:9px;border-radius:7px;font-size:12px;font-weight:700;cursor:pointer;">📱 WhatsApp</button>
+            </div>
+        </div>
     </div>
 </div>
 
