@@ -2823,6 +2823,7 @@ function getCatKey(codigo) {
     for (const k of Object.keys(CAT_MAP)) {
         if (c.startsWith(k)) return k;
     }
+    if (c.startsWith("U")) return "AN"; // Alianzas / Únicos
     return "OT";
 }
 
@@ -2912,7 +2913,7 @@ function filtrarParaCatalogo() {
             let s = {};
             try { s = JSON.parse(p.caracteristicas || "{}"); } catch(_) {}
             const esPareja = Object.keys(s).some(k => k.startsWith("D") || k.startsWith("H"))
-                || /matrimonio|argolla|novios|pareja/i.test(p.nombre || "");
+                || /matrimonio|argolla|novios|pareja|alianza/i.test(p.nombre || "");
             return tipoAN === "pareja" ? esPareja : !esPareja;
         });
     }
