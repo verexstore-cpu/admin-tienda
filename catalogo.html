@@ -154,7 +154,13 @@
         if(talla) subParts.push(`Talla: <strong>${esc(talla)}</strong>`);
         const subHTML = subParts.join(" &nbsp;·&nbsp; ");
 
-        const cards = _prods.map((p,i)=>`
+        const cards = _prods.map((p,i)=>{
+            const sizesHtml = p.cat==="AN" && p.sizes?.length
+                ? `<div style="display:flex;flex-wrap:wrap;gap:3px;justify-content:center;margin:5px 0;">${p.sizes.map(sz=>
+                    `<span style="padding:2px 7px;background:#e8f4fd;border-radius:5px;font-size:10px;font-weight:700;color:#0277bd;">T${sz}</span>`
+                  ).join("")}</div>`
+                : "";
+            return `
             <div class="card">
                 ${p.i
                     ?`<img class="card-img" src="${esc(p.i)}" alt="${esc(p.n)}" loading="lazy" onerror="this.outerHTML='<div class=\'card-img-ph\'>💍</div>'">`
@@ -162,13 +168,15 @@
                 <div class="card-body">
                     <div class="card-name">${esc(p.n)}</div>
                     ${p.m?`<div class="card-material">${esc(p.m)}</div>`:''}
+                    ${sizesHtml}
                     <div class="card-price">$${esc(p.p)}</div>
                     ${p.nota?`<div class="card-nota">${esc(p.nota)}</div>`:''}
                 </div>
                 <div class="card-footer">
                     <button class="wa-order" onclick="elegirTalla(${i})">💬 Quiero este</button>
                 </div>
-            </div>`).join("");
+            </div>`;
+        }).join("");
 
         document.getElementById("app").innerHTML=`
             <header><h1>VEREX</h1><p>La expresión de tu mejor versión</p></header>
@@ -194,7 +202,8 @@
         }
 
         _szIdx=i; _szD=""; _szH="";
-        const esPareja = ES_PAR.test(p.n);
+        const esPareja   = ES_PAR.test(p.n);
+        const availSizes = p.sizes?.length ? p.sizes : SIZES;
 
         document.getElementById("sz-title").textContent = p.n;
         document.getElementById("sz-sub").textContent   = esPareja
@@ -204,7 +213,7 @@
         document.getElementById("sz-sec-h").style.display = esPareja ? "block" : "none";
 
         const mkGrid = (gridId, gen) => {
-            document.getElementById(gridId).innerHTML = SIZES.map(sz=>
+            document.getElementById(gridId).innerHTML = availSizes.map(sz=>
                 `<button class="sz-btn" onclick="selSz('${gen}','${sz}',this)">T${sz}</button>`
             ).join("");
         };

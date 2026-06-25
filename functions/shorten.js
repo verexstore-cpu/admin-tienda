@@ -7,13 +7,14 @@ export async function onRequest(context) {
     }
 
     try {
-        const res = await fetch(
-            `https://is.gd/create.php?format=simple&url=${encodeURIComponent(target)}`
-        );
-        const short = await res.text();
-        return new Response(short.trim(), {
-            headers: { "Content-Type": "text/plain", "Access-Control-Allow-Origin": "*" }
-        });
+        const res   = await fetch(`https://tinyurl.com/api-create.php?url=${encodeURIComponent(target)}`);
+        const short = (await res.text()).trim();
+        if (short.startsWith("http")) {
+            return new Response(short, {
+                headers: { "Content-Type": "text/plain", "Access-Control-Allow-Origin": "*" }
+            });
+        }
+        throw new Error("Bad response");
     } catch (e) {
         return new Response(target, {
             headers: { "Content-Type": "text/plain", "Access-Control-Allow-Origin": "*" }
