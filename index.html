@@ -2838,14 +2838,16 @@ function poblarCategorias() {
 function onCategoriaChange() {
     const cat = document.getElementById("cat-categoria").value;
     document.getElementById("cat-sec-talla").style.display = cat === "AN" ? "block" : "none";
-    document.getElementById("cat-talla").value  = "";
-    document.getElementById("cat-genero").value = "";
+    document.getElementById("cat-tipo-an").value = "";
+    document.getElementById("cat-talla").value   = "";
+    document.getElementById("cat-genero").value  = "";
     filtrarParaCatalogo();
 }
 
 function abrirModalCatalogo() {
     document.getElementById("modal-catalogo").classList.add("open");
     document.getElementById("cat-categoria").value = "";
+    document.getElementById("cat-tipo-an").value   = "";
     document.getElementById("cat-talla").value     = "";
     document.getElementById("cat-genero").value    = "";
     document.getElementById("cat-nombre").value    = "";
@@ -2901,6 +2903,19 @@ function filtrarParaCatalogo() {
     let lista = categoria
         ? productos.filter(p => getCatKey(p.codigo) === categoria)
         : [...productos];
+
+    const tipoAN = document.getElementById("cat-tipo-an").value;
+
+    // Filtro por tipo: sencillo vs. pareja/matrimonio
+    if (categoria === "AN" && tipoAN) {
+        lista = lista.filter(p => {
+            let s = {};
+            try { s = JSON.parse(p.caracteristicas || "{}"); } catch(_) {}
+            const esPareja = Object.keys(s).some(k => k.startsWith("D") || k.startsWith("H"))
+                || /matrimonio|argolla|novios|pareja/i.test(p.nombre || "");
+            return tipoAN === "pareja" ? esPareja : !esPareja;
+        });
+    }
 
     const tieneTalla = (p, t) => {
         let s = {};
@@ -3160,6 +3175,14 @@ async function generarPDFCatalogo() {
         </div>
 
         <div id="cat-sec-talla" style="display:none;">
+            <div style="margin-bottom:10px;">
+                <label>Tipo de anillo</label>
+                <select id="cat-tipo-an" onchange="filtrarParaCatalogo()">
+                    <option value="">— Todos —</option>
+                    <option value="sencillo">💍 Anillos sencillos</option>
+                    <option value="pareja">💑 Argollas / Pareja / Matrimonio</option>
+                </select>
+            </div>
             <div class="g2" style="margin-bottom:10px;">
                 <div>
                     <label>Talla</label>
