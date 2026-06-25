@@ -2764,6 +2764,8 @@ async function generarLinkCatalogo() {
     const nombre =document.getElementById("cat-nombre").value.trim();
     const talla  =document.getElementById("cat-talla").value;
     const dias   =parseInt(document.getElementById("cat-validez").value)||3;
+    const wa     =document.getElementById("cat-wa").value.trim().replace(/\D/g,"");
+    if(wa) localStorage.setItem("verex-wa", wa);
 
     const btn=document.getElementById("btn-gen-link");
     btn.textContent="⏳..."; btn.disabled=true;
@@ -2771,7 +2773,7 @@ async function generarLinkCatalogo() {
     try {
         const data={
             expiry: Date.now()+dias*864e5,
-            nombre, talla,
+            nombre, talla, wa,
             prods: lista.map(p=>({
                 n: p.nombre||"—",
                 p: parseFloat(p.precio||0).toFixed(2),
@@ -2845,6 +2847,7 @@ function abrirModalCatalogo() {
     document.getElementById("cat-talla").value     = "";
     document.getElementById("cat-genero").value    = "";
     document.getElementById("cat-nombre").value    = "";
+    document.getElementById("cat-wa").value        = localStorage.getItem("verex-wa") || "";
     document.getElementById("cat-sec-talla").style.display = "none";
     document.getElementById("cat-link-box").style.display  = "none";
     poblarCategorias();
@@ -3150,6 +3153,11 @@ async function generarPDFCatalogo() {
                     </select>
                 </div>
             </div>
+        </div>
+
+        <div style="margin-bottom:12px;">
+            <label>Tu número de WhatsApp (con código de país, sin +)</label>
+            <input type="text" id="cat-wa" placeholder="Ej: 573001234567" inputmode="numeric">
         </div>
 
         <div style="margin-bottom:12px;">

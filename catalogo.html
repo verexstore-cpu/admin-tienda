@@ -59,6 +59,15 @@
             text-decoration:none;
         }
 
+        .card-footer{padding:0 10px 10px;}
+        .wa-order{
+            display:block;width:100%;text-align:center;
+            background:#25D366;color:#fff;
+            padding:9px 0;border-radius:8px;
+            font-size:13px;font-weight:700;
+            text-decoration:none;
+        }
+
         footer{text-align:center;padding:20px;font-size:11px;color:#aaa;}
 
         #loading{text-align:center;padding:80px 20px;color:#888;font-size:14px;}
@@ -77,7 +86,7 @@
         const d=document.createElement("div"); d.textContent=String(s||""); return d.innerHTML;
     }
 
-    function showExpired(nombre){
+    function showExpired(nombre, wa){
         document.getElementById("app").innerHTML=`
             <header><h1>VEREX</h1><p>La expresión de tu mejor versión</p></header>
             <div class="expired">
@@ -85,7 +94,7 @@
                 <h2>Este catálogo ya venció</h2>
                 <p>Hola${nombre?' <strong>'+esc(nombre)+'</strong>':''}, este catálogo ya no está disponible.<br>
                 Contáctanos para ver el inventario actualizado.</p>
-                <a href="https://wa.me/" class="wa-btn">📱 Contactar por WhatsApp</a>
+                <a href="https://wa.me/${esc(wa||'')}" class="wa-btn">📱 Contactar por WhatsApp</a>
             </div>
             <footer>VEREX · La expresión de tu mejor versión</footer>`;
     }
@@ -101,7 +110,10 @@
         if(talla) subParts.push(`Talla: <strong>${esc(talla)}</strong>`);
         const subHTML = subParts.join(" &nbsp;·&nbsp; ");
 
-        const cards=(data.prods||[]).map(p=>`
+        const waNum = data.wa || "";
+        const cards=(data.prods||[]).map(p=>{
+            const msg = encodeURIComponent(`Hola, me interesa este producto del catálogo VEREX:\n\n${p.n}\nPrecio: $${p.p}`);
+            return `
             <div class="card">
                 ${p.i
                     ?`<img class="card-img" src="${esc(p.i)}" alt="${esc(p.n)}" loading="lazy" onerror="this.outerHTML='<div class=\'card-img-ph\'>💍</div>'">`
@@ -112,7 +124,11 @@
                     <div class="card-price">$${esc(p.p)}</div>
                     ${p.nota?`<div class="card-nota">${esc(p.nota)}</div>`:''}
                 </div>
-            </div>`).join("");
+                <div class="card-footer">
+                    <a href="https://wa.me/${esc(waNum)}?text=${msg}" class="wa-order" target="_blank">💬 Quiero este</a>
+                </div>
+            </div>`;
+        }).join("");
 
         document.getElementById("app").innerHTML=`
             <header><h1>VEREX</h1><p>La expresión de tu mejor versión</p></header>
@@ -134,7 +150,7 @@
         document.getElementById("app").innerHTML='<div style="text-align:center;padding:60px;color:#888;">Link inválido o corrupto.</div>';
         return;
     }
-    if(Date.now()>data.expiry) showExpired(data.nombre);
+    if(Date.now()>data.expiry) showExpired(data.nombre, data.wa);
     else render(data);
 })();
 </script>
