@@ -38,8 +38,10 @@
             font-size:36px;color:#ccc;
         }
         .card-body{padding:10px;text-align:center;}
-        .card-name{font-size:12px;font-weight:700;color:#1a1a1a;line-height:1.3;margin-bottom:5px;}
-        .card-price{font-size:16px;font-weight:800;color:#00BFFF;}
+        .card-name{font-size:12px;font-weight:700;color:#1a1a1a;line-height:1.3;margin-bottom:3px;}
+        .card-material{font-size:11px;color:#7c3aed;font-weight:600;margin-bottom:5px;}
+        .card-price{font-size:16px;font-weight:800;color:#00BFFF;margin-bottom:4px;}
+        .card-nota{font-size:11px;color:#666;font-style:italic;margin-top:4px;line-height:1.3;border-top:1px solid #f0f0f0;padding-top:5px;}
 
         /* Vencido */
         .expired{
@@ -106,7 +108,9 @@
                     :`<div class="card-img-ph">💍</div>`}
                 <div class="card-body">
                     <div class="card-name">${esc(p.n)}</div>
+                    ${p.m?`<div class="card-material">${esc(p.m)}</div>`:''}
                     <div class="card-price">$${esc(p.p)}</div>
+                    ${p.nota?`<div class="card-nota">${esc(p.nota)}</div>`:''}
                 </div>
             </div>`).join("");
 
