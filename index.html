@@ -2662,7 +2662,7 @@ async function generarImagenCatalogo() {
     try {
         const CW=800, COLS=2, GAP=14, MG=14;
         const CW2 = (CW - MG*2 - GAP) / 2;
-        const IH=210, TH=62, CH2=IH+TH;
+        const IH=210, TH=96, CH2=IH+TH;
         const HDR=90, SUB=38, FOOT=34;
         const rows = Math.ceil(lista.length/COLS);
         const TOTAL_H = HDR+SUB+GAP + rows*(CH2+GAP) + FOOT;
@@ -2722,8 +2722,21 @@ async function generarImagenCatalogo() {
             const nm2=nm.length>28?nm.substring(0,25)+"…":nm;
             ctx.fillText(nm2,x+CW2/2,y+IH+22);
 
+            const matIMG = p.material || detectarMaterial(p.nombre) || "";
+            if (matIMG) {
+                ctx.fillStyle="#7c3aed"; ctx.font="bold 11px 'Segoe UI',Arial";
+                ctx.fillText(matIMG,x+CW2/2,y+IH+40);
+            }
+
             ctx.fillStyle="#00BFFF"; ctx.font="bold 17px 'Segoe UI',Arial";
-            ctx.fillText(`$${parseFloat(p.precio||0).toFixed(2)}`,x+CW2/2,y+IH+46);
+            ctx.fillText(`$${parseFloat(p.precio||0).toFixed(2)}`,x+CW2/2,y+IH+62);
+
+            const notaIMG = (document.querySelector(`.cat-nota[data-cod="${p.codigo}"]`)?.value||"").trim();
+            if (notaIMG) {
+                ctx.fillStyle="#888"; ctx.font="italic 11px 'Segoe UI',Arial";
+                const notaTxt = notaIMG.length>40?notaIMG.substring(0,37)+"…":notaIMG;
+                ctx.fillText(notaTxt,x+CW2/2,y+IH+82);
+            }
         }
 
         // Footer
@@ -2762,7 +2775,9 @@ async function generarLinkCatalogo() {
             prods: lista.map(p=>({
                 n: p.nombre||"—",
                 p: parseFloat(p.precio||0).toFixed(2),
-                i: p.foto||p.img||""
+                i: p.foto||p.img||"",
+                m: p.material||detectarMaterial(p.nombre)||"",
+                nota: (document.querySelector(`.cat-nota[data-cod="${p.codigo}"]`)?.value||"").trim()
             }))
         };
         const encoded=btoa(unescape(encodeURIComponent(JSON.stringify(data))));
@@ -2840,6 +2855,15 @@ function cerrarModalCatalogo() {
     document.getElementById("modal-catalogo").classList.remove("open");
 }
 
+function detectarMaterial(nombre) {
+    const n = (nombre || "").toLowerCase();
+    if (n.includes("oro laminado") || n.includes("plata 925 + oro")) return "Plata 925 + Oro Laminado";
+    if (n.includes("plata fina") || n.includes("plata 925"))         return "Plata Fina 925";
+    if (n.includes("acero"))                                          return "Acero 316L";
+    if (n.includes("reloj"))                                          return "Reloj";
+    return "";
+}
+
 function filtrarParaCatalogo() {
     const talla  = document.getElementById("cat-talla").value;
     const genero = document.getElementById("cat-genero").value;
@@ -2897,14 +2921,20 @@ function filtrarParaCatalogo() {
         } catch(_) {}
 
         const img = p.foto || p.img || "";
-        return `<label style="display:flex;align-items:center;gap:10px;padding:9px 10px;background:#fff;border-radius:7px;border:1px solid var(--borde);margin-bottom:6px;cursor:pointer;">
-            <input type="checkbox" class="cat-chk" data-cod="${p.codigo}" style="width:16px;height:16px;accent-color:var(--azul);flex-shrink:0;" checked>
-            ${img ? `<img src="${img}" style="width:46px;height:46px;object-fit:cover;border-radius:6px;flex-shrink:0;" onerror="this.style.display='none'">` : ""}
-            <div style="flex:1;min-width:0;">
-                <div style="font-weight:700;font-size:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${p.nombre || "—"}</div>
-                <div style="font-size:12px;color:#888;">$${parseFloat(p.precio || 0).toFixed(2)}${stockLabel ? " · " + stockLabel : ""}</div>
-            </div>
-        </label>`;
+        const mat = p.material || detectarMaterial(p.nombre);
+        return `<div style="margin-bottom:8px;">
+            <label style="display:flex;align-items:center;gap:10px;padding:9px 10px;background:#fff;border-radius:7px 7px 0 0;border:1px solid var(--borde);border-bottom:none;cursor:pointer;">
+                <input type="checkbox" class="cat-chk" data-cod="${p.codigo}" style="width:16px;height:16px;accent-color:var(--azul);flex-shrink:0;" checked>
+                ${img ? `<img src="${img}" style="width:46px;height:46px;object-fit:cover;border-radius:6px;flex-shrink:0;" onerror="this.style.display='none'">` : ""}
+                <div style="flex:1;min-width:0;">
+                    <div style="font-weight:700;font-size:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${p.nombre || "—"}</div>
+                    <div style="font-size:12px;color:#888;">$${parseFloat(p.precio || 0).toFixed(2)}${mat ? ' · <span style="color:#7c3aed;">'+mat+'</span>' : ""}${stockLabel ? " · " + stockLabel : ""}</div>
+                </div>
+            </label>
+            <input type="text" class="cat-nota" data-cod="${p.codigo}"
+                placeholder="Nota para el cliente (ej: disponible en plata y dorado)..."
+                style="width:100%;padding:7px 10px;border:1px solid var(--borde);border-radius:0 0 7px 7px;font-size:12px;background:#fffef0;font-family:inherit;">
+        </div>`;
     }).join("");
 }
 
@@ -2953,7 +2983,7 @@ async function generarPDFCatalogo() {
         const cols = 2;
         const colW = (PW - mg * 2 - gap * (cols - 1)) / cols;   // ~85.5 mm
         const imgH = 52;
-        const cardH = imgH + 22;
+        const cardH = imgH + 32;
 
         // ── Encabezado ──
         doc.setFillColor(17, 17, 17);
@@ -3015,11 +3045,30 @@ async function generarPDFCatalogo() {
             const lineas = doc.splitTextToSize(p.nombre || "—", colW - 6);
             doc.text(lineas[0], x + colW / 2, y + imgH + 7, { align: "center" });
 
+            // Material
+            const matPDF = p.material || detectarMaterial(p.nombre) || "";
+            if (matPDF) {
+                doc.setFont("helvetica", "bold");
+                doc.setFontSize(6.5);
+                doc.setTextColor(124, 58, 237);
+                doc.text(matPDF, x + colW / 2, y + imgH + 14, { align: "center" });
+            }
+
             // Precio
             doc.setFont("helvetica", "bold");
             doc.setFontSize(9);
             doc.setTextColor(0, 150, 200);
-            doc.text(`$${parseFloat(p.precio || 0).toFixed(2)}`, x + colW / 2, y + imgH + 15, { align: "center" });
+            doc.text(`$${parseFloat(p.precio || 0).toFixed(2)}`, x + colW / 2, y + imgH + 22, { align: "center" });
+
+            // Nota
+            const notaPDF = (document.querySelector(`.cat-nota[data-cod="${p.codigo}"]`)?.value || "").trim();
+            if (notaPDF) {
+                doc.setFont("helvetica", "italic");
+                doc.setFontSize(6.5);
+                doc.setTextColor(120, 120, 120);
+                const notaLine = doc.splitTextToSize(notaPDF, colW - 6)[0];
+                doc.text(notaLine, x + colW / 2, y + imgH + 29, { align: "center" });
+            }
 
             col++;
             if (col === cols) {
