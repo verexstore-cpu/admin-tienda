@@ -260,25 +260,30 @@
 
     /* ── Arranque ── */
 
-    if(!c){
-        document.getElementById("app").innerHTML='<div style="text-align:center;padding:60px;color:#888;">Link inválido.</div>';
-        return;
-    }
     let data;
-    try{
-        // Try LZ-string URL-safe (new), then base64 LZ-string, then plain base64 (legacy)
-        const lzUri = LZString.decompressFromEncodedURIComponent(c);
-        if(lzUri){ data=JSON.parse(lzUri); }
-        else {
-            const raw=decodeURIComponent(c);
-            const lzB64=LZString.decompressFromBase64(raw);
-            data=lzB64 ? JSON.parse(lzB64) : JSON.parse(decodeURIComponent(escape(atob(raw))));
+    // KV route: data injected server-side
+    if(window.__CATALOG_DATA__){
+        data = window.__CATALOG_DATA__;
+    } else {
+        if(!c){
+            document.getElementById("app").innerHTML='<div style="text-align:center;padding:60px;color:#888;">Link inválido.</div>';
+            return;
         }
-    } catch(e){
-        document.getElementById("app").innerHTML='<div style="text-align:center;padding:60px;color:#888;">Link inválido o corrupto.</div>';
-        return;
+        try{
+            // Try LZ-string URL-safe (new), then base64 LZ-string, then plain base64 (legacy)
+            const lzUri = LZString.decompressFromEncodedURIComponent(c);
+            if(lzUri){ data=JSON.parse(lzUri); }
+            else {
+                const raw=decodeURIComponent(c);
+                const lzB64=LZString.decompressFromBase64(raw);
+                data=lzB64 ? JSON.parse(lzB64) : JSON.parse(decodeURIComponent(escape(atob(raw))));
+            }
+        } catch(e){
+            document.getElementById("app").innerHTML='<div style="text-align:center;padding:60px;color:#888;">Link inválido o corrupto.</div>';
+            return;
+        }
     }
-    if(Date.now()>data.expiry) showExpired(data.nombre, data.wa);
+    if(data.expiry && Date.now()>data.expiry) showExpired(data.nombre, data.wa);
     else render(data);
 })();
 </script>

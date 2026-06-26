@@ -2761,8 +2761,8 @@ async function generarLinkCatalogo() {
     const codsSel=[...document.querySelectorAll(".cat-chk:checked")].map(c=>c.dataset.cod);
     if(!codsSel.length) return toast("⚠️ Selecciona al menos un producto","#f97316");
 
-    const listaRaw =_catFiltrada.filter(p=>codsSel.includes(p.codigo));
-    const lista    =agruparParaCatalogo(listaRaw);
+    // _catFiltrada already has grouped AN products — no second grouping needed
+    const lista = _catFiltrada.filter(p=>codsSel.includes(p._codigos?.[0]||p.codigo));
     const nombre =document.getElementById("cat-nombre").value.trim();
     const talla  =document.getElementById("cat-talla").value;
     const dias   =parseInt(document.getElementById("cat-validez").value)||3;
@@ -2781,30 +2781,37 @@ async function generarLinkCatalogo() {
                 i: p.foto||p.img||"",
                 m: p.material||detectarMaterial(p.nombre)||"",
                 cat: p._catKey||getCatKey(p.codigo),
-                sizes: p._sizes||[],
+                sizes:  p._sizes||[],
+                sizesD: p._sizesD||[],
+                sizesH: p._sizesH||[],
+                par:    p._esPareja||false,
                 nota: (document.querySelector(`.cat-nota[data-cod="${p._codigos?.[0]||p.codigo}"]`)?.value||"").trim()
             }))
         };
-        const encoded=LZString.compressToEncodedURIComponent(JSON.stringify(data));
-        const fullUrl=`${location.origin}/catalogo.html?c=${encoded}`;
-
-        let finalUrl=fullUrl;
-        try {
-            const ctrl=new AbortController();
-            const timer=setTimeout(()=>ctrl.abort(),6000);
-            const r=await fetch(`/shorten?url=${encodeURIComponent(fullUrl)}`,{signal:ctrl.signal});
-            clearTimeout(timer);
-            if(r.ok){ const s=(await r.text()).trim(); if(s.startsWith("http")) finalUrl=s; }
-        } catch(_){}
 
         if(wa) localStorage.setItem("verex-wa", wa);
-        try { await navigator.clipboard.writeText(finalUrl); } catch(_){}
 
+        // Save to KV and get short URL
+        const saveRes = await fetch("/save-catalog", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(data)
+        });
+
+        let finalUrl;
+        if(saveRes.ok){
+            const { url } = await saveRes.json();
+            finalUrl = location.origin + url;
+        } else {
+            throw new Error("Error al guardar catálogo");
+        }
+
+        try { await navigator.clipboard.writeText(finalUrl); } catch(_){}
         document.getElementById("cat-link-out").textContent=finalUrl;
         document.getElementById("cat-link-box").style.display="block";
         toast("🔗 Link listo — cópialo o compártelo por WhatsApp","#22c55e");
 
-    } catch(e){ console.error(e); toast("❌ Error al generar link","#ef4444"); }
+    } catch(e){ console.error(e); toast("❌ Error al generar link: "+e.message,"#ef4444"); }
     finally { btn.textContent="🔗 Link"; btn.disabled=false; }
 }
 
