@@ -2979,10 +2979,11 @@ function filtrarParaCatalogo() {
         ? productos.filter(p => cats.includes(getCatKey(p.codigo)))
         : [...productos];
 
-    // Filtro por prefijo de código (texto libre: C, D, U, T, H…)
-    const pfxTxt = (document.getElementById("cat-prefijo-txt")?.value||"").trim().toUpperCase();
-    if (hasAN && pfxTxt) {
-        lista = lista.filter(p => getCatKey(p.codigo) !== "AN" || getPrefijoProd(p) === pfxTxt);
+    // Filtro por prefijo — acepta varias letras separadas por coma: "C, D, U"
+    const pfxTxt = (document.getElementById("cat-prefijo-txt")?.value||"").toUpperCase();
+    const pfxSel = pfxTxt.split(/[,\s]+/).map(s=>s.trim()).filter(Boolean);
+    if (hasAN && pfxSel.length) {
+        lista = lista.filter(p => getCatKey(p.codigo) !== "AN" || pfxSel.includes(getPrefijoProd(p)));
     }
 
     const tipoAN = document.getElementById("cat-tipo-an").value;
@@ -3271,11 +3272,11 @@ async function generarPDFCatalogo() {
                 <label>Buscar por prefijo del código</label>
                 <div style="position:relative;">
                     <span style="position:absolute;left:10px;top:50%;transform:translateY(-50%);font-size:15px;pointer-events:none;">🔍</span>
-                    <input type="text" id="cat-prefijo-txt" placeholder="Ej: U, C, D, T, H…"
+                    <input type="text" id="cat-prefijo-txt" placeholder="Ej: C, D, U  (varias separadas por coma)"
                         oninput="filtrarParaCatalogo()"
                         style="padding-left:34px;width:100%;box-sizing:border-box;font-size:13px;">
                 </div>
-                <div style="font-size:11px;color:#888;margin-top:3px;">C=Caballero &nbsp;·&nbsp; D=Dama &nbsp;·&nbsp; T=Talla &nbsp;·&nbsp; U=Único/Alianza &nbsp;·&nbsp; H=Hombre</div>
+                <div style="font-size:11px;color:#888;margin-top:3px;">C=Caballero &nbsp;·&nbsp; D=Dama &nbsp;·&nbsp; T=Talla &nbsp;·&nbsp; U=Único/Alianza &nbsp;·&nbsp; H=Hombre &nbsp;·&nbsp; Puedes poner varias: <strong>C, D</strong></div>
             </div>
             <div style="margin-bottom:10px;">
                 <label>Tipo de anillo</label>
