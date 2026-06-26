@@ -7,6 +7,7 @@
     <title>VEREX | Admin</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/lz-string@1.5.0/libs/lz-string.min.js"></script>
     <style>
         :root {
             --azul:#00BFFF; --azul-d:#009ACD; --fondo:#f0f2f5;
@@ -2780,8 +2781,8 @@ async function generarLinkCatalogo() {
                 nota: (document.querySelector(`.cat-nota[data-cod="${p.codigo}"]`)?.value||"").trim()
             }))
         };
-        const encoded=btoa(unescape(encodeURIComponent(JSON.stringify(data))));
-        const fullUrl=`${location.origin}/catalogo.html?c=${encoded}`;
+        const encoded=LZString.compressToBase64(JSON.stringify(data));
+        const fullUrl=`${location.origin}/catalogo.html?c=${encodeURIComponent(encoded)}`;
 
         let finalUrl=fullUrl;
         try {
