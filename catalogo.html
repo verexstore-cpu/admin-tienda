@@ -266,10 +266,14 @@
     }
     let data;
     try{
-        // Try LZ-string (new compressed format) first, fall back to old plain base64
-        const raw = decodeURIComponent(c);
-        const lz  = LZString.decompressFromBase64(raw);
-        data = lz ? JSON.parse(lz) : JSON.parse(decodeURIComponent(escape(atob(raw))));
+        // Try LZ-string URL-safe (new), then base64 LZ-string, then plain base64 (legacy)
+        const lzUri = LZString.decompressFromEncodedURIComponent(c);
+        if(lzUri){ data=JSON.parse(lzUri); }
+        else {
+            const raw=decodeURIComponent(c);
+            const lzB64=LZString.decompressFromBase64(raw);
+            data=lzB64 ? JSON.parse(lzB64) : JSON.parse(decodeURIComponent(escape(atob(raw))));
+        }
     } catch(e){
         document.getElementById("app").innerHTML='<div style="text-align:center;padding:60px;color:#888;">Link inválido o corrupto.</div>';
         return;
