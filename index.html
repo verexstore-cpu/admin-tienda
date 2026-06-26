@@ -3034,8 +3034,11 @@ function agruparParaCatalogo(lista) {
 
         if (dama && cab) {
             if (dama.codigo !== cab.codigo) {
-                // Two distinct products: sum their prices
+                // Two distinct products (e.g. separate dama + caballero entries): sum prices
                 g.precio = String(parseFloat(dama.precio||0) + parseFloat(cab.precio||0));
+            } else {
+                // Same product with D and H/C keys: double the per-ring price for the pair
+                g.precio = String(parseFloat(dama.precio||0) * 2);
             }
             g._esPareja = true;
         }
