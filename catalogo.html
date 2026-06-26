@@ -261,12 +261,7 @@
     function confirmarTalla(){
         const p = _prods[_szIdx];
         const esPareja = ES_PAR.test(p.n) || p.par;
-        // p.par=true → precio ya fue sumado (dama+caballero) en el admin
-        // p.par=false pero es par → precio es de 1 anillo, duplicar cuando cliente elige ambas tallas
-        const precioFinal = (esPareja && !p.par && _szD && _szH)
-            ? (parseFloat(p.p) * 2).toFixed(2)
-            : p.p;
-        const precioLabel = esPareja ? `Precio por par: $${precioFinal}` : `Precio: $${p.p}`;
+        const precioLabel = esPareja ? `Precio por par: $${p.p}` : `Precio: $${p.p}`;
         const msg = esPareja
             ? `Hola, me interesan estas argollas del catálogo VEREX:\n\n${p.n}\n${precioLabel}\nTalla dama: T${_szD}\nTalla caballero: T${_szH}`
             : `Hola, me interesa este producto del catálogo VEREX:\n\n${p.n}\n${precioLabel}\nTalla: T${_szD}`;
