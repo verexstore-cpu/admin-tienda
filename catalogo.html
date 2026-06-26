@@ -170,7 +170,7 @@
                     <div class="card-name">${esc(p.n)}</div>
                     ${p.m?`<div class="card-material">${esc(p.m)}</div>`:''}
                     ${sizesHtml}
-                    <div class="card-price">$${esc(p.p)}</div>
+                    <div class="card-price">$${esc(p.p)}${p.par?`<span style="display:block;font-size:10px;font-weight:500;color:#7c3aed;margin-top:2px;">Precio por par</span>`:""}</div>
                     ${p.nota?`<div class="card-nota">${esc(p.nota)}</div>`:''}
                 </div>
                 <div class="card-footer">
@@ -197,7 +197,8 @@
 
         // Productos que no son anillos: ir directo a WhatsApp sin pedir talla
         if(p.cat && p.cat !== "AN"){
-            const msg=`Hola, me interesa este producto del catálogo VEREX:\n\n${p.n}\nPrecio: $${p.p}`;
+            const precioLabel = p.par ? `Precio por par: $${p.p}` : `Precio: $${p.p}`;
+            const msg=`Hola, me interesa este producto del catálogo VEREX:\n\n${p.n}\n${precioLabel}`;
             window.open(`https://wa.me/${_waNum}?text=${encodeURIComponent(msg)}`,"_blank");
             return;
         }
@@ -242,9 +243,10 @@
     function confirmarTalla(){
         const p = _prods[_szIdx];
         const esPareja = ES_PAR.test(p.n);
+        const precioLabel = p.par ? `Precio por par: $${p.p}` : `Precio: $${p.p}`;
         const msg = esPareja
-            ? `Hola, me interesan estas argollas del catálogo VEREX:\n\n${p.n}\nPrecio: $${p.p}\nTalla dama: T${_szD}\nTalla caballero: T${_szH}`
-            : `Hola, me interesa este producto del catálogo VEREX:\n\n${p.n}\nPrecio: $${p.p}\nTalla: T${_szD}`;
+            ? `Hola, me interesan estas argollas del catálogo VEREX:\n\n${p.n}\n${precioLabel}\nTalla dama: T${_szD}\nTalla caballero: T${_szH}`
+            : `Hola, me interesa este producto del catálogo VEREX:\n\n${p.n}\n${precioLabel}\nTalla: T${_szD}`;
         cerrarTallas();
         window.open(`https://wa.me/${_waNum}?text=${encodeURIComponent(msg)}`,"_blank");
     }
