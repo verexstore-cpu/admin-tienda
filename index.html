@@ -2892,15 +2892,17 @@ function agruparParaCatalogo(lista) {
 const PFX_LABEL = { C:"Caballero", D:"Dama", T:"Talla", U:"Único", H:"Hombre" };
 
 function getPrefijoProd(p) {
-    // 1) Palabras clave en el nombre — tienen prioridad
+    // 1) Código que empieza con U → Alianza/Único
+    if (/^U/i.test(p.codigo||"")) return "U";
+    // 2) Palabras clave en el nombre
     const n = (p.nombre||"").toLowerCase();
-    if (/\bdama\b|\bmujer\b/.test(n))       return "D";
-    if (/\bcaballero\b|\bhombre\b/.test(n)) return "C";
-    if (/\bún[io]co\b|\bunisex\b/.test(n))  return "U";
-    // 2) Letra explícita antes de número en el código: C9, D6, H9 → C/D/H
+    if (/\bdama\b|\bmujer\b/.test(n))              return "D";
+    if (/\bcaballero\b|\bhombre\b/.test(n))        return "C";
+    if (/\bún[io]co\b|\bunico\b|\bunisex\b/.test(n)) return "U";
+    // 3) Letra C/D/H/U antes de número en el código: C9, D6
     const mCod = (p.codigo||"").match(/([CDHU])\d/i);
     if (mCod) return mCod[1].toUpperCase();
-    // 3) Default — anillo de talla estándar
+    // 4) Default — talla estándar
     return "T";
 }
 
