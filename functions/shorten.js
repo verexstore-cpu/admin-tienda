@@ -11,10 +11,13 @@ export async function onRequest(context) {
     try {
         const ctrl = new AbortController();
         const timer = setTimeout(() => ctrl.abort(), 5000);
-        const res = await fetch(
-            `https://tinyurl.com/api-create.php?url=${encodeURIComponent(target)}`,
-            { signal: ctrl.signal }
-        );
+        // POST avoids GET URL length limits (TinyURL rejects very long query strings)
+        const res = await fetch("https://tinyurl.com/api-create.php", {
+            method: "POST",
+            headers: { "Content-Type": "application/x-www-form-urlencoded" },
+            body: `url=${encodeURIComponent(target)}`,
+            signal: ctrl.signal
+        });
         clearTimeout(timer);
         const short = (await res.text()).trim();
         if (short.startsWith("http")) {
@@ -22,6 +25,6 @@ export async function onRequest(context) {
         }
         throw new Error("Bad response");
     } catch (e) {
-        return new Response(target, { headers });
+        return new Response("", { status: 502, headers });
     }
 }
