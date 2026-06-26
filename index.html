@@ -2945,7 +2945,7 @@ function filtrarParaCatalogo() {
         return;
     }
 
-    cont.innerHTML = lista.map(p => {
+    const cards = lista.map(p => {
         let stockLabel = "";
         try {
             const s = JSON.parse(p.caracteristicas || "{}");
@@ -2954,30 +2954,39 @@ function filtrarParaCatalogo() {
                 if (esPareja) {
                     const d = s["D" + talla] || 0;
                     const h = s["H" + talla] || 0;
-                    stockLabel = [d > 0 ? `Dama: ${d}` : "", h > 0 ? `Cab: ${h}` : ""].filter(Boolean).join(" | ");
+                    stockLabel = [d > 0 ? `D:${d}` : "", h > 0 ? `C:${h}` : ""].filter(Boolean).join(" ");
                 } else {
                     const q = s[talla] || 0;
-                    stockLabel = q > 0 ? `Stock: ${q}` : "";
+                    stockLabel = q > 0 ? `Stock:${q}` : "";
                 }
             }
         } catch(_) {}
 
         const img = p.foto || p.img || "";
         const mat = p.material || detectarMaterial(p.nombre);
-        return `<div style="margin-bottom:8px;">
-            <label style="display:flex;align-items:center;gap:10px;padding:9px 10px;background:#fff;border-radius:7px 7px 0 0;border:1px solid var(--borde);border-bottom:none;cursor:pointer;">
-                <input type="checkbox" class="cat-chk" data-cod="${p.codigo}" style="width:16px;height:16px;accent-color:var(--azul);flex-shrink:0;" checked>
-                ${img ? `<img src="${img}" style="width:46px;height:46px;object-fit:cover;border-radius:6px;flex-shrink:0;" onerror="this.style.display='none'">` : ""}
-                <div style="flex:1;min-width:0;">
-                    <div style="font-weight:700;font-size:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${p.nombre || "—"}</div>
-                    <div style="font-size:12px;color:#888;">$${parseFloat(p.precio || 0).toFixed(2)}${mat ? ' · <span style="color:#7c3aed;">'+mat+'</span>' : ""}${stockLabel ? " · " + stockLabel : ""}</div>
+        return `<div style="background:#fff;border-radius:8px;border:1px solid var(--borde);overflow:hidden;display:flex;flex-direction:column;">
+            <label style="cursor:pointer;display:block;flex:1;">
+                <div style="position:relative;aspect-ratio:1/1;background:#f5f5f5;">
+                    ${img
+                        ? `<img src="${img}" style="width:100%;height:100%;object-fit:cover;display:block;" onerror="this.style.display='none'">`
+                        : `<div style="width:100%;height:100%;display:flex;align-items:center;justify-content:center;font-size:28px;color:#ccc;">💍</div>`
+                    }
+                    <input type="checkbox" class="cat-chk" data-cod="${p.codigo}"
+                        style="position:absolute;top:5px;left:5px;width:18px;height:18px;accent-color:var(--azul);cursor:pointer;" checked>
+                </div>
+                <div style="padding:6px 7px;">
+                    <div style="font-weight:700;font-size:11px;line-height:1.3;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;color:#1a1a1a;">${p.nombre || "—"}</div>
+                    <div style="font-size:11px;font-weight:800;color:#00BFFF;margin-top:3px;">$${parseFloat(p.precio || 0).toFixed(2)}</div>
+                    ${mat ? `<div style="font-size:10px;color:#7c3aed;font-weight:600;">${mat}</div>` : ""}
+                    ${stockLabel ? `<div style="font-size:10px;color:#0277bd;background:#e8f4fd;padding:1px 5px;border-radius:4px;display:inline-block;margin-top:2px;">${stockLabel}</div>` : ""}
                 </div>
             </label>
             <input type="text" class="cat-nota" data-cod="${p.codigo}"
-                placeholder="Nota para el cliente (ej: disponible en plata y dorado)..."
-                style="width:100%;padding:7px 10px;border:1px solid var(--borde);border-radius:0 0 7px 7px;font-size:12px;background:#fffef0;font-family:inherit;">
+                placeholder="Nota…"
+                style="width:100%;padding:5px 7px;border:none;border-top:1px solid var(--borde);font-size:11px;background:#fffef0;font-family:inherit;box-sizing:border-box;">
         </div>`;
     }).join("");
+    cont.innerHTML = `<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;">${cards}</div>`;
 }
 
 function seleccionarTodosCatalogo(sel) {
@@ -3200,7 +3209,7 @@ async function generarPDFCatalogo() {
         </div>
 
         <div id="cat-info" style="font-size:12px;color:#888;margin-bottom:8px;"></div>
-        <div id="cat-lista" style="max-height:260px;overflow-y:auto;border:1px solid var(--borde);border-radius:8px;padding:8px;background:var(--gris);"></div>
+        <div id="cat-lista" style="max-height:380px;overflow-y:auto;border:1px solid var(--borde);border-radius:8px;padding:8px;background:var(--gris);"></div>
 
         <div style="display:flex;gap:8px;margin-top:10px;margin-bottom:12px;">
             <button class="btn bg" style="flex:1;font-size:12px;" onclick="seleccionarTodosCatalogo(true)">✅ Todos</button>
