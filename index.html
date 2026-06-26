@@ -2892,18 +2892,16 @@ function agruparParaCatalogo(lista) {
 const PFX_LABEL = { C:"Caballero", D:"Dama", T:"Talla", U:"Único", H:"Hombre" };
 
 function getPrefijoProd(p) {
-    // 1) Letra en el código: AN001C9 → C
-    const mCod = (p.codigo||"").match(/([TCDHU])\d/i);
-    if (mCod) return mCod[1].toUpperCase();
-    // 2) Letra al final del nombre: "Anillo Endless C9" → C
-    const mNom = (p.nombre||"").match(/\b([TCDHU])(\d+(?:\.\d+)?)\s*$/i);
-    if (mNom) return mNom[1].toUpperCase();
-    // 3) Palabras clave en el nombre
+    // 1) Palabras clave en el nombre — tienen prioridad
     const n = (p.nombre||"").toLowerCase();
     if (/\bdama\b|\bmujer\b/.test(n))       return "D";
     if (/\bcaballero\b|\bhombre\b/.test(n)) return "C";
     if (/\bún[io]co\b|\bunisex\b/.test(n))  return "U";
-    return "T"; // default para anillos sin distinción
+    // 2) Letra explícita antes de número en el código: C9, D6, H9 → C/D/H
+    const mCod = (p.codigo||"").match(/([CDHU])\d/i);
+    if (mCod) return mCod[1].toUpperCase();
+    // 3) Default — anillo de talla estándar
+    return "T";
 }
 
 function poblarPrefijoCod() {
