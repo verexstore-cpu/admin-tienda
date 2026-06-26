@@ -2761,8 +2761,8 @@ async function generarLinkCatalogo() {
     const codsSel=[...document.querySelectorAll(".cat-chk:checked")].map(c=>c.dataset.cod);
     if(!codsSel.length) return toast("⚠️ Selecciona al menos un producto","#f97316");
 
-    const listaRaw =_catFiltrada.filter(p=>codsSel.includes(p.codigo));
-    const lista    =agruparParaCatalogo(listaRaw);
+    // Mismo filtro que PDF: usar _catFiltrada directamente, ya viene agrupado
+    const lista  =_catFiltrada.filter(p=>codsSel.includes(p.codigo));
     const nombre =document.getElementById("cat-nombre").value.trim();
     const talla  =document.getElementById("cat-talla").value;
     const dias   =parseInt(document.getElementById("cat-validez").value)||3;
