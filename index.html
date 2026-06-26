@@ -2906,29 +2906,6 @@ function getPrefijoProd(p) {
     return "T";
 }
 
-function poblarPrefijoCod() {
-    const letras = [...new Set(
-        productos
-            .filter(p => getCatKey(p.codigo) === "AN")
-            .map(getPrefijoProd)
-            .filter(Boolean)
-    )].sort();
-    const cont = document.getElementById("cat-prefijo-pills");
-    cont.innerHTML = letras.map(l => `
-        <label style="cursor:pointer;display:inline-flex;align-items:center;gap:5px;padding:5px 12px;border-radius:20px;border:2px solid var(--borde);background:#fff;font-size:12px;font-weight:600;user-select:none;transition:background .15s,border-color .15s;">
-            <input type="checkbox" class="cat-pfx-chk" value="${l}" onchange="onPrefijoCodChange()" style="accent-color:var(--azul);cursor:pointer;width:14px;height:14px;">
-            ${l} – ${PFX_LABEL[l]||l}
-        </label>`).join("");
-}
-
-function onPrefijoCodChange() {
-    document.querySelectorAll(".cat-pfx-chk").forEach(chk => {
-        const lbl = chk.closest("label");
-        if (chk.checked) { lbl.style.background="var(--azul)"; lbl.style.color="#fff"; lbl.style.borderColor="var(--azul)"; }
-        else             { lbl.style.background="#fff";        lbl.style.color="";    lbl.style.borderColor="var(--borde)"; }
-    });
-    filtrarParaCatalogo();
-}
 
 function poblarCategorias() {
     const cont = document.getElementById("cat-categoria-pills");
@@ -2946,14 +2923,11 @@ function onCategoriaChange() {
     const hasAN = cats.length === 0 || cats.includes("AN");
     document.getElementById("cat-sec-talla").style.display = hasAN ? "block" : "none";
     if (!hasAN) {
-        document.getElementById("cat-tipo-an").value = "";
-        document.getElementById("cat-talla").value   = "";
-        document.getElementById("cat-genero").value  = "";
-        document.querySelectorAll(".cat-pfx-chk").forEach(c => {
-            c.checked = false;
-            const lbl = c.closest("label");
-            lbl.style.background = "#fff"; lbl.style.color = ""; lbl.style.borderColor = "var(--borde)";
-        });
+        document.getElementById("cat-tipo-an").value  = "";
+        document.getElementById("cat-talla").value    = "";
+        document.getElementById("cat-genero").value   = "";
+        const pf = document.getElementById("cat-prefijo-txt");
+        if (pf) pf.value = "";
     }
     // Highlight selected pills
     document.querySelectorAll(".cat-cat-chk").forEach(chk => {
@@ -2974,7 +2948,8 @@ function abrirModalCatalogo() {
     document.getElementById("cat-sec-talla").style.display = "none";
     document.getElementById("cat-link-box").style.display  = "none";
     poblarCategorias();
-    poblarPrefijoCod();
+    const pf = document.getElementById("cat-prefijo-txt");
+    if (pf) pf.value = "";
     filtrarParaCatalogo();
 }
 
@@ -3004,10 +2979,10 @@ function filtrarParaCatalogo() {
         ? productos.filter(p => cats.includes(getCatKey(p.codigo)))
         : [...productos];
 
-    // Filtro por prefijo (C, D, T, U, H) — detectado del código o del nombre
-    const pfxSel = [...document.querySelectorAll(".cat-pfx-chk:checked")].map(c => c.value);
-    if (hasAN && pfxSel.length) {
-        lista = lista.filter(p => getCatKey(p.codigo) !== "AN" || pfxSel.includes(getPrefijoProd(p)));
+    // Filtro por prefijo de código (texto libre: C, D, U, T, H…)
+    const pfxTxt = (document.getElementById("cat-prefijo-txt")?.value||"").trim().toUpperCase();
+    if (hasAN && pfxTxt) {
+        lista = lista.filter(p => getCatKey(p.codigo) !== "AN" || getPrefijoProd(p) === pfxTxt);
     }
 
     const tipoAN = document.getElementById("cat-tipo-an").value;
@@ -3293,8 +3268,14 @@ async function generarPDFCatalogo() {
 
         <div id="cat-sec-talla" style="display:none;">
             <div style="margin-bottom:10px;">
-                <label>Prefijo del código (C=Caballero, D=Dama, T=Talla, U=Único, H=Hombre)</label>
-                <div id="cat-prefijo-pills" style="display:flex;flex-wrap:wrap;gap:6px;margin-top:6px;"></div>
+                <label>Buscar por prefijo del código</label>
+                <div style="position:relative;">
+                    <span style="position:absolute;left:10px;top:50%;transform:translateY(-50%);font-size:15px;pointer-events:none;">🔍</span>
+                    <input type="text" id="cat-prefijo-txt" placeholder="Ej: U, C, D, T, H…"
+                        oninput="filtrarParaCatalogo()"
+                        style="padding-left:34px;width:100%;box-sizing:border-box;font-size:13px;">
+                </div>
+                <div style="font-size:11px;color:#888;margin-top:3px;">C=Caballero &nbsp;·&nbsp; D=Dama &nbsp;·&nbsp; T=Talla &nbsp;·&nbsp; U=Único/Alianza &nbsp;·&nbsp; H=Hombre</div>
             </div>
             <div style="margin-bottom:10px;">
                 <label>Tipo de anillo</label>
