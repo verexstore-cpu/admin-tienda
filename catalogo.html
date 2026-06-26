@@ -177,7 +177,7 @@
                     <div class="card-name">${esc(p.n)}</div>
                     ${p.m?`<div class="card-material">${esc(p.m)}</div>`:''}
                     ${sizesHtml}
-                    <div class="card-price">$${esc(p.p)}${p.par?`<span style="display:block;font-size:10px;font-weight:500;color:#7c3aed;margin-top:2px;">Precio por par</span>`:""}</div>
+                    <div class="card-price">$${esc(p.p)}${p.par?`<span style="display:block;font-size:10px;font-weight:500;color:#7c3aed;margin-top:2px;">Precio individual / pieza</span>`:""}</div>
                     ${p.nota?`<div class="card-nota">${esc(p.nota)}</div>`:''}
                 </div>
                 <div class="card-footer">
@@ -210,35 +210,37 @@
         const p = _prods[i];
         if(!p) return;
 
-        // Productos que no son anillos: ir directo a WhatsApp sin pedir talla
+        const esPareja = ES_PAR.test(p.n) || p.par;
+
+        // Argollas de par y productos sin talla: ir directo a WhatsApp
+        if(esPareja){
+            const sizesInfo = [
+                p.sizesD?.length ? `Dama: ${p.sizesD.map(s=>'T'+s).join(', ')}` : '',
+                p.sizesH?.length ? `Caballero: ${p.sizesH.map(s=>'T'+s).join(', ')}` : ''
+            ].filter(Boolean).join('\n');
+            const msg = `Hola, me interesan estas argollas del catálogo VEREX:\n\n${p.n}\nPrecio individual: $${p.p} por pieza\n${sizesInfo ? `\nTallas disponibles:\n${sizesInfo}\n` : ''}\n¿Me puede indicar qué tallas necesito para dama y caballero?`;
+            window.open(`https://wa.me/${_waNum}?text=${encodeURIComponent(msg)}`,"_blank");
+            return;
+        }
+
         if(p.cat && p.cat !== "AN"){
-            const precioLabel = p.par ? `Precio por par: $${p.p}` : `Precio: $${p.p}`;
-            const msg=`Hola, me interesa este producto del catálogo VEREX:\n\n${p.n}\n${precioLabel}`;
+            const msg=`Hola, me interesa este producto del catálogo VEREX:\n\n${p.n}\nPrecio: $${p.p}`;
             window.open(`https://wa.me/${_waNum}?text=${encodeURIComponent(msg)}`,"_blank");
             return;
         }
 
         _szIdx=i; _szD=""; _szH="";
-        const esPareja = ES_PAR.test(p.n) || p.par;
 
-        // Tallas específicas por género, o combinadas como fallback
-        const availD = (p.sizesD?.length ? p.sizesD : p.sizes?.length ? p.sizes : SIZES);
-        const availH = (p.sizesH?.length ? p.sizesH : p.sizes?.length ? p.sizes : SIZES);
+        const availD = (p.sizes?.length ? p.sizes : SIZES);
 
         document.getElementById("sz-title").textContent = p.n;
-        document.getElementById("sz-sub").textContent   = esPareja
-            ? "Selecciona las tallas del par"
-            : "¿Qué talla necesitas?";
-        document.getElementById("sz-lbl-d").textContent = esPareja ? "Talla dama" : "Tu talla";
-        document.getElementById("sz-sec-h").style.display = esPareja ? "block" : "none";
+        document.getElementById("sz-sub").textContent   = "¿Qué talla necesitas?";
+        document.getElementById("sz-lbl-d").textContent = "Tu talla";
+        document.getElementById("sz-sec-h").style.display = "none";
 
-        const mkGrid = (gridId, gen, sizes) => {
-            document.getElementById(gridId).innerHTML = sizes.map(sz=>
-                `<button class="sz-btn" onclick="selSz('${gen}','${sz}',this)">T${sz}</button>`
-            ).join("");
-        };
-        mkGrid("sz-grid-d","D", availD);
-        if(esPareja) mkGrid("sz-grid-h","H", availH);
+        document.getElementById("sz-grid-d").innerHTML = availD.map(sz=>
+            `<button class="sz-btn" onclick="selSz('D','${sz}',this)">T${sz}</button>`
+        ).join("");
 
         const btn = document.getElementById("sz-confirm");
         btn.disabled=true; btn.style.opacity=".5";
@@ -246,25 +248,16 @@
     }
 
     function selSz(gen, sz, el){
-        const cls    = gen==="D" ? "sel-d" : "sel-h";
-        const gridId = gen==="D" ? "sz-grid-d" : "sz-grid-h";
-        document.querySelectorAll(`#${gridId} .sz-btn`).forEach(b=>b.classList.remove(cls));
-        el.classList.add(cls);
-        if(gen==="D") _szD=sz; else _szH=sz;
-
-        const esPareja = ES_PAR.test(_prods[_szIdx].n);
-        const ok = esPareja ? (_szD && _szH) : !!_szD;
+        document.querySelectorAll("#sz-grid-d .sz-btn").forEach(b=>b.classList.remove("sel-d"));
+        el.classList.add("sel-d");
+        _szD = sz;
         const btn = document.getElementById("sz-confirm");
-        btn.disabled=!ok; btn.style.opacity=ok?"1":".5";
+        btn.disabled=false; btn.style.opacity="1";
     }
 
     function confirmarTalla(){
         const p = _prods[_szIdx];
-        const esPareja = ES_PAR.test(p.n) || p.par;
-        const precioLabel = esPareja ? `Precio por par: $${p.p}` : `Precio: $${p.p}`;
-        const msg = esPareja
-            ? `Hola, me interesan estas argollas del catálogo VEREX:\n\n${p.n}\n${precioLabel}\nTalla dama: T${_szD}\nTalla caballero: T${_szH}`
-            : `Hola, me interesa este producto del catálogo VEREX:\n\n${p.n}\n${precioLabel}\nTalla: T${_szD}`;
+        const msg = `Hola, me interesa este producto del catálogo VEREX:\n\n${p.n}\nPrecio: $${p.p}\nTalla: T${_szD}`;
         cerrarTallas();
         window.open(`https://wa.me/${_waNum}?text=${encodeURIComponent(msg)}`,"_blank");
     }
