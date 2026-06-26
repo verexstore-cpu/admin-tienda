@@ -17,9 +17,9 @@ export async function onRequest(context) {
     const catalogoRes = await fetch(catalogoUrl);
     let html = await catalogoRes.text();
 
-    // Inject data before </body>
+    // Inject data in <head> so it's available before body scripts run
     const injection = `<script>window.__CATALOG_DATA__ = ${raw};</script>`;
-    html = html.replace("</body>", injection + "</body>");
+    html = html.replace("</head>", injection + "</head>");
 
     return new Response(html, {
         headers: { "Content-Type": "text/html;charset=UTF-8" }
