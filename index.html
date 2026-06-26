@@ -2891,11 +2891,26 @@ function agruparParaCatalogo(lista) {
 
 const PFX_LABEL = { C:"Caballero", D:"Dama", T:"Talla", U:"Único", H:"Hombre" };
 
+function getPrefijoProd(p) {
+    // 1) Letra en el código: AN001C9 → C
+    const mCod = (p.codigo||"").match(/([TCDHU])\d/i);
+    if (mCod) return mCod[1].toUpperCase();
+    // 2) Letra al final del nombre: "Anillo Endless C9" → C
+    const mNom = (p.nombre||"").match(/\b([TCDHU])(\d+(?:\.\d+)?)\s*$/i);
+    if (mNom) return mNom[1].toUpperCase();
+    // 3) Palabras clave en el nombre
+    const n = (p.nombre||"").toLowerCase();
+    if (/\bdama\b|\bmujer\b/.test(n))       return "D";
+    if (/\bcaballero\b|\bhombre\b/.test(n)) return "C";
+    if (/\bún[io]co\b|\bunisex\b/.test(n))  return "U";
+    return "T"; // default para anillos sin distinción
+}
+
 function poblarPrefijoCod() {
     const letras = [...new Set(
         productos
             .filter(p => getCatKey(p.codigo) === "AN")
-            .map(p => { const m = (p.codigo||"").match(/([TCDHU])\d/i); return m ? m[1].toUpperCase() : null; })
+            .map(getPrefijoProd)
             .filter(Boolean)
     )].sort();
     const cont = document.getElementById("cat-prefijo-pills");
@@ -2989,14 +3004,10 @@ function filtrarParaCatalogo() {
         ? productos.filter(p => cats.includes(getCatKey(p.codigo)))
         : [...productos];
 
-    // Filtro por prefijo de código (C, D, T, U, H) — solo aplica a AN
+    // Filtro por prefijo (C, D, T, U, H) — detectado del código o del nombre
     const pfxSel = [...document.querySelectorAll(".cat-pfx-chk:checked")].map(c => c.value);
     if (hasAN && pfxSel.length) {
-        lista = lista.filter(p => {
-            if (getCatKey(p.codigo) !== "AN") return true;
-            const m = (p.codigo||"").match(/([TCDHU])\d/i);
-            return m && pfxSel.includes(m[1].toUpperCase());
-        });
+        lista = lista.filter(p => getCatKey(p.codigo) !== "AN" || pfxSel.includes(getPrefijoProd(p)));
     }
 
     const tipoAN = document.getElementById("cat-tipo-an").value;
