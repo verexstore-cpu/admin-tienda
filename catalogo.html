@@ -218,7 +218,7 @@
                 p.sizesD?.length ? `Dama: ${p.sizesD.map(s=>'T'+s).join(', ')}` : '',
                 p.sizesH?.length ? `Caballero: ${p.sizesH.map(s=>'T'+s).join(', ')}` : ''
             ].filter(Boolean).join('\n');
-            const msg = `Hola, me interesan estas argollas del catálogo VEREX:\n\n${p.n}\nPrecio individual: $${p.p} por pieza\n${sizesInfo ? `\nTallas disponibles:\n${sizesInfo}\n` : ''}\n¿Me puede indicar qué tallas necesito para dama y caballero?`;
+            const msg = `Hola, me interesan estas argollas del catálogo VEREX:\n\n${p.n}\nPrecio individual: $${p.p} por pieza\n${sizesInfo ? `\nTallas disponibles:\n${sizesInfo}\n` : ''}\n¿Qué tallas necesita para dama y caballero?`;
             window.open(`https://wa.me/${_waNum}?text=${encodeURIComponent(msg)}`,"_blank");
             return;
         }
