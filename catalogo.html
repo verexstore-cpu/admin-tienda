@@ -155,12 +155,19 @@
         if(talla) subParts.push(`Talla: <strong>${esc(talla)}</strong>`);
         const subHTML = subParts.join(" &nbsp;·&nbsp; ");
 
+        const szChip = sz => `<span style="padding:2px 7px;background:#e8f4fd;border-radius:5px;font-size:10px;font-weight:700;color:#0277bd;">T${sz}</span>`;
         const cards = _prods.map((p,i)=>{
-            const sizesHtml = p.cat==="AN" && p.sizes?.length
-                ? `<div style="display:flex;flex-wrap:wrap;gap:3px;justify-content:center;margin:5px 0;">${p.sizes.map(sz=>
-                    `<span style="padding:2px 7px;background:#e8f4fd;border-radius:5px;font-size:10px;font-weight:700;color:#0277bd;">T${sz}</span>`
-                  ).join("")}</div>`
-                : "";
+            let sizesHtml = "";
+            if (p.cat === "AN") {
+                if (p.par && (p.sizesD?.length || p.sizesH?.length)) {
+                    sizesHtml = `<div style="margin:5px 0;font-size:10px;line-height:1.8;">
+                        ${p.sizesD?.length ? `<div><span style="color:#9333ea;font-weight:700;">Dama:</span> ${p.sizesD.map(szChip).join(" ")}</div>` : ""}
+                        ${p.sizesH?.length ? `<div><span style="color:#2563eb;font-weight:700;">Caballero:</span> ${p.sizesH.map(szChip).join(" ")}</div>` : ""}
+                    </div>`;
+                } else if (p.sizes?.length) {
+                    sizesHtml = `<div style="display:flex;flex-wrap:wrap;gap:3px;justify-content:center;margin:5px 0;">${p.sizes.map(szChip).join("")}</div>`;
+                }
+            }
             return `
             <div class="card">
                 ${p.i
@@ -204,8 +211,11 @@
         }
 
         _szIdx=i; _szD=""; _szH="";
-        const esPareja   = ES_PAR.test(p.n);
-        const availSizes = p.sizes?.length ? p.sizes : SIZES;
+        const esPareja = ES_PAR.test(p.n) || p.par;
+
+        // Tallas específicas por género, o combinadas como fallback
+        const availD = (p.sizesD?.length ? p.sizesD : p.sizes?.length ? p.sizes : SIZES);
+        const availH = (p.sizesH?.length ? p.sizesH : p.sizes?.length ? p.sizes : SIZES);
 
         document.getElementById("sz-title").textContent = p.n;
         document.getElementById("sz-sub").textContent   = esPareja
@@ -214,13 +224,13 @@
         document.getElementById("sz-lbl-d").textContent = esPareja ? "Talla dama" : "Tu talla";
         document.getElementById("sz-sec-h").style.display = esPareja ? "block" : "none";
 
-        const mkGrid = (gridId, gen) => {
-            document.getElementById(gridId).innerHTML = availSizes.map(sz=>
+        const mkGrid = (gridId, gen, sizes) => {
+            document.getElementById(gridId).innerHTML = sizes.map(sz=>
                 `<button class="sz-btn" onclick="selSz('${gen}','${sz}',this)">T${sz}</button>`
             ).join("");
         };
-        mkGrid("sz-grid-d","D");
-        if(esPareja) mkGrid("sz-grid-h","H");
+        mkGrid("sz-grid-d","D", availD);
+        if(esPareja) mkGrid("sz-grid-h","H", availH);
 
         const btn = document.getElementById("sz-confirm");
         btn.disabled=true; btn.style.opacity=".5";

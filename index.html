@@ -2782,6 +2782,8 @@ async function generarLinkCatalogo() {
                 m: p.material||detectarMaterial(p.nombre)||"",
                 cat: p._catKey||getCatKey(p.codigo),
                 sizes: p._sizes||[],
+                sizesD: p._sizesD||[],
+                sizesH: p._sizesH||[],
                 par: p._esPareja||false,
                 nota: (document.querySelector(`.cat-nota[data-cod="${p._codigos?.[0]||p.codigo}"]`)?.value||"").trim()
             }))
@@ -2928,10 +2930,16 @@ function agruparParaCatalogo(lista) {
     const ES_DAMA_GRP = /\b(dama|mujer)\b/i;
     const ES_CAB_GRP  = /\b(caballero|hombre)\b/i;
 
+    const isDamaP = p => ES_DAMA_GRP.test(p.nombre||"") ||
+        (() => { try { return Object.keys(JSON.parse(p.caracteristicas||"{}")).some(k=>/^D\d/i.test(k)); } catch(_){return false;} })();
+    const isCabP  = p => ES_CAB_GRP.test(p.nombre||"") ||
+        (() => { try { return Object.keys(JSON.parse(p.caracteristicas||"{}")).some(k=>/^H\d/i.test(k)); } catch(_){return false;} })();
+
+    const addSz = (arr, sz) => { if (sz && !isNaN(parseFloat(sz)) && !arr.includes(sz)) arr.push(sz); };
+
     const map = new Map();
     lista.forEach(p => {
         const catKey = getCatKey(p.codigo);
-        // Strip trailing size suffix: T9 / C9 (Caballero) / D9 (Dama) / U9 / H9
         const baseNombre = catKey === "AN"
             ? (p.nombre || "")
                 .replace(/\s+[TCDHU]\d+(?:\.\d+)?\s*$/i, "")
@@ -2940,43 +2948,45 @@ function agruparParaCatalogo(lista) {
             : (p.nombre || "").trim();
         const key = catKey === "AN" ? baseNombre : (p.nombre||p.codigo);
         if (!map.has(key)) {
-            map.set(key, { ...p, nombre: baseNombre, _sizes: [], _codigos: [p.codigo], _catKey: catKey });
+            map.set(key, { ...p, nombre: baseNombre, _sizes: [], _sizesD: [], _sizesH: [], _codigos: [p.codigo], _catKey: catKey });
         }
         const g = map.get(key);
         if (!g._codigos.includes(p.codigo)) g._codigos.push(p.codigo);
-        // Collect sizes from caracteristicas JSON
+
+        // ── Tallas desde caracteristicas (D6→Dama, H9→Caballero, 9→estándar) ──
         let s = {};
         try { s = JSON.parse(p.caracteristicas || "{}"); } catch(_) {}
         Object.entries(s).forEach(([k, v]) => {
             if ((parseInt(v) || 0) > 0) {
-                const num = k.replace(/^[DH]/i, "");
-                if (!isNaN(parseFloat(num)) && !g._sizes.includes(num)) g._sizes.push(num);
+                if (/^D(\d)/i.test(k))      addSz(g._sizesD, k.replace(/^D/i,""));
+                else if (/^H(\d)/i.test(k)) addSz(g._sizesH, k.replace(/^H/i,""));
+                else                        addSz(g._sizes,  k);
             }
         });
-        // Extract size from code or name suffix: T9, C9, D9, H9, U9
-        const mCod = (p.codigo || "").match(/[TCDHU](\d+(?:\.\d+)?)$/i);
-        const mNom = (p.nombre || "").match(/[TCDHU](\d+(?:\.\d+)?)\s*$/i);
-        if (mCod && !g._sizes.includes(mCod[1])) g._sizes.push(mCod[1]);
-        if (mNom && !g._sizes.includes(mNom[1])) g._sizes.push(mNom[1]);
-    });
-    map.forEach(g => g._sizes.sort((a, b) => parseFloat(a) - parseFloat(b)));
 
-    // For pair rings, sum Dama + Caballero prices
+        // ── Talla desde sufijo de código o nombre ──
+        const mCod = (p.codigo||"").match(/([TCDHU])(\d+(?:\.\d+)?)$/i);
+        const mNom = (p.nombre||"").match(/([TCDHU])(\d+(?:\.\d+)?)\s*$/i);
+        [mCod, mNom].forEach(m => {
+            if (!m) return;
+            const [, letra, num] = m;
+            if (/^D$/i.test(letra))      addSz(g._sizesD, num);
+            else if (/^[HC]$/i.test(letra)) addSz(g._sizesH, num);
+            else                            addSz(g._sizes,  num);
+        });
+    });
+
+    const sortNum = arr => arr.sort((a,b) => parseFloat(a)-parseFloat(b));
+    map.forEach(g => { sortNum(g._sizes); sortNum(g._sizesD); sortNum(g._sizesH); });
+
+    // ── Para argollas de pareja: sumar precio Dama + Caballero ──
     map.forEach(g => {
         if (!ES_PAR_GRP.test(g.nombre)) return;
         const originals = lista.filter(p => g._codigos.includes(p.codigo));
-        const isDamaProduct = p => {
-            if (ES_DAMA_GRP.test(p.nombre || "")) return true;
-            try { return Object.keys(JSON.parse(p.caracteristicas || "{}")).some(k => /^D/i.test(k)); } catch(_) { return false; }
-        };
-        const isCabProduct = p => {
-            if (ES_CAB_GRP.test(p.nombre || "")) return true;
-            try { return Object.keys(JSON.parse(p.caracteristicas || "{}")).some(k => /^H/i.test(k)); } catch(_) { return false; }
-        };
-        const dama = originals.find(isDamaProduct);
-        const cab  = originals.find(isCabProduct);
+        const dama = originals.find(isDamaP);
+        const cab  = originals.find(isCabP);
         if (dama && cab) {
-            g.precio = String(parseFloat(dama.precio || 0) + parseFloat(cab.precio || 0));
+            g.precio    = String(parseFloat(dama.precio||0) + parseFloat(cab.precio||0));
             g._esPareja = true;
         }
     });
