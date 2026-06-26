@@ -2761,10 +2761,12 @@ async function generarLinkCatalogo() {
     const codsSel=[...document.querySelectorAll(".cat-chk:checked")].map(c=>c.dataset.cod);
     if(!codsSel.length) return toast("⚠️ Selecciona al menos un producto","#f97316");
 
-    const lista  =_catFiltrada.filter(p=>codsSel.includes(p.codigo));
+    const listaRaw =_catFiltrada.filter(p=>codsSel.includes(p.codigo));
+    const lista    =agruparParaCatalogo(listaRaw);
     const nombre =document.getElementById("cat-nombre").value.trim();
     const talla  =document.getElementById("cat-talla").value;
     const dias   =parseInt(document.getElementById("cat-validez").value)||3;
+    const wa     =(document.getElementById("cat-wa")?.value||localStorage.getItem("verex-wa")||"").trim();
 
     const btn=document.getElementById("btn-gen-link");
     btn.textContent="⏳..."; btn.disabled=true;
@@ -2772,13 +2774,15 @@ async function generarLinkCatalogo() {
     try {
         const data={
             expiry: Date.now()+dias*864e5,
-            nombre, talla,
+            nombre, talla, wa,
             prods: lista.map(p=>({
                 n: p.nombre||"—",
                 p: parseFloat(p.precio||0).toFixed(2),
                 i: p.foto||p.img||"",
                 m: p.material||detectarMaterial(p.nombre)||"",
-                nota: (document.querySelector(`.cat-nota[data-cod="${p.codigo}"]`)?.value||"").trim()
+                cat: p._catKey||getCatKey(p.codigo),
+                sizes: p._sizes||[],
+                nota: (document.querySelector(`.cat-nota[data-cod="${p._codigos?.[0]||p.codigo}"]`)?.value||"").trim()
             }))
         };
         const encoded=LZString.compressToEncodedURIComponent(JSON.stringify(data));
@@ -2793,6 +2797,7 @@ async function generarLinkCatalogo() {
             if(r.ok){ const s=(await r.text()).trim(); if(s.startsWith("http")) finalUrl=s; }
         } catch(_){}
 
+        if(wa) localStorage.setItem("verex-wa", wa);
         try { await navigator.clipboard.writeText(finalUrl); } catch(_){}
 
         document.getElementById("cat-link-out").textContent=finalUrl;
@@ -2820,10 +2825,42 @@ const CAT_MAP = {
 
 function getCatKey(codigo) {
     const c = (codigo || "").toUpperCase();
-    for (const k of Object.keys(CAT_MAP)) {
-        if (c.startsWith(k)) return k;
-    }
+    for (const k of Object.keys(CAT_MAP)) { if (c.startsWith(k)) return k; }
+    if (c.startsWith("U")) return "AN";
     return "OT";
+}
+
+function agruparParaCatalogo(lista) {
+    const map = new Map();
+    lista.forEach(p => {
+        const catKey = getCatKey(p.codigo);
+        // Strip trailing " T9", " T9.5", etc. from name to group size variants
+        const baseNombre = catKey === "AN"
+            ? (p.nombre || "").replace(/\s+T\d+(?:\.\d+)?\s*$/i, "").trim()
+            : (p.nombre || "").trim();
+        const key = catKey === "AN" ? baseNombre + "|" + (p.foto||p.img||"") : (p.nombre||p.codigo);
+        if (!map.has(key)) {
+            map.set(key, { ...p, nombre: baseNombre, _sizes: [], _codigos: [p.codigo], _catKey: catKey });
+        }
+        const g = map.get(key);
+        if (!g._codigos.includes(p.codigo)) g._codigos.push(p.codigo);
+        // Collect sizes from caracteristicas JSON
+        let s = {};
+        try { s = JSON.parse(p.caracteristicas || "{}"); } catch(_) {}
+        Object.entries(s).forEach(([k, v]) => {
+            if ((parseInt(v) || 0) > 0) {
+                const num = k.replace(/^[DH]/i, "");
+                if (!isNaN(parseFloat(num)) && !g._sizes.includes(num)) g._sizes.push(num);
+            }
+        });
+        // Also extract size from product code (e.g., ANL027T9 → "9") or product name
+        const mCod  = (p.codigo || "").match(/T(\d+(?:\.\d+)?)$/i);
+        const mNom  = (p.nombre || "").match(/T(\d+(?:\.\d+)?)\s*$/i);
+        if (mCod && !g._sizes.includes(mCod[1])) g._sizes.push(mCod[1]);
+        if (mNom && !g._sizes.includes(mNom[1])) g._sizes.push(mNom[1]);
+    });
+    map.forEach(g => g._sizes.sort((a, b) => parseFloat(a) - parseFloat(b)));
+    return [...map.values()];
 }
 
 function poblarCategorias() {
@@ -2849,6 +2886,7 @@ function abrirModalCatalogo() {
     document.getElementById("cat-talla").value     = "";
     document.getElementById("cat-genero").value    = "";
     document.getElementById("cat-nombre").value    = "";
+    document.getElementById("cat-wa").value        = localStorage.getItem("verex-wa") || "";
     document.getElementById("cat-sec-talla").style.display = "none";
     document.getElementById("cat-link-box").style.display  = "none";
     poblarCategorias();
@@ -3169,14 +3207,20 @@ async function generarPDFCatalogo() {
             <button class="btn bg" style="flex:1;font-size:12px;" onclick="seleccionarTodosCatalogo(false)">⬜ Ninguno</button>
         </div>
 
-        <div style="margin-bottom:12px;">
-            <label>Validez del catálogo</label>
-            <select id="cat-validez">
-                <option value="1">1 día</option>
-                <option value="2">2 días</option>
-                <option value="3" selected>3 días</option>
-                <option value="7">7 días</option>
-            </select>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:12px;">
+            <div>
+                <label>Validez del catálogo</label>
+                <select id="cat-validez">
+                    <option value="1">1 día</option>
+                    <option value="2">2 días</option>
+                    <option value="3" selected>3 días</option>
+                    <option value="7">7 días</option>
+                </select>
+            </div>
+            <div>
+                <label>WhatsApp de contacto</label>
+                <input type="text" id="cat-wa" placeholder="Ej: 573001234567" inputmode="numeric">
+            </div>
         </div>
 
         <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:10px;">
