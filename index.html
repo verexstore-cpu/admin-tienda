@@ -2890,26 +2890,36 @@ function agruparParaCatalogo(lista) {
 }
 
 function poblarCategorias() {
-    const sel = document.getElementById("cat-categoria");
+    const cont = document.getElementById("cat-categoria-pills");
     const presentes = [...new Set(productos.map(p => getCatKey(p.codigo)))];
     const orden = ["AN","AR","CD","PL","CN","RL","OT"];
-    sel.innerHTML = '<option value="">— Todas —</option>' +
-        orden.filter(k => presentes.includes(k))
-             .map(k => `<option value="${k}">${CAT_MAP[k]}</option>`).join("");
+    cont.innerHTML = orden.filter(k => presentes.includes(k)).map(k => `
+        <label id="cat-pill-${k}" style="cursor:pointer;display:inline-flex;align-items:center;gap:5px;padding:5px 12px;border-radius:20px;border:2px solid var(--borde);background:#fff;font-size:12px;font-weight:600;user-select:none;transition:background .15s,border-color .15s;">
+            <input type="checkbox" class="cat-cat-chk" value="${k}" onchange="onCategoriaChange()" style="accent-color:var(--azul);cursor:pointer;width:14px;height:14px;">
+            ${CAT_MAP[k]}
+        </label>`).join("");
 }
 
 function onCategoriaChange() {
-    const cat = document.getElementById("cat-categoria").value;
-    document.getElementById("cat-sec-talla").style.display = cat === "AN" ? "block" : "none";
-    document.getElementById("cat-tipo-an").value = "";
-    document.getElementById("cat-talla").value   = "";
-    document.getElementById("cat-genero").value  = "";
+    const cats  = [...document.querySelectorAll(".cat-cat-chk:checked")].map(c => c.value);
+    const hasAN = cats.length === 0 || cats.includes("AN");
+    document.getElementById("cat-sec-talla").style.display = hasAN ? "block" : "none";
+    if (!hasAN) {
+        document.getElementById("cat-tipo-an").value = "";
+        document.getElementById("cat-talla").value   = "";
+        document.getElementById("cat-genero").value  = "";
+    }
+    // Highlight selected pills
+    document.querySelectorAll(".cat-cat-chk").forEach(chk => {
+        const lbl = chk.closest("label");
+        if (chk.checked) { lbl.style.background = "var(--azul)"; lbl.style.color = "#fff"; lbl.style.borderColor = "var(--azul)"; }
+        else             { lbl.style.background = "#fff";        lbl.style.color = "";     lbl.style.borderColor = "var(--borde)"; }
+    });
     filtrarParaCatalogo();
 }
 
 function abrirModalCatalogo() {
     document.getElementById("modal-catalogo").classList.add("open");
-    document.getElementById("cat-categoria").value = "";
     document.getElementById("cat-tipo-an").value   = "";
     document.getElementById("cat-talla").value     = "";
     document.getElementById("cat-genero").value    = "";
@@ -2940,17 +2950,19 @@ function filtrarParaCatalogo() {
     const genero   = document.getElementById("cat-genero").value;
     const cont     = document.getElementById("cat-lista");
     const info     = document.getElementById("cat-info");
-    const categoria= document.getElementById("cat-categoria").value;
+    const cats     = [...document.querySelectorAll(".cat-cat-chk:checked")].map(c => c.value);
+    const hasAN    = cats.length === 0 || cats.includes("AN");
 
-    let lista = categoria
-        ? productos.filter(p => getCatKey(p.codigo) === categoria)
+    let lista = cats.length
+        ? productos.filter(p => cats.includes(getCatKey(p.codigo)))
         : [...productos];
 
     const tipoAN = document.getElementById("cat-tipo-an").value;
 
-    // Filtro por tipo: sencillo vs. pareja/matrimonio
-    if (categoria === "AN" && tipoAN) {
+    // Filtro tipo anillo (sencillo/pareja) — solo aplica a AN
+    if (hasAN && tipoAN) {
         lista = lista.filter(p => {
+            if (getCatKey(p.codigo) !== "AN") return true;
             let s = {};
             try { s = JSON.parse(p.caracteristicas || "{}"); } catch(_) {}
             const esPareja = Object.keys(s).some(k => k.startsWith("D") || k.startsWith("H"))
@@ -2969,19 +2981,22 @@ function filtrarParaCatalogo() {
         return cod.includes("T" + t) || cod.includes("T0" + t);
     };
 
-    if (categoria === "AN" && talla) {
-        lista = lista.filter(p => tieneTalla(p, talla));
+    // Filtro talla — solo aplica a AN
+    if (hasAN && talla) {
+        lista = lista.filter(p => getCatKey(p.codigo) !== "AN" || tieneTalla(p, talla));
     }
 
-    // Agrupar anillos por nombre base — una sola foto por modelo con sus tallas
-    if (categoria === "AN") {
-        lista = agruparParaCatalogo(lista);
-    }
+    // Agrupar anillos por nombre base; dejar el resto sin agrupar
+    const anLista    = lista.filter(p => getCatKey(p.codigo) === "AN");
+    const otherLista = lista.filter(p => getCatKey(p.codigo) !== "AN");
+    lista = [...agruparParaCatalogo(anLista), ...otherLista];
 
     _catFiltrada = lista;
-    const catLabel = categoria ? CAT_MAP[categoria] : "Todos los productos";
-    info.textContent = lista.length
-        ? `${lista.length} ${categoria === "AN" ? "modelo(s)" : "producto(s)"} — ${catLabel}${talla ? ", Talla " + talla : ""}. Marca los que quieres mostrar:`
+    const catLabel = cats.length ? cats.map(k => CAT_MAP[k]).join(", ") : "Todos los productos";
+    const anCount  = lista.filter(p => p._catKey === "AN").length;
+    const total    = lista.length;
+    info.textContent = total
+        ? `${total} producto(s) — ${catLabel}${talla ? ", Talla " + talla : ""}. Marca los que quieres mostrar:`
         : "";
 
     if (!lista.length) {
@@ -3219,10 +3234,8 @@ async function generarPDFCatalogo() {
         <h3>📋 Generar catálogo para cliente</h3>
 
         <div style="margin-bottom:10px;">
-            <label>Categoría</label>
-            <select id="cat-categoria" onchange="onCategoriaChange()">
-                <option value="">— Todas —</option>
-            </select>
+            <label>Categorías / Prefijos</label>
+            <div id="cat-categoria-pills" style="display:flex;flex-wrap:wrap;gap:6px;margin-top:6px;"></div>
         </div>
 
         <div id="cat-sec-talla" style="display:none;">
