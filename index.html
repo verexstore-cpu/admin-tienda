@@ -2933,7 +2933,10 @@ function agruparParaCatalogo(lista) {
         const catKey = getCatKey(p.codigo);
         // Strip trailing size suffix: T9 / C9 (Caballero) / D9 (Dama) / U9 / H9
         const baseNombre = catKey === "AN"
-            ? (p.nombre || "").replace(/\s+[TCDHU]\d+(?:\.\d+)?\s*$/i, "").trim()
+            ? (p.nombre || "")
+                .replace(/\s+[TCDHU]\d+(?:\.\d+)?\s*$/i, "")
+                .replace(/\s+(dama|caballero|hombre|mujer|único|unico)\s*$/i, "")
+                .trim()
             : (p.nombre || "").trim();
         const key = catKey === "AN" ? baseNombre : (p.nombre||p.codigo);
         if (!map.has(key)) {

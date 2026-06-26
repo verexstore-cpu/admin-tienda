@@ -242,8 +242,8 @@
 
     function confirmarTalla(){
         const p = _prods[_szIdx];
-        const esPareja = ES_PAR.test(p.n);
-        const precioLabel = p.par ? `Precio por par: $${p.p}` : `Precio: $${p.p}`;
+        const esPareja = ES_PAR.test(p.n) || p.par;
+        const precioLabel = esPareja ? `Precio por par: $${p.p}` : `Precio: $${p.p}`;
         const msg = esPareja
             ? `Hola, me interesan estas argollas del catálogo VEREX:\n\n${p.n}\n${precioLabel}\nTalla dama: T${_szD}\nTalla caballero: T${_szH}`
             : `Hola, me interesa este producto del catálogo VEREX:\n\n${p.n}\n${precioLabel}\nTalla: T${_szD}`;
