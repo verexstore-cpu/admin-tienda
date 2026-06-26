@@ -6,18 +6,22 @@ export async function onRequest(context) {
         return new Response("Missing url", { status: 400 });
     }
 
+    const headers = { "Content-Type": "text/plain", "Access-Control-Allow-Origin": "*" };
+
     try {
-        const res   = await fetch(`https://tinyurl.com/api-create.php?url=${encodeURIComponent(target)}`);
+        const ctrl = new AbortController();
+        const timer = setTimeout(() => ctrl.abort(), 5000);
+        const res = await fetch(
+            `https://tinyurl.com/api-create.php?url=${encodeURIComponent(target)}`,
+            { signal: ctrl.signal }
+        );
+        clearTimeout(timer);
         const short = (await res.text()).trim();
         if (short.startsWith("http")) {
-            return new Response(short, {
-                headers: { "Content-Type": "text/plain", "Access-Control-Allow-Origin": "*" }
-            });
+            return new Response(short, { headers });
         }
         throw new Error("Bad response");
     } catch (e) {
-        return new Response(target, {
-            headers: { "Content-Type": "text/plain", "Access-Control-Allow-Origin": "*" }
-        });
+        return new Response(target, { headers });
     }
 }
