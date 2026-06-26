@@ -2761,8 +2761,8 @@ async function generarLinkCatalogo() {
     const codsSel=[...document.querySelectorAll(".cat-chk:checked")].map(c=>c.dataset.cod);
     if(!codsSel.length) return toast("⚠️ Selecciona al menos un producto","#f97316");
 
-    // Mismo filtro que PDF: usar _catFiltrada directamente, ya viene agrupado
-    const lista  =_catFiltrada.filter(p=>codsSel.includes(p.codigo));
+    // _catFiltrada already has grouped AN products — no second grouping needed
+    const lista = _catFiltrada.filter(p=>codsSel.includes(p._codigos?.[0]||p.codigo));
     const nombre =document.getElementById("cat-nombre").value.trim();
     const talla  =document.getElementById("cat-talla").value;
     const dias   =parseInt(document.getElementById("cat-validez").value)||3;
@@ -2781,33 +2781,37 @@ async function generarLinkCatalogo() {
                 i: p.foto||p.img||"",
                 m: p.material||detectarMaterial(p.nombre)||"",
                 cat: p._catKey||getCatKey(p.codigo),
-                sizes: p._sizes||[],
+                sizes:  p._sizes||[],
                 sizesD: p._sizesD||[],
                 sizesH: p._sizesH||[],
-                par: p._esPareja||false,
+                par:    p._esPareja||false,
                 nota: (document.querySelector(`.cat-nota[data-cod="${p._codigos?.[0]||p.codigo}"]`)?.value||"").trim()
             }))
         };
-        const encoded=LZString.compressToEncodedURIComponent(JSON.stringify(data));
-        const fullUrl=`${location.origin}/catalogo.html?c=${encoded}`;
-
-        let finalUrl=fullUrl;
-        try {
-            const ctrl=new AbortController();
-            const timer=setTimeout(()=>ctrl.abort(),6000);
-            const r=await fetch(`/shorten?url=${encodeURIComponent(fullUrl)}`,{signal:ctrl.signal});
-            clearTimeout(timer);
-            if(r.ok){ const s=(await r.text()).trim(); if(s.startsWith("http")) finalUrl=s; }
-        } catch(_){}
 
         if(wa) localStorage.setItem("verex-wa", wa);
-        try { await navigator.clipboard.writeText(finalUrl); } catch(_){}
 
+        // Save to KV and get short URL
+        const saveRes = await fetch("/save-catalog", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(data)
+        });
+
+        let finalUrl;
+        if(saveRes.ok){
+            const { url } = await saveRes.json();
+            finalUrl = location.origin + url;
+        } else {
+            throw new Error("Error al guardar catálogo");
+        }
+
+        try { await navigator.clipboard.writeText(finalUrl); } catch(_){}
         document.getElementById("cat-link-out").textContent=finalUrl;
         document.getElementById("cat-link-box").style.display="block";
         toast("🔗 Link listo — cópialo o compártelo por WhatsApp","#22c55e");
 
-    } catch(e){ console.error(e); toast("❌ Error al generar link","#ef4444"); }
+    } catch(e){ console.error(e); toast("❌ Error al generar link: "+e.message,"#ef4444"); }
     finally { btn.textContent="🔗 Link"; btn.disabled=false; }
 }
 
@@ -2815,98 +2819,6 @@ async function generarLinkCatalogo() {
 //  CATÁLOGO PARA CLIENTE
 // ═════════════════════════════════════════════
 let _catFiltrada = [];
-
-// ── Verificar stock de un producto ──
-function tieneStock(p, talla) {
-    let s = {};
-    try { s = JSON.parse(p.caracteristicas || "{}"); } catch(_) {}
-    if (talla) {
-        return (parseInt(s[talla])||0) > 0
-            || (parseInt(s["D"+talla])||0) > 0
-            || (parseInt(s["H"+talla])||0) > 0;
-    }
-    return Object.values(s).some(v => (parseInt(v)||0) > 0);
-}
-
-// ── Parser de instrucción en lenguaje natural ──
-function aplicarPromptIA() {
-    const prompt = (document.getElementById("cat-ia-prompt")?.value||"").toLowerCase();
-    if (!prompt.trim()) return;
-
-    // ── Detectar categorías ──
-    const catKws = {
-        AN: /anillo|argolla|alianza|matrimonio|solitario|novio|pareja/,
-        AR: /arete|aretes|pendiente/,
-        CD: /cadena|collar|gargantilla/,
-        PL: /pulsera|brazalete/,
-        CN: /conjunto|set/,
-        RL: /reloj/,
-    };
-    const catsDetect = Object.entries(catKws).filter(([,re])=>re.test(prompt)).map(([k])=>k);
-
-    // ── Detectar talla ──
-    const mTalla = prompt.match(/talla\s*(\d+(?:[.,]\d+)?)|t\s*(\d+(?:[.,]\d+)?)\b/);
-    const talla  = mTalla ? (mTalla[1]||mTalla[2]).replace(",",".") : "";
-
-    // ── Detectar prefijo ──
-    let pfx = "";
-    if (/\bdama\b|\bmujer\b/.test(prompt))        pfx = "D";
-    else if (/\bcaballero\b|\bhombre\b/.test(prompt)) pfx = "C";
-    else if (/\bunico\b|\bún[io]co\b/.test(prompt))   pfx = "U";
-
-    // ── Detectar tipo anillo ──
-    let tipoAN = "";
-    if (/argolla|matrimonio|pareja|novios|alianza/.test(prompt)) tipoAN = "pareja";
-    else if (/sencillo|solitario/.test(prompt))                  tipoAN = "sencillo";
-
-    // ── Detectar nombre cliente ──
-    const mNom = prompt.match(/para\s+([a-záéíóúüñ]+)/i);
-    const clienteNom = mNom ? mNom[1].charAt(0).toUpperCase()+mNom[1].slice(1) : "";
-
-    // ── Aplicar a los controles ──
-    // Desmarcar todos los pills de categoría
-    document.querySelectorAll(".cat-cat-chk").forEach(chk => {
-        chk.checked = catsDetect.includes(chk.value);
-        const lbl = chk.closest("label");
-        if (chk.checked) { lbl.style.background="var(--azul)"; lbl.style.color="#fff"; lbl.style.borderColor="var(--azul)"; }
-        else             { lbl.style.background="#fff"; lbl.style.color=""; lbl.style.borderColor="var(--borde)"; }
-    });
-
-    const hasAN = catsDetect.length === 0 || catsDetect.includes("AN");
-    document.getElementById("cat-sec-talla").style.display = hasAN ? "block" : "none";
-    document.getElementById("cat-talla").value    = talla;
-    document.getElementById("cat-tipo-an").value  = tipoAN;
-    document.getElementById("cat-genero").value   = "";
-    const pfEl = document.getElementById("cat-prefijo-txt");
-    if (pfEl) pfEl.value = pfx;
-    if (clienteNom) document.getElementById("cat-nombre").value = clienteNom;
-
-    // ── Filtrar y quitar sin stock ──
-    filtrarParaCatalogo();
-
-    // Desmarcar productos sin stock
-    let sinStock = 0;
-    document.querySelectorAll(".cat-chk").forEach(chk => {
-        const cod = chk.dataset.cod;
-        const prod = _catFiltrada.find(p => (p._codigos?.[0]||p.codigo) === cod);
-        if (prod && !tieneStock(prod, talla)) {
-            chk.checked = false;
-            sinStock++;
-        }
-    });
-
-    // ── Resumen ──
-    const total   = document.querySelectorAll(".cat-chk").length;
-    const activos = document.querySelectorAll(".cat-chk:checked").length;
-    const partes  = [];
-    if (catsDetect.length) partes.push(catsDetect.map(k=>CAT_MAP[k].replace(/\p{Emoji}/gu,"").trim()).join(", "));
-    if (talla)   partes.push(`talla ${talla}`);
-    if (pfx)     partes.push({D:"dama",C:"caballero",U:"único"}[pfx]||pfx);
-    if (tipoAN)  partes.push(tipoAN==="pareja"?"argollas/pareja":"sencillos");
-    document.getElementById("cat-ia-resultado").textContent =
-        `✅ ${activos} producto(s) con stock listo(s)${sinStock?" · "+sinStock+" sin stock omitido(s)":""}`
-        + (partes.length ? ` — ${partes.join(", ")}` : "");
-}
 
 const CAT_MAP = {
     AN: "💍 Anillos",
@@ -2926,126 +2838,58 @@ function getCatKey(codigo) {
 }
 
 function agruparParaCatalogo(lista) {
-    const ES_PAR_GRP  = /matrimonio|argolla|novios|pareja|alianza/i;
-    const ES_DAMA_GRP = /\b(dama|mujer)\b/i;
-    const ES_CAB_GRP  = /\b(caballero|hombre)\b/i;
-
-    const isDamaP = p => ES_DAMA_GRP.test(p.nombre||"") ||
-        (() => { try { return Object.keys(JSON.parse(p.caracteristicas||"{}")).some(k=>/^D\d/i.test(k)); } catch(_){return false;} })();
-    const isCabP  = p => ES_CAB_GRP.test(p.nombre||"") ||
-        (() => { try { return Object.keys(JSON.parse(p.caracteristicas||"{}")).some(k=>/^H\d/i.test(k)); } catch(_){return false;} })();
-
-    const addSz = (arr, sz) => { if (sz && !isNaN(parseFloat(sz)) && !arr.includes(sz)) arr.push(sz); };
-
     const map = new Map();
     lista.forEach(p => {
         const catKey = getCatKey(p.codigo);
+        // Strip trailing " T9", " T9.5", etc. from name to group size variants
         const baseNombre = catKey === "AN"
-            ? (p.nombre || "")
-                .replace(/\s+[TCDHU]\d+(?:\.\d+)?\s*$/i, "")
-                .replace(/\s+(dama|caballero|hombre|mujer|único|unico)\s*$/i, "")
-                .trim()
+            ? (p.nombre || "").replace(/\s+T\d+(?:\.\d+)?\s*$/i, "").trim()
             : (p.nombre || "").trim();
-        const key = catKey === "AN" ? baseNombre : (p.nombre||p.codigo);
+        const key = catKey === "AN" ? baseNombre + "|" + (p.foto||p.img||"") : (p.nombre||p.codigo);
         if (!map.has(key)) {
-            map.set(key, { ...p, nombre: baseNombre, _sizes: [], _sizesD: [], _sizesH: [], _codigos: [p.codigo], _catKey: catKey });
+            map.set(key, { ...p, nombre: baseNombre, _sizes: [], _codigos: [p.codigo], _catKey: catKey });
         }
         const g = map.get(key);
         if (!g._codigos.includes(p.codigo)) g._codigos.push(p.codigo);
-
-        // ── Tallas desde caracteristicas (D6→Dama, H9→Caballero, 9→estándar) ──
+        // Collect sizes from caracteristicas JSON
         let s = {};
         try { s = JSON.parse(p.caracteristicas || "{}"); } catch(_) {}
         Object.entries(s).forEach(([k, v]) => {
             if ((parseInt(v) || 0) > 0) {
-                if (/^D(\d)/i.test(k))      addSz(g._sizesD, k.replace(/^D/i,""));
-                else if (/^H(\d)/i.test(k)) addSz(g._sizesH, k.replace(/^H/i,""));
-                else                        addSz(g._sizes,  k);
+                const num = k.replace(/^[DH]/i, "");
+                if (!isNaN(parseFloat(num)) && !g._sizes.includes(num)) g._sizes.push(num);
             }
         });
-
-        // ── Talla desde sufijo de código o nombre ──
-        const mCod = (p.codigo||"").match(/([TCDHU])(\d+(?:\.\d+)?)$/i);
-        const mNom = (p.nombre||"").match(/([TCDHU])(\d+(?:\.\d+)?)\s*$/i);
-        [mCod, mNom].forEach(m => {
-            if (!m) return;
-            const [, letra, num] = m;
-            if (/^D$/i.test(letra))      addSz(g._sizesD, num);
-            else if (/^[HC]$/i.test(letra)) addSz(g._sizesH, num);
-            else                            addSz(g._sizes,  num);
-        });
+        // Also extract size from product code (e.g., ANL027T9 → "9") or product name
+        const mCod  = (p.codigo || "").match(/T(\d+(?:\.\d+)?)$/i);
+        const mNom  = (p.nombre || "").match(/T(\d+(?:\.\d+)?)\s*$/i);
+        if (mCod && !g._sizes.includes(mCod[1])) g._sizes.push(mCod[1]);
+        if (mNom && !g._sizes.includes(mNom[1])) g._sizes.push(mNom[1]);
     });
-
-    const sortNum = arr => arr.sort((a,b) => parseFloat(a)-parseFloat(b));
-    map.forEach(g => { sortNum(g._sizes); sortNum(g._sizesD); sortNum(g._sizesH); });
-
-    // ── Para argollas de pareja: sumar precio Dama + Caballero ──
-    map.forEach(g => {
-        if (!ES_PAR_GRP.test(g.nombre)) return;
-        const originals = lista.filter(p => g._codigos.includes(p.codigo));
-        const dama = originals.find(isDamaP);
-        const cab  = originals.find(isCabP);
-        if (dama && cab) {
-            g.precio    = String(parseFloat(dama.precio||0) + parseFloat(cab.precio||0));
-            g._esPareja = true;
-        }
-    });
-
+    map.forEach(g => g._sizes.sort((a, b) => parseFloat(a) - parseFloat(b)));
     return [...map.values()];
 }
 
-const PFX_LABEL = { C:"Caballero", D:"Dama", T:"Talla", U:"Único", H:"Hombre" };
-
-function getPrefijoProd(p) {
-    // 1) Código que empieza con U → Alianza/Único
-    if (/^U/i.test(p.codigo||"")) return "U";
-    // 2) Palabras clave en el nombre
-    const n = (p.nombre||"").toLowerCase();
-    if (/\bdama\b|\bmujer\b/.test(n))              return "D";
-    if (/\bcaballero\b|\bhombre\b/.test(n))        return "C";
-    if (/\bún[io]co\b|\bunico\b|\bunisex\b/.test(n)) return "U";
-    // 3) Letra C/D/H/U antes de número en el código: C9, D6
-    const mCod = (p.codigo||"").match(/([CDHU])\d/i);
-    if (mCod) return mCod[1].toUpperCase();
-    // 4) Default — talla estándar
-    return "T";
-}
-
-
 function poblarCategorias() {
-    const cont = document.getElementById("cat-categoria-pills");
+    const sel = document.getElementById("cat-categoria");
     const presentes = [...new Set(productos.map(p => getCatKey(p.codigo)))];
     const orden = ["AN","AR","CD","PL","CN","RL","OT"];
-    cont.innerHTML = orden.filter(k => presentes.includes(k)).map(k => `
-        <label id="cat-pill-${k}" style="cursor:pointer;display:inline-flex;align-items:center;gap:5px;padding:5px 12px;border-radius:20px;border:2px solid var(--borde);background:#fff;font-size:12px;font-weight:600;user-select:none;transition:background .15s,border-color .15s;">
-            <input type="checkbox" class="cat-cat-chk" value="${k}" onchange="onCategoriaChange()" style="accent-color:var(--azul);cursor:pointer;width:14px;height:14px;">
-            ${CAT_MAP[k]}
-        </label>`).join("");
+    sel.innerHTML = '<option value="">— Todas —</option>' +
+        orden.filter(k => presentes.includes(k))
+             .map(k => `<option value="${k}">${CAT_MAP[k]}</option>`).join("");
 }
 
 function onCategoriaChange() {
-    const cats  = [...document.querySelectorAll(".cat-cat-chk:checked")].map(c => c.value);
-    const hasAN = cats.length === 0 || cats.includes("AN");
-    document.getElementById("cat-sec-talla").style.display = hasAN ? "block" : "none";
-    if (!hasAN) {
-        document.getElementById("cat-tipo-an").value  = "";
-        document.getElementById("cat-talla").value    = "";
-        document.getElementById("cat-genero").value   = "";
-        const pf = document.getElementById("cat-prefijo-txt");
-        if (pf) pf.value = "";
-    }
-    // Highlight selected pills
-    document.querySelectorAll(".cat-cat-chk").forEach(chk => {
-        const lbl = chk.closest("label");
-        if (chk.checked) { lbl.style.background = "var(--azul)"; lbl.style.color = "#fff"; lbl.style.borderColor = "var(--azul)"; }
-        else             { lbl.style.background = "#fff";        lbl.style.color = "";     lbl.style.borderColor = "var(--borde)"; }
-    });
+    const cat = document.getElementById("cat-categoria").value;
+    document.getElementById("cat-sec-talla").style.display = cat === "AN" ? "block" : "none";
+    document.getElementById("cat-talla").value  = "";
+    document.getElementById("cat-genero").value = "";
     filtrarParaCatalogo();
 }
 
 function abrirModalCatalogo() {
     document.getElementById("modal-catalogo").classList.add("open");
-    document.getElementById("cat-tipo-an").value   = "";
+    document.getElementById("cat-categoria").value = "";
     document.getElementById("cat-talla").value     = "";
     document.getElementById("cat-genero").value    = "";
     document.getElementById("cat-nombre").value    = "";
@@ -3053,8 +2897,6 @@ function abrirModalCatalogo() {
     document.getElementById("cat-sec-talla").style.display = "none";
     document.getElementById("cat-link-box").style.display  = "none";
     poblarCategorias();
-    const pf = document.getElementById("cat-prefijo-txt");
-    if (pf) pf.value = "";
     filtrarParaCatalogo();
 }
 
@@ -3071,40 +2913,20 @@ function detectarMaterial(nombre) {
     return "";
 }
 
-
 function filtrarParaCatalogo() {
-    const talla    = document.getElementById("cat-talla").value;
-    const genero   = document.getElementById("cat-genero").value;
-    const cont     = document.getElementById("cat-lista");
-    const info     = document.getElementById("cat-info");
-    const cats     = [...document.querySelectorAll(".cat-cat-chk:checked")].map(c => c.value);
-    const hasAN    = cats.length === 0 || cats.includes("AN");
+    const talla  = document.getElementById("cat-talla").value;
+    const genero = document.getElementById("cat-genero").value;
+    const cont   = document.getElementById("cat-lista");
+    const info   = document.getElementById("cat-info");
 
-    let lista = cats.length
-        ? productos.filter(p => cats.includes(getCatKey(p.codigo)))
+    const categoria = document.getElementById("cat-categoria").value;
+
+    // Filtrar por categoría (o mostrar todo si no hay selección)
+    let lista = categoria
+        ? productos.filter(p => getCatKey(p.codigo) === categoria)
         : [...productos];
 
-    // Filtro por prefijo — acepta varias letras separadas por coma: "C, D, U"
-    const pfxTxt = (document.getElementById("cat-prefijo-txt")?.value||"").toUpperCase();
-    const pfxSel = pfxTxt.split(/[,\s]+/).map(s=>s.trim()).filter(Boolean);
-    if (hasAN && pfxSel.length) {
-        lista = lista.filter(p => getCatKey(p.codigo) !== "AN" || pfxSel.includes(getPrefijoProd(p)));
-    }
-
-    const tipoAN = document.getElementById("cat-tipo-an").value;
-
-    // Filtro tipo anillo (sencillo/pareja) — solo aplica a AN
-    if (hasAN && tipoAN) {
-        lista = lista.filter(p => {
-            if (getCatKey(p.codigo) !== "AN") return true;
-            let s = {};
-            try { s = JSON.parse(p.caracteristicas || "{}"); } catch(_) {}
-            const esPareja = Object.keys(s).some(k => k.startsWith("D") || k.startsWith("H"))
-                || /matrimonio|argolla|novios|pareja|alianza/i.test(p.nombre || "");
-            return tipoAN === "pareja" ? esPareja : !esPareja;
-        });
-    }
-
+    // Filtro de talla (solo aplica a anillos)
     const tieneTalla = (p, t) => {
         let s = {};
         try { s = JSON.parse(p.caracteristicas || "{}"); } catch(_) {}
@@ -3115,22 +2937,14 @@ function filtrarParaCatalogo() {
         return cod.includes("T" + t) || cod.includes("T0" + t);
     };
 
-    // Filtro talla — solo aplica a AN
-    if (hasAN && talla) {
-        lista = lista.filter(p => getCatKey(p.codigo) !== "AN" || tieneTalla(p, talla));
+    if (categoria === "AN" && talla) {
+        lista = lista.filter(p => tieneTalla(p, talla));
     }
 
-    // Agrupar anillos por nombre base; dejar el resto sin agrupar
-    const anLista    = lista.filter(p => getCatKey(p.codigo) === "AN");
-    const otherLista = lista.filter(p => getCatKey(p.codigo) !== "AN");
-    lista = [...agruparParaCatalogo(anLista), ...otherLista];
-
     _catFiltrada = lista;
-    const catLabel = cats.length ? cats.map(k => CAT_MAP[k]).join(", ") : "Todos los productos";
-    const anCount  = lista.filter(p => p._catKey === "AN").length;
-    const total    = lista.length;
-    info.textContent = total
-        ? `${total} producto(s) — ${catLabel}${talla ? ", Talla " + talla : ""}. Marca los que quieres mostrar:`
+    const catLabel = categoria ? CAT_MAP[categoria] : "Todos los productos";
+    info.textContent = lista.length
+        ? `${lista.length} producto(s) — ${catLabel}${talla ? ", Talla " + talla : ""}. Marca los que quieres mostrar:`
         : "";
 
     if (!lista.length) {
@@ -3157,12 +2971,6 @@ function filtrarParaCatalogo() {
 
         const img = p.foto || p.img || "";
         const mat = p.material || detectarMaterial(p.nombre);
-        const cod0 = p._codigos?.[0] || p.codigo;
-        const sizesHtml = p._sizes?.length
-            ? `<div style="margin-top:3px;display:flex;flex-wrap:wrap;gap:2px;">${p._sizes.map(sz =>
-                `<span style="padding:1px 5px;background:#e8f4fd;border-radius:4px;font-size:9px;font-weight:700;color:#0277bd;">T${sz}</span>`
-              ).join("")}</div>`
-            : "";
         return `<div style="background:#fff;border-radius:8px;border:1px solid var(--borde);overflow:hidden;display:flex;flex-direction:column;">
             <label style="cursor:pointer;display:block;flex:1;">
                 <div style="position:relative;aspect-ratio:1/1;background:#f5f5f5;">
@@ -3170,18 +2978,17 @@ function filtrarParaCatalogo() {
                         ? `<img src="${img}" style="width:100%;height:100%;object-fit:cover;display:block;" onerror="this.style.display='none'">`
                         : `<div style="width:100%;height:100%;display:flex;align-items:center;justify-content:center;font-size:28px;color:#ccc;">💍</div>`
                     }
-                    <input type="checkbox" class="cat-chk" data-cod="${cod0}"
+                    <input type="checkbox" class="cat-chk" data-cod="${p.codigo}"
                         style="position:absolute;top:5px;left:5px;width:18px;height:18px;accent-color:var(--azul);cursor:pointer;" checked>
                 </div>
                 <div style="padding:6px 7px;">
                     <div style="font-weight:700;font-size:11px;line-height:1.3;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;color:#1a1a1a;">${p.nombre || "—"}</div>
-                    <div style="font-size:11px;font-weight:800;color:#00BFFF;margin-top:2px;">$${parseFloat(p.precio || 0).toFixed(2)}</div>
+                    <div style="font-size:11px;font-weight:800;color:#00BFFF;margin-top:3px;">$${parseFloat(p.precio || 0).toFixed(2)}</div>
                     ${mat ? `<div style="font-size:10px;color:#7c3aed;font-weight:600;">${mat}</div>` : ""}
-                    ${sizesHtml}
                     ${stockLabel ? `<div style="font-size:10px;color:#0277bd;background:#e8f4fd;padding:1px 5px;border-radius:4px;display:inline-block;margin-top:2px;">${stockLabel}</div>` : ""}
                 </div>
             </label>
-            <input type="text" class="cat-nota" data-cod="${cod0}"
+            <input type="text" class="cat-nota" data-cod="${p.codigo}"
                 placeholder="Nota…"
                 style="width:100%;padding:5px 7px;border:none;border-top:1px solid var(--borde);font-size:11px;background:#fffef0;font-family:inherit;box-sizing:border-box;">
         </div>`;
@@ -3367,42 +3174,14 @@ async function generarPDFCatalogo() {
         <button class="mc" onclick="cerrarModalCatalogo()">✕</button>
         <h3>📋 Generar catálogo para cliente</h3>
 
-        <div style="background:#f0f7ff;border:1.5px solid #bfdbfe;border-radius:10px;padding:12px;margin-bottom:14px;">
-            <label style="font-weight:700;color:#1e40af;font-size:12px;">🤖 Armar catálogo con IA</label>
-            <div style="display:flex;gap:8px;margin-top:6px;">
-                <input type="text" id="cat-ia-prompt" placeholder='Ej: "anillos talla 7 dama" o "argollas matrimonio talla 9"'
-                    style="flex:1;font-size:13px;"
-                    onkeydown="if(event.key==='Enter') aplicarPromptIA()">
-                <button onclick="aplicarPromptIA()"
-                    style="background:#1e40af;color:#fff;border:none;padding:8px 14px;border-radius:8px;font-size:13px;font-weight:700;cursor:pointer;white-space:nowrap;">✨ Armar</button>
-            </div>
-            <div id="cat-ia-resultado" style="font-size:11px;color:#1e40af;margin-top:5px;min-height:14px;"></div>
-        </div>
-
         <div style="margin-bottom:10px;">
-            <label>Categorías / Prefijos</label>
-            <div id="cat-categoria-pills" style="display:flex;flex-wrap:wrap;gap:6px;margin-top:6px;"></div>
+            <label>Categoría</label>
+            <select id="cat-categoria" onchange="onCategoriaChange()">
+                <option value="">— Todas —</option>
+            </select>
         </div>
 
         <div id="cat-sec-talla" style="display:none;">
-            <div style="margin-bottom:10px;">
-                <label>Buscar por prefijo del código</label>
-                <div style="position:relative;">
-                    <span style="position:absolute;left:10px;top:50%;transform:translateY(-50%);font-size:15px;pointer-events:none;">🔍</span>
-                    <input type="text" id="cat-prefijo-txt" placeholder="Ej: C, D, U  (varias separadas por coma)"
-                        oninput="filtrarParaCatalogo()"
-                        style="padding-left:34px;width:100%;box-sizing:border-box;font-size:13px;">
-                </div>
-                <div style="font-size:11px;color:#888;margin-top:3px;">C=Caballero &nbsp;·&nbsp; D=Dama &nbsp;·&nbsp; T=Talla &nbsp;·&nbsp; U=Único/Alianza &nbsp;·&nbsp; H=Hombre &nbsp;·&nbsp; Puedes poner varias: <strong>C, D</strong></div>
-            </div>
-            <div style="margin-bottom:10px;">
-                <label>Tipo de anillo</label>
-                <select id="cat-tipo-an" onchange="filtrarParaCatalogo()">
-                    <option value="">— Todos —</option>
-                    <option value="sencillo">💍 Anillos sencillos</option>
-                    <option value="pareja">💑 Argollas / Pareja / Matrimonio</option>
-                </select>
-            </div>
             <div class="g2" style="margin-bottom:10px;">
                 <div>
                     <label>Talla</label>
@@ -3429,11 +3208,6 @@ async function generarPDFCatalogo() {
                     </select>
                 </div>
             </div>
-        </div>
-
-        <div style="margin-bottom:12px;">
-            <label>Tu número de WhatsApp (con código de país, sin +)</label>
-            <input type="text" id="cat-wa" placeholder="Ej: 573001234567" inputmode="numeric">
         </div>
 
         <div style="margin-bottom:12px;">
