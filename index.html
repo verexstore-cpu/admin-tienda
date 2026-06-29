@@ -2873,6 +2873,8 @@ async function generarLinkCatalogo() {
                 sizesD: p._sizesD||[],
                 sizesH: p._sizesH||[],
                 par:    p._esPareja||false,
+                pD:    p._precioDama||null,
+                pH:    p._precioCab||null,
                 nota: (document.querySelector(`.cat-nota[data-cod="${p._codigos?.[0]||p.codigo}"]`)?.value||"").trim()
             }))
         };
@@ -3034,6 +3036,10 @@ function agruparParaCatalogo(lista) {
 
         if (dama && cab) {
             g._esPareja = true;
+            if (dama.codigo !== cab.codigo) {
+                g._precioDama = parseFloat(dama.precio||0).toFixed(2);
+                g._precioCab  = parseFloat(cab.precio||0).toFixed(2);
+            }
         }
     });
 
