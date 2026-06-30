@@ -2985,6 +2985,7 @@ function agruparParaCatalogo(lista) {
         }
         const g = map.get(key);
         if (!g._codigos.includes(p.codigo)) g._codigos.push(p.codigo);
+        if (!g.caractEspecial && p.caractEspecial) g.caractEspecial = p.caractEspecial;
 
         let s = {};
         try { s = JSON.parse(p.caracteristicas || "{}"); } catch(_) {}
