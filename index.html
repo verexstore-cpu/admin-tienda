@@ -2841,6 +2841,22 @@ document.addEventListener("DOMContentLoaded", () => {
     });
 });
 
+function getNotaEspecial(p) {
+    // Try direct fields the API might return
+    if (p.nota_especial) return String(p.nota_especial).trim();
+    if (p.nota)          return String(p.nota).trim();
+    if (p.etiqueta)      return String(p.etiqueta).trim();
+    if (p.badge)         return String(p.badge).trim();
+    // Fallback: look for any string (non-numeric) value in caracteristicas JSON
+    try {
+        const s = JSON.parse(p.caracteristicas || "{}");
+        for (const [, v] of Object.entries(s)) {
+            if (typeof v === "string" && isNaN(parseFloat(v)) && v.trim()) return v.trim();
+        }
+    } catch(_) {}
+    return "";
+}
+
 async function generarLinkCatalogo() {
     const codsSel=[...document.querySelectorAll(".cat-chk:checked")].map(c=>c.dataset.cod);
     if(!codsSel.length) return toast("⚠️ Selecciona al menos un producto","#f97316");
@@ -2875,6 +2891,7 @@ async function generarLinkCatalogo() {
                 par:    p._esPareja||false,
                 pD:    p._precioDama||null,
                 pH:    p._precioCab||null,
+                ne:    getNotaEspecial(p),
                 nota: (document.querySelector(`.cat-nota[data-cod="${p._codigos?.[0]||p.codigo}"]`)?.value||"").trim()
             }))
         };
@@ -3200,6 +3217,7 @@ function filtrarParaCatalogo() {
                     ${mat ? `<div style="font-size:10px;color:#7c3aed;font-weight:600;">${mat}</div>` : ""}
                     ${sizesHtml}
                     ${stockLabel ? `<div style="font-size:10px;color:#0277bd;background:#e8f4fd;padding:1px 5px;border-radius:4px;display:inline-block;margin-top:2px;">${stockLabel}</div>` : ""}
+                    ${getNotaEspecial(p) ? `<div style="font-size:9px;color:#92400e;background:#fef3c7;border:1px solid #fcd34d;border-radius:4px;padding:1px 5px;margin-top:2px;font-weight:700;">♦ ${getNotaEspecial(p)}</div>` : ""}
                 </div>
             </label>
             <input type="text" class="cat-nota" data-cod="${cod0}"

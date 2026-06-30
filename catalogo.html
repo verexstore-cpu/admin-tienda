@@ -35,6 +35,7 @@
         .card-name{font-size:12px;font-weight:700;color:#1a1a1a;line-height:1.3;margin-bottom:3px;}
         .card-material{font-size:11px;color:#7c3aed;font-weight:600;margin-bottom:5px;}
         .card-price{font-size:16px;font-weight:800;color:#00BFFF;margin-bottom:4px;}
+        .card-ne{display:inline-block;font-size:10px;font-weight:700;color:#92400e;background:#fef3c7;border:1px solid #fcd34d;border-radius:5px;padding:2px 7px;margin-bottom:4px;line-height:1.5;}
         .card-nota{display:inline-block;font-size:10px;font-weight:700;color:#92400e;background:#fef3c7;border:1px solid #fcd34d;border-radius:5px;padding:2px 7px;margin-top:5px;line-height:1.5;}
         .card-footer{padding:0 10px 10px;}
         .wa-order{
@@ -176,6 +177,7 @@
                     <div class="card-name">${esc(p.n)}</div>
                     ${p.m?`<div class="card-material">${esc(p.m)}</div>`:''}
                     ${sizesHtml}
+                    ${p.ne?`<div class="card-ne">♦ ${esc(p.ne)}</div>`:''}
                     <div class="card-price">$${esc(p.p)}${p.par?`<span style="display:block;font-size:10px;font-weight:500;color:#7c3aed;margin-top:2px;">Precio por pieza</span>`:""}</div>
                     ${p.nota?`<div class="card-nota">${esc(p.nota)}</div>`:''}
                 </div>
