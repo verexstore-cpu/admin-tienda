@@ -29,11 +29,11 @@ export async function onRequest(context) {
 <meta property="og:type"        content="website">
 <meta property="og:title"       content="${catalogNombre}">
 <meta property="og:description" content="La expresión de tu mejor versión">
-<meta property="og:image"       content="${origin}/images/logo.webp">
+<meta property="og:image"       content="${origin}/images/logo.jpg">
 <meta property="og:image:width" content="1500">
 <meta property="og:image:height" content="750">
 <meta name="twitter:card"       content="summary_large_image">
-<meta name="twitter:image"      content="${origin}/images/logo.webp">
+<meta name="twitter:image"      content="${origin}/images/logo.jpg">
 <script>window.__CATALOG_DATA__ = ${raw};</script>`;
 
     html = html.replace("</head>", ogTags + "\n</head>");
