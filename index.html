@@ -2842,18 +2842,7 @@ document.addEventListener("DOMContentLoaded", () => {
 });
 
 function getNotaEspecial(p) {
-    // Try direct fields the API might return
-    if (p.nota_especial) return String(p.nota_especial).trim();
-    if (p.nota)          return String(p.nota).trim();
-    if (p.etiqueta)      return String(p.etiqueta).trim();
-    if (p.badge)         return String(p.badge).trim();
-    // Fallback: look for any string (non-numeric) value in caracteristicas JSON
-    try {
-        const s = JSON.parse(p.caracteristicas || "{}");
-        for (const [, v] of Object.entries(s)) {
-            if (typeof v === "string" && isNaN(parseFloat(v)) && v.trim()) return v.trim();
-        }
-    } catch(_) {}
+    if (p.caractEspecial) return String(p.caractEspecial).trim();
     return "";
 }
 
