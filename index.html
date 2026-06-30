@@ -2877,7 +2877,7 @@ async function generarLinkCatalogo() {
                 sizes:  p._sizes||[],
                 sizesD: p._sizesD||[],
                 sizesH: p._sizesH||[],
-                par:    p._esPareja||false,
+                par:    p._esPareja || /matrimonio|argolla|novios|pareja|alianza/i.test(p.nombre||"") || false,
                 pD:    p._precioDama||null,
                 pH:    p._precioCab||null,
                 ne:    getNotaEspecial(p),
