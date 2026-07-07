@@ -151,7 +151,7 @@
         const talla  = data.talla||"";
 
         let subParts=[];
-        if(nb)    subParts.push(`Para: <strong>${esc(nb)}</strong>`);
+        if(nb)    subParts.push(`${data.afiliado?'Distribuidor:':'Para:'} <strong>${esc(nb)}</strong>`);
         if(talla) subParts.push(`Talla: <strong>${esc(talla)}</strong>`);
         const subHTML = subParts.join(" &nbsp;·&nbsp; ");
 

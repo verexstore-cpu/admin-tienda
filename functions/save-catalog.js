@@ -20,7 +20,10 @@ export async function onRequest(context) {
             return new Response(JSON.stringify({ error: "Invalid payload" }), { status: 400, headers });
         }
 
-        const id = Array.from(crypto.getRandomValues(new Uint8Array(4)))
+        const rawId = body.customId
+            ? String(body.customId).toLowerCase().replace(/[^a-z0-9]/g, "-").replace(/-+/g, "-").replace(/^-|-$/g, "").slice(0, 40)
+            : null;
+        const id = rawId || Array.from(crypto.getRandomValues(new Uint8Array(4)))
             .map(b => b.toString(36).padStart(2, "0"))
             .join("")
             .slice(0, 6);

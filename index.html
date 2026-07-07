@@ -2851,11 +2851,15 @@ async function generarLinkCatalogo() {
     if(!codsSel.length) return toast("⚠️ Selecciona al menos un producto","#f97316");
 
     // _catFiltrada already has grouped AN products — no second grouping needed
-    const lista = _catFiltrada.filter(p=>codsSel.includes(p._codigos?.[0]||p.codigo));
-    const nombre =document.getElementById("cat-nombre").value.trim();
-    const talla  =document.getElementById("cat-talla").value;
-    const dias   =parseInt(document.getElementById("cat-validez").value)||3;
-    const wa     =(document.getElementById("cat-wa")?.value||localStorage.getItem("verex-wa")||"").trim();
+    const lista      = _catFiltrada.filter(p=>codsSel.includes(p._codigos?.[0]||p.codigo));
+    const esAfiliado = document.getElementById("cat-es-afiliado")?.checked||false;
+    const nombre     = esAfiliado
+        ? (document.getElementById("cat-afiliado-nombre")?.value||"").trim()
+        : document.getElementById("cat-nombre").value.trim();
+    const talla      = document.getElementById("cat-talla").value;
+    const dias       = parseInt(document.getElementById("cat-validez").value)||3;
+    const wa         = (document.getElementById("cat-wa")?.value||localStorage.getItem("verex-wa")||"").trim();
+    const afiliadoId = (document.getElementById("cat-afiliado-id")?.value||"").trim();
 
     const btn=document.getElementById("btn-gen-link");
     btn.textContent="⏳..."; btn.disabled=true;
@@ -2868,6 +2872,8 @@ async function generarLinkCatalogo() {
         const data={
             expiry: Date.now()+dias*864e5,
             nombre, talla, wa, banner,
+            ...(esAfiliado && { afiliado: true }),
+            ...(afiliadoId && { customId: afiliadoId }),
             prods: lista.map(p=>({
                 n: p.nombre||"—",
                 p: parseFloat(p.precio||0).toFixed(2),
@@ -3084,8 +3090,12 @@ function abrirModalCatalogo() {
     document.getElementById("cat-genero").value   = "";
     document.getElementById("cat-nombre").value   = "";
     document.getElementById("cat-wa").value       = localStorage.getItem("verex-wa") || "";
-    document.getElementById("cat-sec-talla").style.display = "none";
-    document.getElementById("cat-link-box").style.display  = "none";
+    document.getElementById("cat-sec-talla").style.display   = "none";
+    document.getElementById("cat-link-box").style.display    = "none";
+    const afChk = document.getElementById("cat-es-afiliado");
+    if (afChk) { afChk.checked = false; document.getElementById("cat-afiliado-fields").style.display = "none"; }
+    const afNom = document.getElementById("cat-afiliado-nombre"); if (afNom) afNom.value = "";
+    const afId  = document.getElementById("cat-afiliado-id");     if (afId)  afId.value  = "";
     poblarCategorias();
     const pf = document.getElementById("cat-prefijo-txt");
     if (pf) pf.value = "";
@@ -3220,6 +3230,48 @@ function filtrarParaCatalogo() {
 
 function seleccionarTodosCatalogo(sel) {
     document.querySelectorAll(".cat-chk").forEach(c => c.checked = sel);
+}
+
+function autoSeleccionarVariado() {
+    const DIST = { AN: 15, AR: 9, CD: 5, PL: 5 };
+    const TOTAL = 36;
+
+    const porCat = {};
+    _catFiltrada.forEach(p => {
+        const cat = p._catKey || getCatKey(p.codigo);
+        if (!porCat[cat]) porCat[cat] = [];
+        porCat[cat].push(p);
+    });
+
+    // Barajar cada categoría
+    Object.values(porCat).forEach(arr => {
+        for (let i = arr.length - 1; i > 0; i--) {
+            const j = Math.floor(Math.random() * (i + 1));
+            [arr[i], arr[j]] = [arr[j], arr[i]];
+        }
+    });
+
+    const selected = new Set();
+
+    // Seleccionar por distribución principal
+    Object.entries(DIST).forEach(([cat, count]) => {
+        (porCat[cat] || []).slice(0, count).forEach(p => selected.add(p._codigos?.[0] || p.codigo));
+    });
+
+    // Completar con otras categorías si hay espacio
+    let restante = TOTAL - selected.size;
+    Object.keys(porCat).filter(c => !DIST[c]).forEach(cat => {
+        if (restante <= 0) return;
+        (porCat[cat] || []).forEach(p => {
+            if (restante <= 0) return;
+            selected.add(p._codigos?.[0] || p.codigo);
+            restante--;
+        });
+    });
+
+    document.querySelectorAll(".cat-chk").forEach(c => { c.checked = selected.has(c.dataset.cod); });
+    const count = document.querySelectorAll(".cat-chk:checked").length;
+    toast(`✅ ${count} productos seleccionados automáticamente`, "#22c55e");
 }
 
 async function imgToBase64Cat(url) {
@@ -3492,9 +3544,10 @@ async function generarPDFCatalogo() {
         <div id="cat-info" style="font-size:12px;color:#888;margin-bottom:8px;"></div>
         <div id="cat-lista" style="max-height:380px;overflow-y:auto;border:1px solid var(--borde);border-radius:8px;padding:8px;background:var(--gris);"></div>
 
-        <div style="display:flex;gap:8px;margin-top:10px;margin-bottom:12px;">
-            <button class="btn bg" style="flex:1;font-size:12px;" onclick="seleccionarTodosCatalogo(true)">✅ Todos</button>
-            <button class="btn bg" style="flex:1;font-size:12px;" onclick="seleccionarTodosCatalogo(false)">⬜ Ninguno</button>
+        <div style="display:flex;gap:8px;margin-top:10px;margin-bottom:12px;flex-wrap:wrap;">
+            <button class="btn bg" style="flex:1;font-size:12px;min-width:80px;" onclick="seleccionarTodosCatalogo(true)">✅ Todos</button>
+            <button class="btn bg" style="flex:1;font-size:12px;min-width:80px;" onclick="seleccionarTodosCatalogo(false)">⬜ Ninguno</button>
+            <button class="btn ba" style="flex:2;font-size:12px;min-width:160px;" onclick="autoSeleccionarVariado()">🔀 Auto-seleccionar variado (36)</button>
         </div>
 
         <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:12px;">
@@ -3505,11 +3558,33 @@ async function generarPDFCatalogo() {
                     <option value="2">2 días</option>
                     <option value="3" selected>3 días</option>
                     <option value="7">7 días</option>
+                    <option value="30">30 días (afiliado)</option>
                 </select>
             </div>
             <div>
                 <label>WhatsApp de contacto</label>
                 <input type="text" id="cat-wa" placeholder="Ej: 573001234567" inputmode="numeric">
+            </div>
+        </div>
+
+        <!-- Sección Afiliado -->
+        <div style="background:#f0fdf4;border:1.5px solid #86efac;border-radius:10px;padding:12px;margin-bottom:12px;">
+            <label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-weight:700;color:#166534;font-size:12px;text-transform:uppercase;margin-bottom:0;">
+                <input type="checkbox" id="cat-es-afiliado" style="width:15px;height:15px;accent-color:#16a34a;"
+                    onchange="document.getElementById('cat-afiliado-fields').style.display=this.checked?'block':'none'">
+                🤝 Es catálogo de afiliado / distribuidor
+            </label>
+            <div id="cat-afiliado-fields" style="display:none;margin-top:10px;">
+                <div style="margin-bottom:8px;">
+                    <label style="color:#166534;">Nombre del afiliado</label>
+                    <input type="text" id="cat-afiliado-nombre" placeholder="Ej: Juan Pérez" style="margin-top:4px;">
+                </div>
+                <div>
+                    <label style="color:#166534;">ID del afiliado (link fijo)</label>
+                    <input type="text" id="cat-afiliado-id" placeholder="Ej: juan-perez (sin espacios)" style="margin-top:4px;"
+                        oninput="this.value=this.value.toLowerCase().replace(/[^a-z0-9-]/g,'-')">
+                    <div style="font-size:10px;color:#166534;margin-top:3px;">El link siempre será el mismo — actualizable sin cambiar URL</div>
+                </div>
             </div>
         </div>
 
