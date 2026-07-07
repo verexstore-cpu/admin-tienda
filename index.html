@@ -925,6 +925,8 @@
         <label>Nombre</label><input type="text" id="ed-nom">
         <label>Precio ($)</label><input type="number" id="ed-prec" step="0.01">
         <label>URL Imagen</label><input type="text" id="ed-img">
+        <label>Característica especial <span style="font-weight:400;color:#888;font-size:11px;">(ej: Ajustable hasta talla 8, 50cm, Broche de rosca)</span></label>
+        <input type="text" id="ed-caract-especial" placeholder="Dejar vacío si no aplica">
 
         <!-- Tallas visuales (solo anillos) -->
         <div id="ed-sec-tallas" style="display:none;margin-top:12px;">
@@ -1901,7 +1903,7 @@ function renderProductos() {
             <img src="${p.foto||p.img||''}" alt="" onerror="this.style.display='none'">
             <div class="pi">
                 <div class="pn">${p.nombre||"—"} ${dest?'<span class="badge bam2">⭐ Destacado</span>':''}</div>
-                <div class="pd">Ref: ${p.codigo||"—"} · $${parseFloat(p.precio||0).toFixed(2)} · ${stock}</div>
+                <div class="pd">Ref: ${p.codigo||"—"} · $${parseFloat(p.precio||0).toFixed(2)} · ${stock}${p.caractEspecial?` · <span style="color:#92400e;background:#fef3c7;border-radius:3px;padding:0 4px;font-size:10px;">♦ ${p.caractEspecial}</span>`:''}</div>
             </div>
             <div class="pa">
                 <button class="btn bg" onclick='abrirEditar(${JSON.stringify(p)})'>✏️</button>
@@ -1916,6 +1918,7 @@ function abrirEditar(p) {
     document.getElementById("ed-nom").value  = p.nombre;
     document.getElementById("ed-prec").value = p.precio;
     document.getElementById("ed-img").value  = p.foto || p.img || "";
+    document.getElementById("ed-caract-especial").value = p.caractEspecial || "";
 
     // Mostrar tallas solo para anillos
     const esAnillo = (p.codigo || "").startsWith("AN-");
@@ -1959,12 +1962,14 @@ async function guardarEdicion() {
         caracteristicas = JSON.stringify(stocks);
     }
 
+    const caractEspecial = document.getElementById("ed-caract-especial").value.trim();
     const datos = {
         accion: "EDITAR_PRODUCTO", _pass: ADMIN_PASS,
         codigo: document.getElementById("ed-cod").value,
         nombre: document.getElementById("ed-nom").value,
         precio: document.getElementById("ed-prec").value,
         img:    document.getElementById("ed-img").value,
+        caractEspecial,
         ...(caracteristicas !== undefined && { caracteristicas }),
     };
     await fetch(API_URL,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(datos)});
