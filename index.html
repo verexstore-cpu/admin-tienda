@@ -3089,7 +3089,7 @@ function abrirModalCatalogo() {
     document.getElementById("cat-talla").value    = "";
     document.getElementById("cat-genero").value   = "";
     document.getElementById("cat-nombre").value   = "";
-    document.getElementById("cat-wa").value       = localStorage.getItem("verex-wa") || "";
+    const waEl = document.getElementById("cat-wa"); if (waEl) waEl.value = localStorage.getItem("verex-wa") || "";
     document.getElementById("cat-sec-talla").style.display   = "none";
     document.getElementById("cat-link-box").style.display    = "none";
     const afChk = document.getElementById("cat-es-afiliado");
@@ -3550,21 +3550,15 @@ async function generarPDFCatalogo() {
             <button class="btn ba" style="flex:2;font-size:12px;min-width:160px;" onclick="autoSeleccionarVariado()">🔀 Auto-seleccionar variado (36)</button>
         </div>
 
-        <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:12px;">
-            <div>
-                <label>Validez del catálogo</label>
-                <select id="cat-validez">
-                    <option value="1">1 día</option>
-                    <option value="2">2 días</option>
-                    <option value="3" selected>3 días</option>
-                    <option value="7">7 días</option>
-                    <option value="30">30 días (afiliado)</option>
-                </select>
-            </div>
-            <div>
-                <label>WhatsApp de contacto</label>
-                <input type="text" id="cat-wa" placeholder="Ej: 573001234567" inputmode="numeric">
-            </div>
+        <div style="margin-bottom:12px;">
+            <label>Validez del catálogo</label>
+            <select id="cat-validez">
+                <option value="1">1 día</option>
+                <option value="2">2 días</option>
+                <option value="3" selected>3 días</option>
+                <option value="7">7 días</option>
+                <option value="30">30 días (afiliado)</option>
+            </select>
         </div>
 
         <!-- Sección Afiliado -->
@@ -3578,6 +3572,11 @@ async function generarPDFCatalogo() {
                 <div style="margin-bottom:8px;">
                     <label style="color:#166534;">Nombre del afiliado</label>
                     <input type="text" id="cat-afiliado-nombre" placeholder="Ej: Juan Pérez" style="margin-top:4px;">
+                </div>
+                <div style="margin-bottom:8px;">
+                    <label style="color:#166534;">WhatsApp del afiliado</label>
+                    <input type="text" id="cat-wa" placeholder="Ej: 573001234567" inputmode="numeric" style="margin-top:4px;">
+                    <div style="font-size:10px;color:#166534;margin-top:3px;">Los botones "Quiero este" abrirán este número</div>
                 </div>
                 <div>
                     <label style="color:#166534;">ID del afiliado (link fijo)</label>
