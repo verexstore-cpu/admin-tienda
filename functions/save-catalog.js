@@ -28,8 +28,9 @@ export async function onRequest(context) {
             .join("")
             .slice(0, 6);
 
+        const dias = Math.min(Math.max(parseInt(body.dias)||30, 1), 30);
         await context.env.CATALOGS.put(id, JSON.stringify(body), {
-            expirationTtl: 60 * 60 * 24 * 30, // 30 days
+            expirationTtl: 60 * 60 * 24 * dias,
         });
 
         return new Response(JSON.stringify({ url: "/c/" + id }), { headers });

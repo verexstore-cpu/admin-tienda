@@ -543,7 +543,10 @@
             <div class="sb">
                 <input type="text" id="bus-prod" placeholder="Buscar..." oninput="renderProductos()">
             </div>
-            <button class="btn ba" style="margin-bottom:14px;width:100%;justify-content:center;" onclick="abrirModalCatalogo()">📋 Generar catálogo para cliente</button>
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:14px;">
+                <button class="btn ba" style="justify-content:center;" onclick="abrirModalCatalogo('cliente')">📋 Catálogo Cliente</button>
+                <button class="btn" style="justify-content:center;background:#16a34a;color:#fff;" onclick="abrirModalCatalogo('afiliado')">🤝 Catálogo Afiliado</button>
+            </div>
             <div id="lista-prod"></div>
         </div>
 
@@ -2871,7 +2874,7 @@ async function generarLinkCatalogo() {
 
         const data={
             expiry: Date.now()+dias*864e5,
-            nombre, talla, wa, banner,
+            nombre, talla, wa, banner, dias,
             ...(esAfiliado && { afiliado: true }),
             ...(afiliadoId && { customId: afiliadoId }),
             prods: lista.map(p=>({
@@ -3083,19 +3086,30 @@ function onPillChange() {
     filtrarParaCatalogo();
 }
 
-function abrirModalCatalogo() {
+function abrirModalCatalogo(tipo) {
+    const esAfiliado = tipo === "afiliado";
     document.getElementById("modal-catalogo").classList.add("open");
-    document.getElementById("cat-tipo-an").value  = "";
-    document.getElementById("cat-talla").value    = "";
-    document.getElementById("cat-genero").value   = "";
-    document.getElementById("cat-nombre").value   = "";
-    const waEl = document.getElementById("cat-wa"); if (waEl) waEl.value = localStorage.getItem("verex-wa") || "";
-    document.getElementById("cat-sec-talla").style.display   = "none";
-    document.getElementById("cat-link-box").style.display    = "none";
+    document.getElementById("modal-catalogo-titulo").textContent = esAfiliado
+        ? "🤝 Catálogo para Afiliado / Distribuidor"
+        : "📋 Catálogo para Cliente";
+    document.getElementById("cat-tipo-an").value = "";
+    document.getElementById("cat-talla").value   = "";
+    document.getElementById("cat-genero").value  = "";
+    document.getElementById("cat-nombre").value  = "";
+    document.getElementById("cat-validez").value = esAfiliado ? "30" : "15";
+    document.getElementById("cat-link-box").style.display  = "none";
+    document.getElementById("cat-sec-talla").style.display = "none";
+
+    // Sección afiliado
     const afChk = document.getElementById("cat-es-afiliado");
-    if (afChk) { afChk.checked = false; document.getElementById("cat-afiliado-fields").style.display = "none"; }
+    if (afChk) {
+        afChk.checked = esAfiliado;
+        document.getElementById("cat-afiliado-fields").style.display = esAfiliado ? "block" : "none";
+    }
+    const waEl  = document.getElementById("cat-wa");            if (waEl)  waEl.value  = esAfiliado ? "" : (localStorage.getItem("verex-wa")||"");
     const afNom = document.getElementById("cat-afiliado-nombre"); if (afNom) afNom.value = "";
     const afId  = document.getElementById("cat-afiliado-id");     if (afId)  afId.value  = "";
+
     poblarCategorias();
     const pf = document.getElementById("cat-prefijo-txt");
     if (pf) pf.value = "";
@@ -3455,7 +3469,7 @@ async function generarPDFCatalogo() {
 <div class="mo" id="modal-catalogo">
     <div class="mb" style="max-width:620px;">
         <button class="mc" onclick="cerrarModalCatalogo()">✕</button>
-        <h3>📋 Generar catálogo para cliente</h3>
+        <h3 id="modal-catalogo-titulo">📋 Catálogo para Cliente</h3>
 
         <div style="background:#f0f7ff;border:1.5px solid #bfdbfe;border-radius:10px;padding:12px;margin-bottom:14px;">
             <label style="font-weight:700;color:#1e40af;font-size:12px;">🤖 Armar catálogo con IA</label>
@@ -3563,9 +3577,9 @@ async function generarPDFCatalogo() {
             <label>Validez del catálogo</label>
             <select id="cat-validez">
                 <option value="1">1 día</option>
-                <option value="2">2 días</option>
-                <option value="3" selected>3 días</option>
+                <option value="3">3 días</option>
                 <option value="7">7 días</option>
+                <option value="15">15 días (cliente)</option>
                 <option value="30">30 días (afiliado)</option>
             </select>
         </div>
