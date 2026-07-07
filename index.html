@@ -3571,7 +3571,8 @@ async function generarPDFCatalogo() {
             <div id="cat-afiliado-fields" style="display:none;margin-top:10px;">
                 <div style="margin-bottom:8px;">
                     <label style="color:#166534;">Nombre del afiliado</label>
-                    <input type="text" id="cat-afiliado-nombre" placeholder="Ej: Juan Pérez" style="margin-top:4px;">
+                    <input type="text" id="cat-afiliado-nombre" placeholder="Ej: Juan Pérez" style="margin-top:4px;"
+                        oninput="const v=this.value.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g,'').replace(/[^a-z0-9]+/g,'-').replace(/^-|-$/g,'');document.getElementById('cat-afiliado-id').value=v;">
                 </div>
                 <div style="margin-bottom:8px;">
                     <label style="color:#166534;">WhatsApp del afiliado</label>
