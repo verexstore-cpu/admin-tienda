@@ -3232,6 +3232,15 @@ function seleccionarTodosCatalogo(sel) {
     document.querySelectorAll(".cat-chk").forEach(c => c.checked = sel);
 }
 
+function generarIdAfiliado(nombre) {
+    const id = nombre.toLowerCase()
+        .replace(/á/g,'a').replace(/é/g,'e').replace(/í/g,'i')
+        .replace(/ó/g,'o').replace(/ú/g,'u').replace(/ü/g,'u').replace(/ñ/g,'n')
+        .replace(/[^a-z0-9]+/g,'-').replace(/^-|-$/g,'');
+    const el = document.getElementById('cat-afiliado-id');
+    if (el) el.value = id;
+}
+
 function autoSeleccionarVariado() {
     const DIST = { AN: 15, AR: 9, CD: 5, PL: 5 };
     const TOTAL = 36;
@@ -3572,7 +3581,7 @@ async function generarPDFCatalogo() {
                 <div style="margin-bottom:8px;">
                     <label style="color:#166534;">Nombre del afiliado</label>
                     <input type="text" id="cat-afiliado-nombre" placeholder="Ej: Juan Pérez" style="margin-top:4px;"
-                        oninput="const v=this.value.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g,'').replace(/[^a-z0-9]+/g,'-').replace(/^-|-$/g,'');document.getElementById('cat-afiliado-id').value=v;">
+                        oninput="generarIdAfiliado(this.value)">
                 </div>
                 <div style="margin-bottom:8px;">
                     <label style="color:#166534;">WhatsApp del afiliado</label>
