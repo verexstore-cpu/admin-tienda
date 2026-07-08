@@ -1903,7 +1903,7 @@ function renderProductos() {
             <img src="${p.foto||p.img||''}" alt="" onerror="this.style.display='none'">
             <div class="pi">
                 <div class="pn">${p.nombre||"—"} ${dest?'<span class="badge bam2">⭐ Destacado</span>':''}</div>
-                <div class="pd">Ref: ${p.codigo||"—"} · $${parseFloat(p.precio||0).toFixed(2)} · ${stock}${p.caractEspecial?` · <span style="color:#92400e;background:#fef3c7;border-radius:3px;padding:0 4px;font-size:10px;">♦ ${p.caractEspecial}</span>`:''}</div>
+                <div class="pd">Ref: ${p.codigo||"—"} · $${parseFloat(p.precio||0).toFixed(2)} · ${stock}${getNotaEspecial(p)?` · <span style="color:#92400e;background:#fef3c7;border-radius:3px;padding:0 4px;font-size:10px;">♦ ${getNotaEspecial(p)}</span>`:''}</div>
             </div>
             <div class="pa">
                 <button class="btn bg" onclick='abrirEditar(${JSON.stringify(p)})'>✏️</button>
@@ -1918,7 +1918,7 @@ function abrirEditar(p) {
     document.getElementById("ed-nom").value  = p.nombre;
     document.getElementById("ed-prec").value = p.precio;
     document.getElementById("ed-img").value  = p.foto || p.img || "";
-    document.getElementById("ed-caract-especial").value = p.caractEspecial || "";
+    document.getElementById("ed-caract-especial").value = getNotaEspecial(p);
 
     // Mostrar tallas solo para anillos
     const esAnillo = (p.codigo || "").startsWith("AN-");
@@ -2850,8 +2850,10 @@ document.addEventListener("DOMContentLoaded", () => {
 });
 
 function getNotaEspecial(p) {
-    if (p.caractEspecial) return String(p.caractEspecial).trim();
-    return "";
+    const v = p.caractEspecial || p.caract_especial || p.caracteristicaEspecial
+           || p.caracteristica_especial || p.notaEspecial || p.nota_especial
+           || p.caract || p.nota || p.etiqueta || "";
+    return String(v).trim();
 }
 
 async function generarLinkCatalogo() {
@@ -2971,6 +2973,7 @@ function tieneStock(p, talla) {
 }
 
 function agruparParaCatalogo(lista) {
+    if (lista.length) console.log("[VEREX] campos producto:", Object.keys(lista[0]));
     const ES_PAR_GRP  = /matrimonio|argolla|novios|pareja|alianza/i;
     const ES_DAMA_GRP = /\b(dama|mujer)\b/i;
     const ES_CAB_GRP  = /\b(caballero|hombre)\b/i;
