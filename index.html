@@ -3185,6 +3185,7 @@ function filtrarParaCatalogo() {
     // Agrupar anillos; dejar el resto sin agrupar
     const anLista    = lista.filter(p => getCatKey(p.codigo) === "AN");
     const otherLista = lista.filter(p => getCatKey(p.codigo) !== "AN");
+    if (lista.length) console.log("[VEREX] campos producto:", Object.keys(lista[0]), "| caractEspecial:", lista[0].caractEspecial, "| getNotaEspecial:", getNotaEspecial(lista[0]));
     lista = [...agruparParaCatalogo(anLista), ...otherLista];
 
     _catFiltrada = lista;
