@@ -897,32 +897,32 @@
 
 <div class="tab-content" id="tab-7">
     <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:18px;">
-        <div style="background:#1a1a1a;border:1px solid #333;border-top:3px solid #059669;border-radius:10px;padding:14px;text-align:center;">
-            <div style="font-size:11px;color:#888;text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px;">Total Ventas</div>
-            <div id="av-total-ventas" style="font-size:26px;font-weight:800;color:#fff;">—</div>
+        <div style="background:#fff;border:1px solid #e5e7eb;border-top:3px solid #059669;border-radius:10px;padding:14px;text-align:center;">
+            <div style="font-size:11px;color:#6b7280;text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px;">Total Ventas</div>
+            <div id="av-total-ventas" style="font-size:26px;font-weight:800;color:#1a1a1a;">—</div>
         </div>
-        <div style="background:#1a1a1a;border:1px solid #333;border-top:3px solid #C9A84C;border-radius:10px;padding:14px;text-align:center;">
-            <div style="font-size:11px;color:#888;text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px;">Monto Total</div>
+        <div style="background:#fff;border:1px solid #e5e7eb;border-top:3px solid #C9A84C;border-radius:10px;padding:14px;text-align:center;">
+            <div style="font-size:11px;color:#6b7280;text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px;">Monto Total</div>
             <div id="av-monto-total" style="font-size:26px;font-weight:800;color:#C9A84C;">—</div>
         </div>
-        <div style="background:#1a1a1a;border:1px solid #333;border-top:3px solid #e74c3c;border-radius:10px;padding:14px;text-align:center;">
-            <div style="font-size:11px;color:#888;text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px;">Por Cobrar</div>
+        <div style="background:#fff;border:1px solid #e5e7eb;border-top:3px solid #e74c3c;border-radius:10px;padding:14px;text-align:center;">
+            <div style="font-size:11px;color:#6b7280;text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px;">Por Cobrar</div>
             <div id="av-por-cobrar" style="font-size:26px;font-weight:800;color:#e74c3c;">—</div>
         </div>
     </div>
     <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:14px;align-items:center;">
         <input type="text" id="av-buscar" placeholder="🔍 Buscar cliente o producto..."
             oninput="renderVentasAdmin()"
-            style="flex:1;min-width:180px;padding:9px 12px;background:#1a1a1a;border:1px solid #444;border-radius:8px;color:#fff;font-size:13px;">
+            style="flex:1;min-width:180px;padding:9px 12px;background:#fff;border:1px solid #d1d5db;border-radius:8px;color:#1a1a1a;font-size:13px;">
         <select id="av-tipo" onchange="renderVentasAdmin()"
-            style="padding:9px 10px;background:#1a1a1a;border:1px solid #444;border-radius:8px;color:#fff;font-size:13px;">
+            style="padding:9px 10px;background:#fff;border:1px solid #d1d5db;border-radius:8px;color:#1a1a1a;font-size:13px;">
             <option value="">Todos los tipos</option>
             <option value="directa">Directa</option>
             <option value="catalogo">Catálogo</option>
             <option value="consignacion">Consignación</option>
         </select>
         <select id="av-estado" onchange="renderVentasAdmin()"
-            style="padding:9px 10px;background:#1a1a1a;border:1px solid #444;border-radius:8px;color:#fff;font-size:13px;">
+            style="padding:9px 10px;background:#fff;border:1px solid #d1d5db;border-radius:8px;color:#1a1a1a;font-size:13px;">
             <option value="">Todos los estados</option>
             <option value="pagado">Pagado</option>
             <option value="credito">Crédito</option>
@@ -1232,16 +1232,16 @@ function renderVentasAdmin() {
             itemsStr = its.slice(0,2).map(i => i.nombre || i.producto || "").filter(Boolean).join(", ");
             if (its.length > 2) itemsStr += ` +${its.length - 2} más`;
         } catch(_) {}
-        return `<div style="background:#1a1a1a;border:1px solid #2a2a2a;border-left:4px solid ${tc.color};border-radius:10px;padding:12px;margin-bottom:8px;">
+        return `<div style="background:#fff;border:3.5px solid ${tc.color};border-radius:10px;padding:12px;margin-bottom:8px;">
             <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px;">
                 <div style="flex:1;min-width:0;">
                     <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:5px;">
                         <span style="font-size:10px;padding:2px 8px;border-radius:20px;background:${tc.bg};color:${tc.color};font-weight:700;">${tc.label}</span>
                         <span style="font-size:10px;color:${ec.color};font-weight:600;">${ec.label}</span>
                     </div>
-                    <div style="font-size:13px;font-weight:700;color:#fff;">${v.cliente || "—"}</div>
-                    <div style="font-size:11px;color:#888;margin-top:2px;">${fecha} · Ref: ${String(v.id||"").slice(-6)}</div>
-                    ${itemsStr ? `<div style="font-size:11px;color:#666;margin-top:3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${itemsStr}</div>` : ""}
+                    <div style="font-size:13px;font-weight:700;color:#1a1a1a;">${v.cliente || "—"}</div>
+                    <div style="font-size:11px;color:#374151;margin-top:2px;">${fecha} · Ref: ${String(v.id||"").slice(-6)}</div>
+                    ${itemsStr ? `<div style="font-size:11px;color:#4b5563;margin-top:3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${itemsStr}</div>` : ""}
                 </div>
                 <div style="text-align:right;flex-shrink:0;">
                     <div style="font-size:15px;font-weight:700;color:#C9A84C;">$${parseFloat(v.total||0).toFixed(2)}</div>
