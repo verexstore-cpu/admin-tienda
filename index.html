@@ -1244,7 +1244,7 @@ function renderVentasAdmin() {
                     ${itemsStr ? `<div style="font-size:11px;color:#4b5563;margin-top:3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${itemsStr}</div>` : ""}
                 </div>
                 <div style="text-align:right;flex-shrink:0;">
-                    <div style="font-size:15px;font-weight:700;color:#C9A84C;">$${parseFloat(v.total||0).toFixed(2)}</div>
+                    <div style="font-size:15px;font-weight:700;color:#1e3a8a;">$${parseFloat(v.total||0).toFixed(2)}</div>
                     ${parseFloat(v.saldoPendiente||0)>0 ? `<div style="font-size:11px;color:#e74c3c;font-weight:600;">Debe: $${parseFloat(v.saldoPendiente).toFixed(2)}</div>` : ""}
                 </div>
             </div>
