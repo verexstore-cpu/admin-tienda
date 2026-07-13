@@ -383,6 +383,28 @@
                     if(priceEl) priceEl.innerHTML = renderPrecioHtml(p);
                 }
 
+                // Refrescar la característica especial — cubre catálogos generados
+                // antes de que se guardara este dato, y cambios posteriores al snapshot.
+                if(s){
+                    const neVivo = s.caractEspecial||s.caract_especial||s.caracteristicaEspecial
+                                 ||s.caracteristica_especial||s.notaEspecial||s.nota_especial
+                                 ||s.caract||s.etiqueta||"";
+                    const neNorm = String(neVivo).trim();
+                    if(neNorm && neNorm !== (p.ne||"")){
+                        p.ne = neNorm;
+                        let neEl = card?.querySelector(".card-ne");
+                        if(neEl){
+                            neEl.textContent = `♦ ${neNorm}`;
+                        } else if(card){
+                            const priceEl = document.getElementById(`price-${i}`);
+                            const div = document.createElement("div");
+                            div.className = "card-ne";
+                            div.textContent = `♦ ${neNorm}`;
+                            if(priceEl) priceEl.before(div);
+                        }
+                    }
+                }
+
                 // Si el código ya no existe en stock (eliminado) o quedó sin
                 // unidades disponibles o fue reservado, se marca agotado.
                 const agotado = !s || s.reservado || (parseInt(s.stock_total)||0) <= 0;
