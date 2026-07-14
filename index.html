@@ -3938,19 +3938,21 @@ function autoSeleccionarVariado(evitarCodigos) {
     // porque un grupo de pareja suma el stock de varias filas (dama+caballero+
     // tallas) y por pura cantidad de stock terminaba ganando casi todos los
     // cupos de Anillos, dejando el catálogo dominado por alianzas.
-    const DIST_BASE = { AN_simple: 10, AN_pareja: 5, AR: 9, CD: 5, PL: 5 };
-    const DIST = {};
-    Object.entries(DIST_BASE).forEach(([cat, n]) => { DIST[cat] = Math.round(n * TOTAL / 36); });
-
-    // Cuota aparte para Acero 316L: es una línea secundaria/económica que se
-    // reparte entre categorías (un producto de acero puede ser AN, AR, CD o
-    // PL), así que se selecciona por material, no por categoría, y se resta
-    // del resto de cupos para no exceder el tamaño total elegido.
+    // Acero 316L es línea secundaria/económica: se fija una proporción 80/20
+    // (plata / acero) sobre el total elegido — a 10 productos son 8 plata + 2
+    // acero, a 50 son 40 + 10, y así sucesivamente — en vez de repartirse por
+    // categoría, porque un producto de acero puede ser AN, AR, CD o PL.
     const esAcero = p => /acero/i.test(p.material || "") || /acero/i.test(p.nombre || "");
-    const ACERO_QUOTA = Math.round(4 * TOTAL / 36);
+    const ACERO_QUOTA = Math.round(TOTAL * 0.2);
+    const PLATA_TOTAL = TOTAL - ACERO_QUOTA;
+
+    const DIST_BASE = { AN_simple: 10, AN_pareja: 5, AR: 9, CD: 5, PL: 5 };
+    const DIST_SUM  = Object.values(DIST_BASE).reduce((a, b) => a + b, 0); // 34
+    const DIST = {};
+    Object.entries(DIST_BASE).forEach(([cat, n]) => { DIST[cat] = Math.round(n * PLATA_TOTAL / DIST_SUM); });
 
     const porCat = {};
-    _catFiltrada.forEach(p => {
+    _catFiltrada.filter(p => !esAcero(p)).forEach(p => {
         const catRaw = p._catKey || getCatKey(p);
         const cat = catRaw === "AN" ? (p._esPareja ? "AN_pareja" : "AN_simple") : catRaw;
         if (!porCat[cat]) porCat[cat] = [];
