@@ -3063,9 +3063,11 @@ function aplicarPromptIA() {
     else if (/\bcaballero\b|\bhombre\b/.test(prompt)) pfx = "C";
     else if (/\bunico\b|\bún[io]co\b/.test(prompt))   pfx = "U";
 
-    let tipoAN = "";
+    // Si no se pide explícitamente una alianza/argolla/pareja, se asume que el
+    // pedido es de anillos normales — así "anillos talla 8 de mujer" no mezcla
+    // alianzas, que solo deben aparecer cuando el prompt las pide a propósito.
+    let tipoAN = "sencillo";
     if (/argolla|matrimonio|pareja|novios|alianza/.test(prompt)) tipoAN = "pareja";
-    else if (/sencillo|solitario/.test(prompt))                  tipoAN = "sencillo";
 
     const mNom = prompt.match(/para\s+([a-záéíóúüñ]+)/i);
     const clienteNom = mNom ? mNom[1].charAt(0).toUpperCase()+mNom[1].slice(1) : "";
