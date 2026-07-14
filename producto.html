@@ -1,0 +1,102 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+    <title>VEREX · Producto</title>
+    <style>
+        *{box-sizing:border-box;margin:0;padding:0;}
+        body{font-family:'Segoe UI',sans-serif;background:#f0f2f5;min-height:100vh;}
+        header{background:#111;text-align:center;padding:10px 16px;}
+        header img.logo{width:220px;max-width:70vw;display:block;margin:0 auto;}
+
+        .wrap{max-width:380px;margin:24px auto;padding:0 16px;}
+        .card{background:#fff;border-radius:16px;overflow:hidden;box-shadow:0 4px 18px rgba(0,0,0,.1);}
+        .card-img{width:100%;aspect-ratio:1/1;object-fit:contain;background:#f7f7f7;display:block;}
+        .card-img-ph{width:100%;aspect-ratio:1/1;background:#f0f0f0;display:flex;align-items:center;justify-content:center;font-size:56px;color:#ccc;}
+        .card-body{padding:18px;text-align:center;}
+        .card-name{font-size:16px;font-weight:800;color:#1a1a1a;line-height:1.35;margin-bottom:8px;}
+        .card-material{
+            display:inline-block;font-size:11px;font-weight:800;letter-spacing:.02em;
+            padding:3px 10px;border-radius:20px;margin-bottom:10px;
+        }
+        .mat-plata{background:#e5e7eb;color:#374151;border:1px solid #cbd5e1;}
+        .mat-acero{background:#dbeafe;color:#1e3a8a;border:1px solid #93c5fd;}
+        .mat-oro{background:#fef3c7;color:#92400e;border:1px solid #fcd34d;}
+        .mat-otro{background:#f3f4f6;color:#6b7280;border:1px solid #e5e7eb;}
+        .card-price{font-size:26px;font-weight:800;color:#111;margin-bottom:4px;}
+        .card-ref{font-size:11px;color:#9ca3af;font-weight:600;margin-bottom:16px;}
+        .wa-btn{
+            display:block;width:100%;background:#25D366;color:#fff;text-decoration:none;
+            padding:13px;border-radius:10px;font-size:15px;font-weight:700;border:none;cursor:pointer;
+        }
+        footer{text-align:center;padding:20px;color:#999;font-size:11px;}
+        .estado{text-align:center;padding:60px 20px;color:#888;}
+        .estado .icon{font-size:44px;margin-bottom:12px;}
+    </style>
+</head>
+<body>
+<header><img class="logo" src="/images/logo.webp" alt="VEREX"></header>
+<div class="wrap" id="app"><div class="estado"><div class="icon">⏳</div>Cargando…</div></div>
+<footer>VEREX · La expresión de tu mejor versión</footer>
+
+<script>
+(function(){
+    const params = new URLSearchParams(location.search);
+    const c = window.__PRODUCTO_CODIGO__ || params.get("c");
+    const API_URL = "https://verex-api.verexstore.workers.dev/";
+
+    function esc(s){ const d=document.createElement("div"); d.textContent=String(s||""); return d.innerHTML; }
+
+    function claseMaterial(m){
+        const s = String(m||"").toLowerCase();
+        if(s.includes("acero")) return "mat-acero";
+        if(s.includes("oro"))   return "mat-oro";
+        if(s.includes("plata")) return "mat-plata";
+        return "mat-otro";
+    }
+
+    function mostrarEstado(icon, titulo, texto){
+        document.getElementById("app").innerHTML = `<div class="estado"><div class="icon">${icon}</div><h3>${esc(titulo)}</h3><p style="margin-top:6px;font-size:13px;">${texto||""}</p></div>`;
+    }
+
+    if(!c){ mostrarEstado("⚠️","Link inválido",""); return; }
+
+    fetch(API_URL, { method:"POST", headers:{"Content-Type":"application/json"}, body: JSON.stringify({ accion:"GET_STOCK" }) })
+        .then(r => r.json())
+        .then(data => {
+            const stock = data.stock || [];
+            const p = stock.find(s => s.codigo === c);
+            if(!p){ mostrarEstado("😕","Producto no encontrado","Es posible que ya no esté disponible."); return; }
+
+            const totalStock = (parseInt(p.stock_bodega)||0) + (parseInt(p.stock_tienda)||0) + (parseInt(p.stock_consignacion)||0);
+            const agotado = p.reservado || totalStock <= 0;
+            const material = p.material || "";
+            const nombre = (p.nombre_base || p.nombre || "").trim();
+
+            document.getElementById("app").innerHTML = `
+                <div class="card">
+                    ${p.foto
+                        ? `<img class="card-img" src="${esc(p.foto)}" alt="${esc(nombre)}" onerror="this.outerHTML='<div class=\\'card-img-ph\\'>💍</div>'">`
+                        : `<div class="card-img-ph">💍</div>`}
+                    <div class="card-body">
+                        <div class="card-name">${esc(nombre)}</div>
+                        ${material ? `<div><span class="card-material ${claseMaterial(material)}">${esc(material)}</span></div>` : ''}
+                        ${agotado
+                            ? `<div class="card-price" style="color:#C0392B;font-size:16px;">AGOTADO</div>`
+                            : `<div class="card-price">$${parseFloat(p.precio||0).toFixed(2)}</div>`}
+                        <div class="card-ref">Ref: ${esc(p.codigo)}</div>
+                        ${agotado ? '' : `<button class="wa-btn" onclick="pedir()">💬 Quiero este</button>`}
+                    </div>
+                </div>`;
+
+            window.pedir = function(){
+                const msg = `Hola, me interesa este producto de VEREX:\n\n${nombre}\nPrecio: $${parseFloat(p.precio||0).toFixed(2)}\nRef: ${p.codigo}`;
+                window.open(`https://wa.me/?text=${encodeURIComponent(msg)}`,"_blank");
+            };
+        })
+        .catch(() => mostrarEstado("⚠️","Error al cargar","Intenta de nuevo en un momento."));
+})();
+</script>
+</body>
+</html>
