@@ -3932,6 +3932,18 @@ function ajustarTamanoCatalogo(delta) {
     if (!inp) return;
     const actual = parseInt(inp.value) || 36;
     inp.value = Math.max(10, actual + delta);
+    onCambiarTamanoCatalogo();
+}
+
+// El campo de cantidad (y los botones -10/+10) solo tenían efecto si después
+// se volvía a presionar "Auto-seleccionar variado" a mano — si no, el link se
+// generaba con lo que estuviera marcado, sin respetar el número del campo.
+// Ahora, si ya había una selección previa (algo marcado), cambiar el número
+// vuelve a correr la auto-selección sola, para que el campo siempre sea
+// exactamente lo que se va a generar.
+function onCambiarTamanoCatalogo() {
+    const haySeleccionPrevia = document.querySelectorAll(".cat-chk:checked").length > 0;
+    if (haySeleccionPrevia) autoSeleccionarVariado();
 }
 
 // Historial global de variedad: cuándo se le mostró por última vez cada
@@ -4397,7 +4409,7 @@ async function generarPDFCatalogo() {
             <button class="btn bg" style="flex:1;font-size:12px;min-width:80px;" onclick="seleccionarTodosCatalogo(true)">✅ Todos</button>
             <button class="btn bg" style="flex:1;font-size:12px;min-width:80px;" onclick="seleccionarTodosCatalogo(false)">⬜ Ninguno</button>
             <button class="btn bg" title="Quitar 10 piezas al tamaño del catálogo" style="flex:0 0 auto;font-size:14px;padding:0 10px;font-weight:800;" onclick="ajustarTamanoCatalogo(-10)">−10</button>
-            <input type="number" id="cat-var-size" value="36" min="10" step="10"
+            <input type="number" id="cat-var-size" value="36" min="10" step="10" onchange="onCambiarTamanoCatalogo()"
                 title="Cantidad de piezas para 'Auto-seleccionar variado' — ajústalo con los botones -10/+10 si quieres mandar un catálogo más grande"
                 style="flex:0 0 70px;font-size:12px;padding:0 6px;border-radius:8px;border:1.5px solid var(--borde);background:var(--gris);color:inherit;font-weight:600;text-align:center;">
             <button class="btn bg" title="Agregar 10 piezas al tamaño del catálogo" style="flex:0 0 auto;font-size:14px;padding:0 10px;font-weight:800;" onclick="ajustarTamanoCatalogo(10)">+10</button>
