@@ -133,7 +133,7 @@
     const params = new URLSearchParams(location.search);
     const c = params.get("c");
 
-    let _prods = [], _waNum = "", _szIdx = -1, _szD = "", _szH = "", _descPct = 0, _afiliadoCodigo = "";
+    let _prods = [], _waNum = "", _szIdx = -1, _szD = "", _szH = "", _descPct = 0, _afiliadoCodigo = "", _szParMode = false;
 
     const SIZES   = ["5","5.5","6","6.5","7","7.5","8","8.5","9","9.5","10","10.5","11","12","13","14"];
     const ES_PAR  = /matrimonio|argolla|novios|pareja|alianza/i;
@@ -292,18 +292,52 @@
 
         const esPareja = ES_PAR.test(p.n) || p.par;
 
-        // Argollas de par y productos sin talla: ir directo a WhatsApp
+        // Argollas/pares/tríos: si hay tallas registradas para dama y/o
+        // caballero, se eligen con botones igual que un anillo individual.
+        // Si no hay info de tallas, se cae al mensaje de texto de siempre.
         if(esPareja){
-            const sizesInfo = [
-                p.sizesD?.length ? `Dama: ${p.sizesD.map(s=>'T'+s).join(', ')}` : '',
-                p.sizesH?.length ? `Caballero: ${p.sizesH.map(s=>'T'+s).join(', ')}` : ''
-            ].filter(Boolean).join('\n');
-            const precioInfo = (p.pD && p.pH && p.pD !== p.pH)
-                ? `Precio dama: $${precioFinal(p.pD).toFixed(2)} por pieza\nPrecio caballero: $${precioFinal(p.pH).toFixed(2)} por pieza`
-                : `Precio individual: $${precioFinal(p.p).toFixed(2)} por pieza`;
-            const msg = `Hola, me interesan estas argollas del catálogo VEREX:\n\n${p.n}\n${precioInfo}${sizesInfo ? `\n\nTallas disponibles:\n${sizesInfo}` : ''}\n\n¿Qué tallas necesita para dama y caballero?`;
-            registrarLead(p);
-            window.open(`https://wa.me/${_waNum}?text=${encodeURIComponent(msg)}`,"_blank");
+            const availD = p.sizesD?.length ? p.sizesD : null;
+            const availH = p.sizesH?.length ? p.sizesH : null;
+
+            if(!availD && !availH){
+                const precioInfo = (p.pD && p.pH && p.pD !== p.pH)
+                    ? `Precio dama: $${precioFinal(p.pD).toFixed(2)} por pieza\nPrecio caballero: $${precioFinal(p.pH).toFixed(2)} por pieza`
+                    : `Precio individual: $${precioFinal(p.p).toFixed(2)} por pieza`;
+                const msg = `Hola, me interesan estas argollas del catálogo VEREX:\n\n${p.n}\n${precioInfo}\n\n¿Qué tallas necesita para dama y caballero?`;
+                registrarLead(p);
+                window.open(`https://wa.me/${_waNum}?text=${encodeURIComponent(msg)}`,"_blank");
+                return;
+            }
+
+            _szIdx=i; _szD=""; _szH=""; _szParMode=true;
+
+            document.getElementById("sz-title").textContent = p.n;
+            document.getElementById("sz-sub").textContent   = "¿Qué tallas necesitas?";
+
+            if(availD){
+                document.getElementById("sz-sec-d").style.display = "";
+                document.getElementById("sz-lbl-d").textContent = "Talla dama";
+                document.getElementById("sz-grid-d").innerHTML = availD.map(sz=>
+                    `<button class="sz-btn" onclick="selSz('D','${sz}',this)">T${sz}</button>`
+                ).join("");
+            } else {
+                document.getElementById("sz-sec-d").style.display = "none";
+                _szD = "N/A";
+            }
+
+            if(availH){
+                document.getElementById("sz-sec-h").style.display = "";
+                document.getElementById("sz-grid-h").innerHTML = availH.map(sz=>
+                    `<button class="sz-btn" onclick="selSz('H','${sz}',this)">T${sz}</button>`
+                ).join("");
+            } else {
+                document.getElementById("sz-sec-h").style.display = "none";
+                _szH = "N/A";
+            }
+
+            const btn = document.getElementById("sz-confirm");
+            btn.disabled=true; btn.style.opacity=".5";
+            document.getElementById("sz-overlay").classList.add("open");
             return;
         }
 
@@ -314,12 +348,13 @@
             return;
         }
 
-        _szIdx=i; _szD=""; _szH="";
+        _szIdx=i; _szD=""; _szH=""; _szParMode=false;
 
         const availD = (p.sizes?.length ? p.sizes : SIZES);
 
         document.getElementById("sz-title").textContent = p.n;
         document.getElementById("sz-sub").textContent   = "¿Qué talla necesitas?";
+        document.getElementById("sz-sec-d").style.display = "";
         document.getElementById("sz-lbl-d").textContent = "Tu talla";
         document.getElementById("sz-sec-h").style.display = "none";
 
@@ -333,16 +368,36 @@
     }
 
     function selSz(gen, sz, el){
-        document.querySelectorAll("#sz-grid-d .sz-btn").forEach(b=>b.classList.remove("sel-d"));
-        el.classList.add("sel-d");
-        _szD = sz;
+        if(gen === "D"){
+            document.querySelectorAll("#sz-grid-d .sz-btn").forEach(b=>b.classList.remove("sel-d"));
+            el.classList.add("sel-d");
+            _szD = sz;
+        } else {
+            document.querySelectorAll("#sz-grid-h .sz-btn").forEach(b=>b.classList.remove("sel-h"));
+            el.classList.add("sel-h");
+            _szH = sz;
+        }
         const btn = document.getElementById("sz-confirm");
-        btn.disabled=false; btn.style.opacity="1";
+        const listo = _szParMode ? (_szD && _szH) : !!_szD;
+        btn.disabled = !listo;
+        btn.style.opacity = listo ? "1" : ".5";
     }
 
     function confirmarTalla(){
         const p = _prods[_szIdx];
-        const msg = `Hola, me interesa este producto del catálogo VEREX:\n\n${p.n}\nPrecio: $${precioFinal(p.p).toFixed(2)}\nTalla: T${_szD}`;
+        let msg;
+        if(_szParMode){
+            const precioInfo = (p.pD != null && p.pH != null)
+                ? `Precio total: $${precioFinal(parseFloat(p.pD)+parseFloat(p.pH)).toFixed(2)}`
+                : `Precio: $${precioFinal(p.p).toFixed(2)}`;
+            const tallasInfo = [
+                _szD && _szD !== "N/A" ? `Talla dama: T${_szD}` : '',
+                _szH && _szH !== "N/A" ? `Talla caballero: T${_szH}` : ''
+            ].filter(Boolean).join('\n');
+            msg = `Hola, me interesa este producto del catálogo VEREX:\n\n${p.n}\n${precioInfo}\n${tallasInfo}`;
+        } else {
+            msg = `Hola, me interesa este producto del catálogo VEREX:\n\n${p.n}\nPrecio: $${precioFinal(p.p).toFixed(2)}\nTalla: T${_szD}`;
+        }
         registrarLead(p);
         cerrarTallas();
         window.open(`https://wa.me/${_waNum}?text=${encodeURIComponent(msg)}`,"_blank");
