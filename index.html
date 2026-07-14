@@ -3946,7 +3946,16 @@ function autoSeleccionarVariado(evitarCodigos) {
     const ACERO_QUOTA = Math.round(TOTAL * 0.2);
     const PLATA_TOTAL = TOTAL - ACERO_QUOTA;
 
-    const DIST_BASE = { AN_simple: 10, AN_pareja: 5, AR: 9, CD: 5, PL: 5 };
+    // Dentro de Anillos se separa en TRES baldes, no dos: pares/tríos
+    // estructurales (dama+caballero), alianzas vendidas como pieza individual
+    // unisex (mismo diseño de alianza pero sin par armado), y anillos normales
+    // (solitarios y demás). Sin este tercer balde, las alianzas individuales
+    // caían junto con los anillos normales en "AN_simple" y, al haber mucho
+    // más stock de alianzas, terminaban ganando casi todos esos cupos.
+    const ES_ALIANZA_NOM = /matrimonio|argolla|novios|pareja|alianza/i;
+    const esAlianzaIndividual = p => !p._esPareja && ES_ALIANZA_NOM.test(p.nombre || "");
+
+    const DIST_BASE = { AN_simple: 8, AN_alianza: 2, AN_pareja: 5, AR: 9, CD: 5, PL: 5 };
     const DIST_SUM  = Object.values(DIST_BASE).reduce((a, b) => a + b, 0); // 34
     const DIST = {};
     Object.entries(DIST_BASE).forEach(([cat, n]) => { DIST[cat] = Math.round(n * PLATA_TOTAL / DIST_SUM); });
@@ -3954,7 +3963,10 @@ function autoSeleccionarVariado(evitarCodigos) {
     const porCat = {};
     _catFiltrada.filter(p => !esAcero(p)).forEach(p => {
         const catRaw = p._catKey || getCatKey(p);
-        const cat = catRaw === "AN" ? (p._esPareja ? "AN_pareja" : "AN_simple") : catRaw;
+        const cat = catRaw !== "AN" ? catRaw
+            : p._esPareja           ? "AN_pareja"
+            : esAlianzaIndividual(p)? "AN_alianza"
+            :                          "AN_simple";
         if (!porCat[cat]) porCat[cat] = [];
         porCat[cat].push(p);
     });
@@ -3999,7 +4011,7 @@ function autoSeleccionarVariado(evitarCodigos) {
     // ganan por stock acumulado, se coman este relleno), y solo si de verdad no
     // alcanza, se recurre a más pareja/trío al final.
     if (selected.size < TOTAL) {
-        const esParejaTrio = p => (p._catKey || getCatKey(p)) === "AN" && p._esPareja;
+        const esParejaTrio = p => (p._catKey || getCatKey(p)) === "AN" && (p._esPareja || esAlianzaIndividual(p));
         _catFiltrada.slice().sort(cmp).filter(p => !esParejaTrio(p)).forEach(p => {
             if (selected.size >= TOTAL) return;
             selected.add(p._codigos?.[0] || p.codigo);
