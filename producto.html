@@ -33,6 +33,7 @@
         .mat-otro{background:#f3f4f6;color:#6b7280;border:1px solid #e5e7eb;}
         .card-price{font-size:26px;font-weight:800;color:#111;margin-bottom:4px;}
         .card-ref{font-size:11px;color:#9ca3af;font-weight:600;margin-bottom:16px;}
+        .card-ne{display:inline-block;font-size:10px;font-weight:700;color:#92400e;background:#fef3c7;border:1px solid #fcd34d;border-radius:5px;padding:2px 7px;margin-bottom:8px;line-height:1.5;}
         .wa-btn{
             display:block;width:100%;background:#25D366;color:#fff;text-decoration:none;
             padding:13px;border-radius:10px;font-size:15px;font-weight:700;border:none;cursor:pointer;
@@ -73,6 +74,7 @@
         const agotado = p.reservado || totalStock <= 0;
         const material = p.material || "";
         const nombre = (p.nombre_base || p.nombre || "").trim();
+        const nota = p.caracterEspecial || p.caractEspecial || p.caracter_especial || p.caracteristicaEspecial || "";
         return `<div class="card">
             ${p.foto
                 ? `<img class="card-img" src="${esc(p.foto)}" alt="${esc(nombre)}" onerror="this.outerHTML='<div class=\\'card-img-ph\\'>💍</div>'">`
@@ -80,6 +82,7 @@
             <div class="card-body">
                 <div class="card-name">${esc(nombre)}</div>
                 ${material ? `<div><span class="card-material ${claseMaterial(material)}">${esc(material)}</span></div>` : ''}
+                ${nota ? `<div><span class="card-ne">♦ ${esc(nota)}</span></div>` : ''}
                 ${agotado
                     ? `<div class="card-price" style="color:#C0392B;font-size:16px;">AGOTADO</div>`
                     : `<div class="card-price">$${parseFloat(p.precio||0).toFixed(2)}</div>`}
