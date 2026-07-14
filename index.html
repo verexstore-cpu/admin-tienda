@@ -3960,6 +3960,12 @@ function autoSeleccionarVariado(evitarCodigos) {
     const DIST = {};
     Object.entries(DIST_BASE).forEach(([cat, n]) => { DIST[cat] = Math.round(n * PLATA_TOTAL / DIST_SUM); });
 
+    // En catálogos de afiliado se limita aún más: máximo 3 pares/tríos de
+    // alianzas armadas, sin importar el tamaño del catálogo — el afiliado
+    // vende de todo, no solo alianzas.
+    const esCatalogoAfiliado = document.getElementById("cat-es-afiliado")?.checked || false;
+    if (esCatalogoAfiliado) DIST.AN_pareja = Math.min(DIST.AN_pareja, 3);
+
     const porCat = {};
     _catFiltrada.filter(p => !esAcero(p)).forEach(p => {
         const catRaw = p._catKey || getCatKey(p);
