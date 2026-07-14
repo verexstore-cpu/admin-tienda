@@ -3993,15 +3993,23 @@ function autoSeleccionarVariado(evitarCodigos) {
         });
     });
 
-    // Si aún falta (categorías principales no tenían suficiente stock), completar con lo que sobre de cualquier categoría
+    // Si aún falta (categorías principales no tenían suficiente stock), completar
+    // con lo que sobre de cualquier categoría — PERO en dos pasadas: primero todo
+    // lo que NO sea pareja/trío (para no dejar que las alianzas, que siempre
+    // ganan por stock acumulado, se coman este relleno), y solo si de verdad no
+    // alcanza, se recurre a más pareja/trío al final.
     if (selected.size < TOTAL) {
-        _catFiltrada
-            .slice()
-            .sort(cmp)
-            .forEach(p => {
+        const esParejaTrio = p => (p._catKey || getCatKey(p)) === "AN" && p._esPareja;
+        _catFiltrada.slice().sort(cmp).filter(p => !esParejaTrio(p)).forEach(p => {
+            if (selected.size >= TOTAL) return;
+            selected.add(p._codigos?.[0] || p.codigo);
+        });
+        if (selected.size < TOTAL) {
+            _catFiltrada.slice().sort(cmp).filter(esParejaTrio).forEach(p => {
                 if (selected.size >= TOTAL) return;
                 selected.add(p._codigos?.[0] || p.codigo);
             });
+        }
     }
 
     document.querySelectorAll(".cat-chk").forEach(c => { c.checked = selected.has(c.dataset.cod); });
