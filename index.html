@@ -3942,6 +3942,13 @@ function autoSeleccionarVariado(evitarCodigos) {
     const DIST = {};
     Object.entries(DIST_BASE).forEach(([cat, n]) => { DIST[cat] = Math.round(n * TOTAL / 36); });
 
+    // Cuota aparte para Acero 316L: es una línea secundaria/económica que se
+    // reparte entre categorías (un producto de acero puede ser AN, AR, CD o
+    // PL), así que se selecciona por material, no por categoría, y se resta
+    // del resto de cupos para no exceder el tamaño total elegido.
+    const esAcero = p => /acero/i.test(p.material || "") || /acero/i.test(p.nombre || "");
+    const ACERO_QUOTA = Math.round(4 * TOTAL / 36);
+
     const porCat = {};
     _catFiltrada.forEach(p => {
         const catRaw = p._catKey || getCatKey(p);
@@ -3962,9 +3969,15 @@ function autoSeleccionarVariado(evitarCodigos) {
 
     const selected = new Set();
 
+    // Reservar primero la cuota de acero (prioriza variedad + stock igual que las demás)
+    _catFiltrada.filter(esAcero).sort(cmp).slice(0, ACERO_QUOTA)
+        .forEach(p => selected.add(p._codigos?.[0] || p.codigo));
+
     // Seleccionar por distribución principal, priorizando variedad y stock alto
+    // (se descuenta lo que ya ocupó la cuota de acero para no pasarse del total)
     Object.entries(DIST).forEach(([cat, count]) => {
-        (porCat[cat] || []).slice(0, count).forEach(p => selected.add(p._codigos?.[0] || p.codigo));
+        (porCat[cat] || []).filter(p => !selected.has(p._codigos?.[0] || p.codigo))
+            .slice(0, count).forEach(p => selected.add(p._codigos?.[0] || p.codigo));
     });
 
     // Completar con otras categorías si hay espacio (mismo criterio)
