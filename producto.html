@@ -91,6 +91,12 @@
 
     if(!codigos.length){ mostrarEstado("⚠️","Link inválido",""); return; }
 
+    const exp = parseInt(params.get("exp")) || 0;
+    if(exp && Date.now() > exp){
+        mostrarEstado("⏰","Este link ya venció","Pídele a VEREX que te comparta el producto de nuevo con el precio y stock actualizados.");
+        return;
+    }
+
     fetch(API_URL, { method:"POST", headers:{"Content-Type":"application/json"}, body: JSON.stringify({ accion:"GET_STOCK" }) })
         .then(r => r.json())
         .then(data => {
