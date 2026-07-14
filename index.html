@@ -3266,6 +3266,10 @@ async function generarLinkCatalogo() {
             const cats = [...document.querySelectorAll(".cat-cat-chk:checked")].map(c => c.value);
             const receta = { categorias: cats, talla, genero, tipoAN: document.getElementById("cat-tipo-an")?.value || "", cantidad: codsSel.length, ultimosCodigos: codsSel };
             fetch(API_URL, { method:'POST', body: JSON.stringify({ accion:"GUARDAR_RECETA_CATALOGO", _pass: ADMIN_PASS, vendedor: afiliadoCodigo, receta }) }).catch(()=>{});
+            // Registro global: marca estos códigos como "recién mostrados" para que
+            // el próximo afiliado que se genere un catálogo reciba otra variedad.
+            fetch(API_URL, { method:'POST', body: JSON.stringify({ accion:"REGISTRAR_VARIEDAD_CATALOGO_GLOBAL", _pass: ADMIN_PASS, codigos: codsSel }) }).catch(()=>{});
+            if (_variedadGlobalCache) { const ts = Date.now(); codsSel.forEach(c => { _variedadGlobalCache[c] = ts; }); }
         }
 
     } catch(e){ console.error(e); toast("❌ Error al generar link: "+e.message,"#ef4444"); }
@@ -3930,8 +3934,24 @@ function ajustarTamanoCatalogo(delta) {
     inp.value = Math.max(10, actual + delta);
 }
 
-function autoSeleccionarVariado(evitarCodigos) {
+// Historial global de variedad: cuándo se le mostró por última vez cada
+// código a CUALQUIER afiliado (no solo al que se está editando ahora), para
+// repartir la variedad del inventario entre todos los afiliados en vez de que
+// cada uno solo evite repetirse a sí mismo. Se cachea en memoria por sesión.
+let _variedadGlobalCache = null;
+async function cargarVariedadGlobal() {
+    if (_variedadGlobalCache) return _variedadGlobalCache;
+    try {
+        const res = await fetch(API_URL, { method: 'POST', body: JSON.stringify({ accion: "GET_VARIEDAD_CATALOGO_GLOBAL", _pass: ADMIN_PASS }) });
+        const data = await res.json();
+        _variedadGlobalCache = data.codigos || {};
+    } catch(_) { _variedadGlobalCache = {}; }
+    return _variedadGlobalCache;
+}
+
+async function autoSeleccionarVariado(evitarCodigos) {
     const evitar = evitarCodigos instanceof Set ? evitarCodigos : new Set(evitarCodigos || []);
+    const variedadGlobal = await cargarVariedadGlobal();
     const TOTAL = parseInt(document.getElementById("cat-var-size")?.value) || 36;
     // Proporción base (sobre 36) — se escala al tamaño elegido. Dentro de
     // Anillos se separa "simples" de "alianzas/pares/tríos" con un tope fijo,
@@ -3980,12 +4000,16 @@ function autoSeleccionarVariado(evitarCodigos) {
         porCat[cat].push(p);
     });
 
-    // Orden: primero lo NO mostrado antes (variedad), y dentro de cada grupo por
-    // mayor stock. Si evitar está vacío, esto se comporta igual que antes.
+    // Orden: 1) primero lo NO mostrado antes a ESTE afiliado (variedad propia),
+    // 2) luego lo menos mostrado recientemente a CUALQUIER afiliado (variedad
+    // compartida — evita que 10 afiliados con el mismo stock reciban siempre
+    // el mismo catálogo), 3) y dentro de eso, mayor stock primero.
     const cmp = (a, b) => {
         const codA = a._codigos?.[0] || a.codigo, codB = b._codigos?.[0] || b.codigo;
         const evA = evitar.has(codA) ? 1 : 0, evB = evitar.has(codB) ? 1 : 0;
         if (evA !== evB) return evA - evB;
+        const tsA = variedadGlobal[codA] || 0, tsB = variedadGlobal[codB] || 0;
+        if (tsA !== tsB) return tsA - tsB;
         return _stockTotalProd(b) - _stockTotalProd(a);
     };
     Object.values(porCat).forEach(arr => arr.sort(cmp));
