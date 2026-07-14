@@ -11,6 +11,13 @@
         header img.logo{width:220px;max-width:70vw;display:block;margin:0 auto;}
 
         .wrap{max-width:380px;margin:24px auto;padding:0 16px;}
+        .wrap.multi{max-width:580px;}
+        .grid-multi{display:grid;grid-template-columns:repeat(2,1fr);gap:12px;}
+        .grid-multi .card-body{padding:10px;}
+        .grid-multi .card-name{font-size:12px;margin-bottom:5px;}
+        .grid-multi .card-price{font-size:16px;}
+        .grid-multi .card-ref{margin-bottom:8px;}
+        .grid-multi .wa-btn{padding:8px;font-size:12px;}
         .card{background:#fff;border-radius:16px;overflow:hidden;box-shadow:0 4px 18px rgba(0,0,0,.1);}
         .card-img{width:100%;aspect-ratio:1/1;object-fit:contain;background:#f7f7f7;display:block;}
         .card-img-ph{width:100%;aspect-ratio:1/1;background:#f0f0f0;display:flex;align-items:center;justify-content:center;font-size:56px;color:#ccc;}
@@ -43,7 +50,8 @@
 <script>
 (function(){
     const params = new URLSearchParams(location.search);
-    const c = window.__PRODUCTO_CODIGO__ || params.get("c");
+    const raw = window.__PRODUCTO_CODIGO__ || params.get("c") || "";
+    const codigos = raw.split(",").map(s => s.trim()).filter(Boolean);
     const API_URL = "https://verex-api.verexstore.workers.dev/";
 
     function esc(s){ const d=document.createElement("div"); d.textContent=String(s||""); return d.innerHTML; }
@@ -60,37 +68,47 @@
         document.getElementById("app").innerHTML = `<div class="estado"><div class="icon">${icon}</div><h3>${esc(titulo)}</h3><p style="margin-top:6px;font-size:13px;">${texto||""}</p></div>`;
     }
 
-    if(!c){ mostrarEstado("⚠️","Link inválido",""); return; }
+    function cardHtml(p, idx){
+        const totalStock = (parseInt(p.stock_bodega)||0) + (parseInt(p.stock_tienda)||0) + (parseInt(p.stock_consignacion)||0);
+        const agotado = p.reservado || totalStock <= 0;
+        const material = p.material || "";
+        const nombre = (p.nombre_base || p.nombre || "").trim();
+        return `<div class="card">
+            ${p.foto
+                ? `<img class="card-img" src="${esc(p.foto)}" alt="${esc(nombre)}" onerror="this.outerHTML='<div class=\\'card-img-ph\\'>💍</div>'">`
+                : `<div class="card-img-ph">💍</div>`}
+            <div class="card-body">
+                <div class="card-name">${esc(nombre)}</div>
+                ${material ? `<div><span class="card-material ${claseMaterial(material)}">${esc(material)}</span></div>` : ''}
+                ${agotado
+                    ? `<div class="card-price" style="color:#C0392B;font-size:16px;">AGOTADO</div>`
+                    : `<div class="card-price">$${parseFloat(p.precio||0).toFixed(2)}</div>`}
+                <div class="card-ref">Ref: ${esc(p.codigo)}</div>
+                ${agotado ? '' : `<button class="wa-btn" onclick="pedir(${idx})">💬 Quiero este</button>`}
+            </div>
+        </div>`;
+    }
+
+    if(!codigos.length){ mostrarEstado("⚠️","Link inválido",""); return; }
 
     fetch(API_URL, { method:"POST", headers:{"Content-Type":"application/json"}, body: JSON.stringify({ accion:"GET_STOCK" }) })
         .then(r => r.json())
         .then(data => {
             const stock = data.stock || [];
-            const p = stock.find(s => s.codigo === c);
-            if(!p){ mostrarEstado("😕","Producto no encontrado","Es posible que ya no esté disponible."); return; }
+            const encontrados = codigos.map(c => stock.find(s => s.codigo === c)).filter(Boolean);
+            if(!encontrados.length){ mostrarEstado("😕","Producto no encontrado","Es posible que ya no esté disponible."); return; }
 
-            const totalStock = (parseInt(p.stock_bodega)||0) + (parseInt(p.stock_tienda)||0) + (parseInt(p.stock_consignacion)||0);
-            const agotado = p.reservado || totalStock <= 0;
-            const material = p.material || "";
-            const nombre = (p.nombre_base || p.nombre || "").trim();
+            const app = document.getElementById("app");
+            if(encontrados.length > 1){
+                app.classList.add("multi");
+                app.innerHTML = `<div class="grid-multi">${encontrados.map(cardHtml).join('')}</div>`;
+            } else {
+                app.innerHTML = cardHtml(encontrados[0], 0);
+            }
 
-            document.getElementById("app").innerHTML = `
-                <div class="card">
-                    ${p.foto
-                        ? `<img class="card-img" src="${esc(p.foto)}" alt="${esc(nombre)}" onerror="this.outerHTML='<div class=\\'card-img-ph\\'>💍</div>'">`
-                        : `<div class="card-img-ph">💍</div>`}
-                    <div class="card-body">
-                        <div class="card-name">${esc(nombre)}</div>
-                        ${material ? `<div><span class="card-material ${claseMaterial(material)}">${esc(material)}</span></div>` : ''}
-                        ${agotado
-                            ? `<div class="card-price" style="color:#C0392B;font-size:16px;">AGOTADO</div>`
-                            : `<div class="card-price">$${parseFloat(p.precio||0).toFixed(2)}</div>`}
-                        <div class="card-ref">Ref: ${esc(p.codigo)}</div>
-                        ${agotado ? '' : `<button class="wa-btn" onclick="pedir()">💬 Quiero este</button>`}
-                    </div>
-                </div>`;
-
-            window.pedir = function(){
+            window.pedir = function(idx){
+                const p = encontrados[idx];
+                const nombre = (p.nombre_base || p.nombre || "").trim();
                 const msg = `Hola, me interesa este producto de VEREX:\n\n${nombre}\nPrecio: $${parseFloat(p.precio||0).toFixed(2)}\nRef: ${p.codigo}`;
                 window.open(`https://wa.me/?text=${encodeURIComponent(msg)}`,"_blank");
             };

@@ -11,6 +11,7 @@ export async function onRequest(context) {
     // Datos en vivo para las etiquetas OG (vista previa en WhatsApp/redes) —
     // el resto de la página igual los vuelve a pedir en el navegador del
     // cliente, así el precio/stock que ve siempre está actualizado.
+    const codigos = codigo.split(",").map(s => s.trim()).filter(Boolean);
     let nombre = "Producto VEREX";
     let foto = `${origin}/images/logo.jpg`;
     try {
@@ -20,9 +21,11 @@ export async function onRequest(context) {
             body: JSON.stringify({ accion: "GET_STOCK" })
         });
         const data = await apiRes.json();
-        const p = (data.stock || []).find(s => s.codigo === codigo);
+        const stock = data.stock || [];
+        const p = stock.find(s => s.codigo === codigos[0]);
         if (p) {
             nombre = (p.nombre_base || p.nombre || nombre).trim();
+            if (codigos.length > 1) nombre += ` + ${codigos.length - 1} producto${codigos.length - 1 > 1 ? "s" : ""} más`;
             if (p.foto) foto = p.foto;
         }
     } catch (_) {}
