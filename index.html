@@ -3095,6 +3095,18 @@ function aplicarPromptIA() {
         if (prod && !tieneStock(prod, talla)) { chk.checked = false; sinStock++; }
     });
 
+    // Respetar el campo de cantidad de piezas (el mismo que usa "Auto-seleccionar
+    // variado") — antes marcaba TODO lo que coincidiera con el prompt sin importar
+    // ese número. Si hay más coincidencias que el límite, se recorta priorizando
+    // mayor stock, dejando el resto sin marcar.
+    const limite = parseInt(document.getElementById("cat-var-size")?.value) || 0;
+    if (limite > 0) {
+        const marcados = [...document.querySelectorAll(".cat-chk:checked")]
+            .map(chk => ({ chk, prod: _catFiltrada.find(p => (p._codigos?.[0]||p.codigo) === chk.dataset.cod) }))
+            .sort((a,b) => _stockTotalProd(b.prod) - _stockTotalProd(a.prod));
+        marcados.slice(limite).forEach(({chk}) => { chk.checked = false; });
+    }
+
     const total   = document.querySelectorAll(".cat-chk").length;
     const activos = document.querySelectorAll(".cat-chk:checked").length;
     const partes  = [];
