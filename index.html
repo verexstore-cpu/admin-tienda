@@ -3960,11 +3960,14 @@ function autoSeleccionarVariado(evitarCodigos) {
     const DIST = {};
     Object.entries(DIST_BASE).forEach(([cat, n]) => { DIST[cat] = Math.round(n * PLATA_TOTAL / DIST_SUM); });
 
-    // En catálogos de afiliado se limita aún más: máximo 3 pares/tríos de
-    // alianzas armadas, sin importar el tamaño del catálogo — el afiliado
-    // vende de todo, no solo alianzas.
+    // En catálogos de afiliado se limita aún más: máximo 3 alianzas EN TOTAL
+    // (pares, tríos o pieza individual, todas juntas), sin importar el tamaño
+    // del catálogo — el afiliado vende de todo, no solo alianzas. Se maneja
+    // aparte de los baldes normales (más abajo) para que el tope sea sobre la
+    // suma de ambos baldes, no sobre cada uno por separado.
     const esCatalogoAfiliado = document.getElementById("cat-es-afiliado")?.checked || false;
-    if (esCatalogoAfiliado) DIST.AN_pareja = Math.min(DIST.AN_pareja, 3);
+    const ALIANZA_TOTAL_CAP = 3;
+    if (esCatalogoAfiliado) { delete DIST.AN_pareja; delete DIST.AN_alianza; }
 
     const porCat = {};
     _catFiltrada.filter(p => !esAcero(p)).forEach(p => {
@@ -3993,6 +3996,14 @@ function autoSeleccionarVariado(evitarCodigos) {
     _catFiltrada.filter(esAcero).sort(cmp).slice(0, ACERO_QUOTA)
         .forEach(p => selected.add(p._codigos?.[0] || p.codigo));
 
+    // Catálogo de afiliado: cupo combinado de alianzas (pares+tríos+individuales
+    // juntos), tope fijo de 3 sin importar el tamaño del catálogo.
+    if (esCatalogoAfiliado) {
+        [...(porCat.AN_pareja || []), ...(porCat.AN_alianza || [])]
+            .sort(cmp).slice(0, ALIANZA_TOTAL_CAP)
+            .forEach(p => selected.add(p._codigos?.[0] || p.codigo));
+    }
+
     // Seleccionar por distribución principal, priorizando variedad y stock alto
     // (se descuenta lo que ya ocupó la cuota de acero para no pasarse del total)
     Object.entries(DIST).forEach(([cat, count]) => {
@@ -4000,9 +4011,11 @@ function autoSeleccionarVariado(evitarCodigos) {
             .slice(0, count).forEach(p => selected.add(p._codigos?.[0] || p.codigo));
     });
 
-    // Completar con otras categorías si hay espacio (mismo criterio)
+    // Completar con otras categorías si hay espacio (mismo criterio) — en
+    // catálogo de afiliado, AN_pareja/AN_alianza ya se manejaron arriba con su
+    // propio tope combinado, así que se excluyen aquí para no colarse sin límite.
     let restante = TOTAL - selected.size;
-    Object.keys(porCat).filter(c => !DIST[c]).forEach(cat => {
+    Object.keys(porCat).filter(c => !DIST[c] && !(esCatalogoAfiliado && (c === "AN_pareja" || c === "AN_alianza"))).forEach(cat => {
         if (restante <= 0) return;
         (porCat[cat] || []).forEach(p => {
             if (restante <= 0) return;
