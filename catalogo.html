@@ -163,14 +163,14 @@
     // Registro silencioso del interés del cliente ANTES de abrir WhatsApp — no bloquea
     // la apertura del chat aunque falle (la venta nunca debe depender de esto).
     function registrarLead(p){
-        if (!_afiliadoCodigo || !p?.c) return;
+        if (!p?.c) return;
         try {
             fetch(API_URL, {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({
                     accion: "REGISTRAR_LEAD",
-                    afiliado: _afiliadoCodigo,
+                    afiliado: _afiliadoCodigo || "",
                     codigo: p.c,
                     nombre: p.n || "",
                     precio: precioFinal(p.p),
