@@ -419,6 +419,15 @@
             <div id="chart" style="display:flex;align-items:flex-end;gap:8px;height:130px;margin-top:14px;padding:0 4px;"></div>
         </div>
 
+        <!-- Pedidos de afiliados EN CAMINO sin confirmar entrega — se muestra
+             primero y en rojo/naranja porque es fácil que se pase por alto: el
+             pedido ya se empacó y salió, pero la venta/comisión no se cierran
+             hasta confirmar que el transportista realmente entregó. -->
+        <div class="card" id="card-afiliados-en-camino" style="display:none;border-color:#f97316;">
+            <h2 style="color:#f97316;">🚚 Pedidos en Camino — Confirmar Entrega</h2>
+            <div id="lista-afiliados-en-camino" style="margin-top:8px;"></div>
+        </div>
+
         <!-- Pedidos de afiliados por confirmar — vista central, sin tener que
              entrar afiliado por afiliado a revisar quién tiene algo pendiente. -->
         <div class="card">
@@ -1322,6 +1331,80 @@ function renderAll(sil=false) {
     renderEnvio(); renderEstado(); actualizarNotif(sil); renderBannerAdmin(); renderCarruselAdmin();
     cargarEstadisticas();
     cargarPedidosAfiliadosPendientes();
+    cargarAfiliadosEnCamino();
+}
+
+// Pedidos de afiliados que ya se empacaron/enviaron pero cuya entrega real
+// todavía no se confirmó — quedan "en el limbo" entre envío y cierre de venta,
+// así que se muestran aparte y en rojo si llevan más de 1 día sin resolver,
+// para que no se pase por alto confirmar la entrega (o el rechazo en puerta).
+async function cargarAfiliadosEnCamino() {
+    const card = document.getElementById("card-afiliados-en-camino");
+    const cont = document.getElementById("lista-afiliados-en-camino");
+    if (!card || !cont) return;
+    try {
+        const [resLeads, resVend] = await Promise.all([
+            fetch(API_URL, { method:'POST', body: JSON.stringify({ accion:"GET_LEADS_ADMIN", _pass: ADMIN_PASS }) }),
+            fetch(API_URL, { method:'POST', body: JSON.stringify({ accion:"GET_VENDEDORES_AFILIADOS", _pass: ADMIN_PASS }) })
+        ]);
+        const dataLeads = await resLeads.json();
+        const dataVend  = await resVend.json();
+        const vendMap = new Map((dataVend.vendedores||[]).map(v => [v.codigo, v.nombre]));
+        const enCamino = (dataLeads.leads||[])
+            .filter(l => l.estado === "en_camino")
+            .sort((a,b) => new Date(a.fecha) - new Date(b.fecha)); // más antiguo primero — el más urgente
+
+        if (!enCamino.length) {
+            card.style.display = "none";
+            document.title = document.title.replace(/^🚚\(\d+\)\s*/, "");
+            return;
+        }
+        card.style.display = "block";
+        if (!/^🚚\(\d+\)/.test(document.title)) document.title = `🚚(${enCamino.length}) ` + document.title;
+        else document.title = document.title.replace(/^🚚\(\d+\)/, `🚚(${enCamino.length})`);
+
+        const ahora = Date.now();
+        cont.innerHTML = enCamino.map(l => {
+            const fechaMs = l.fecha ? new Date(l.fecha).getTime() : ahora;
+            const dias = Math.floor((ahora - fechaMs) / 86400000);
+            const urgente = dias >= 1;
+            const fecha = l.fecha ? new Date(l.fecha).toLocaleDateString("es-SV",{day:"numeric",month:"short",hour:"2-digit",minute:"2-digit"}) : "";
+            const nombreVend = vendMap.get(l.afiliado) || l.afiliado || "—";
+            const c = l.cliente;
+            return `<div style="background:${urgente?'rgba(249,115,22,0.12)':'#1a1a1a'};border:1px solid ${urgente?'#f97316':'#333'};border-radius:10px;padding:10px 12px;margin-bottom:8px;">
+                <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px;">
+                    <div style="flex:1;min-width:0;">
+                        <div style="font-weight:700;font-size:13px;">${esc(l.nombre||l.codigo)}</div>
+                        <div style="font-size:11px;color:#888;">🎯 ${esc(nombreVend)} · $${parseFloat(l.precio||0).toFixed(2)} · ${fecha}</div>
+                        ${c ? `<div style="font-size:11px;color:#aaa;margin-top:2px;">👤 ${esc(c.nombre||"—")} · ${esc(c.telefono||"—")}</div>` : ""}
+                        <div style="font-size:11px;font-weight:700;color:${urgente?'#f97316':'#888'};margin-top:3px;">${urgente ? `⚠️ ${dias} día${dias>1?'s':''} sin confirmar entrega` : "En camino"}</div>
+                    </div>
+                    <div style="display:flex;flex-direction:column;gap:4px;flex-shrink:0;">
+                        <button onclick="confirmarEntregaDesdeAdmin('${l.id}')" style="padding:5px 10px;font-size:11px;background:#27ae60;color:#fff;border:none;border-radius:6px;cursor:pointer;font-weight:700;">✅ Entregado</button>
+                        <button onclick="rechazarEntregaDesdeAdmin('${l.id}')" style="padding:5px 10px;font-size:11px;background:#e74c3c;color:#fff;border:none;border-radius:6px;cursor:pointer;font-weight:700;">❌ Rechazado</button>
+                    </div>
+                </div>
+            </div>`;
+        }).join("");
+    } catch(e) {
+        cont.innerHTML = '<p style="color:#e74c3c;font-size:13px;text-align:center;padding:16px 0;">Error al cargar pedidos en camino.</p>';
+    }
+}
+
+async function confirmarEntregaDesdeAdmin(id) {
+    if (!confirm("¿El transportista entregó y cobró este pedido? Se cerrará la venta y se generará la comisión.")) return;
+    const res = await fetch(API_URL, { method:'POST', body: JSON.stringify({ accion:"CONFIRMAR_LEAD_ENTREGA", _pass: ADMIN_PASS, id }) }).then(r=>r.json());
+    if (!res.ok) { toast("⚠️ " + (res.error || "No se pudo confirmar"), "#ef4444"); return; }
+    toast("✅ Entrega confirmada — venta y comisión cerradas", "#22c55e");
+    cargarAfiliadosEnCamino();
+}
+
+async function rechazarEntregaDesdeAdmin(id) {
+    if (!confirm("¿El cliente rechazó este pedido en la puerta? La pieza regresará a bodega, sin venta ni comisión.")) return;
+    const res = await fetch(API_URL, { method:'POST', body: JSON.stringify({ accion:"RECHAZAR_LEAD_ENTREGA", _pass: ADMIN_PASS, id }) }).then(r=>r.json());
+    if (!res.ok) { toast("⚠️ " + (res.error || "No se pudo registrar el rechazo"), "#ef4444"); return; }
+    toast("↩️ Pedido rechazado — pieza devuelta a bodega", "#22c55e");
+    cargarAfiliadosEnCamino();
 }
 
 // Vista central: todos los Leads pendientes de confirmar de todos los
