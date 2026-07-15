@@ -1360,7 +1360,7 @@ async function cargarPedidosAfiliadosPendientes() {
                     <div style="font-size:11px;color:#888;">🎯 ${esc(nombreVend)} · $${parseFloat(l.precio||0).toFixed(2)} · ${fecha}</div>
                     ${clienteHtml}
                 </div>
-                <button onclick="confirmarLeadDesdeAdmin('${l.id}')" style="flex-shrink:0;padding:6px 12px;font-size:11px;background:#27ae60;color:#fff;border:none;border-radius:6px;cursor:pointer;font-weight:700;">✅ Confirmar</button>
+                <button onclick="confirmarLeadDesdeAdmin('${l.id}')" style="flex-shrink:0;padding:6px 12px;font-size:11px;background:#f97316;color:#fff;border:none;border-radius:6px;cursor:pointer;font-weight:700;">📦 Empacar y Enviar</button>
             </div>`;
         }).join("");
     } catch(e) {
@@ -1368,11 +1368,14 @@ async function cargarPedidosAfiliadosPendientes() {
     }
 }
 
+// Solo reserva el stock (paso 1 de 2) — la venta y la comisión del afiliado
+// se cierran hasta confirmar la entrega real desde el Hub (Leads del
+// afiliado), porque con pago contra entrega el cliente puede rechazarlo.
 async function confirmarLeadDesdeAdmin(id) {
-    if (!confirm("¿Confirmar esta venta? Se descontará el stock y se generará la comisión del afiliado.")) return;
-    const res = await fetch(API_URL, { method:'POST', body: JSON.stringify({ accion:"CONFIRMAR_LEAD_VENTA", _pass: ADMIN_PASS, id }) }).then(r=>r.json());
+    if (!confirm("¿Marcar como empacado y enviado? Se reserva el stock — la venta y la comisión se cerrarán hasta confirmar la entrega real desde el Hub.")) return;
+    const res = await fetch(API_URL, { method:'POST', body: JSON.stringify({ accion:"CONFIRMAR_LEAD_ENVIO", _pass: ADMIN_PASS, id }) }).then(r=>r.json());
     if (!res.ok) { toast("⚠️ " + (res.error || "No se pudo confirmar"), "#ef4444"); return; }
-    toast("✅ Venta confirmada", "#22c55e");
+    toast("📦 Pedido en camino — confirma la entrega en el Hub cuando el transportista la realice", "#22c55e");
     cargarPedidosAfiliadosPendientes();
 }
 
