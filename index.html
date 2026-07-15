@@ -428,6 +428,14 @@
             <div id="lista-afiliados-en-camino" style="margin-top:8px;"></div>
         </div>
 
+        <!-- Leads "Interesado" viejos SIN datos de cliente — el afiliado nunca
+             completó el pedido (nombre/teléfono/dirección). Sin esta alerta
+             quedan silenciosos y la venta se puede perder por puro olvido. -->
+        <div class="card" id="card-leads-sin-completar" style="display:none;border-color:#eab308;">
+            <h2 style="color:#eab308;">🕐 Leads sin Completar (afiliado no llenó datos)</h2>
+            <div id="lista-leads-sin-completar" style="margin-top:8px;"></div>
+        </div>
+
         <!-- Pedidos de afiliados por confirmar — vista central, sin tener que
              entrar afiliado por afiliado a revisar quién tiene algo pendiente. -->
         <div class="card">
@@ -1325,6 +1333,16 @@ async function cargarDatos(silencioso=false) {
     }
 }
 
+// Badge combinado en el título de la pestaña — suma pedidos en camino sin
+// confirmar entrega + leads viejos sin completar, así se nota con un solo
+// vistazo aunque la pestaña esté de fondo.
+let _badgeEnCamino = 0, _badgeLeadsSinCompletar = 0;
+function actualizarTituloAlertas() {
+    const total = _badgeEnCamino + _badgeLeadsSinCompletar;
+    document.title = document.title.replace(/^🔔\(\d+\)\s*/, "");
+    if (total > 0) document.title = `🔔(${total}) ` + document.title;
+}
+
 function renderAll(sil=false) {
     renderStats(); renderChart(); renderTop();
     renderPedidos(); renderProductos(); renderCupones(); renderClientes(); actualizarBadgeCorreo();
@@ -1332,6 +1350,58 @@ function renderAll(sil=false) {
     cargarEstadisticas();
     cargarPedidosAfiliadosPendientes();
     cargarAfiliadosEnCamino();
+    cargarLeadsSinCompletar();
+}
+
+// Leads "Interesado" de varios días SIN datos de cliente — el afiliado nunca
+// llenó el pedido (nombre/teléfono/dirección) desde su link de "Completar
+// Pedidos". Sin este aviso quedan silenciosos indefinidamente y la venta se
+// puede perder por puro olvido del afiliado.
+const LEADS_SIN_COMPLETAR_DIAS = 2;
+async function cargarLeadsSinCompletar() {
+    const card = document.getElementById("card-leads-sin-completar");
+    const cont = document.getElementById("lista-leads-sin-completar");
+    if (!card || !cont) return;
+    try {
+        const [resLeads, resVend] = await Promise.all([
+            fetch(API_URL, { method:'POST', body: JSON.stringify({ accion:"GET_LEADS_ADMIN", _pass: ADMIN_PASS }) }),
+            fetch(API_URL, { method:'POST', body: JSON.stringify({ accion:"GET_VENDEDORES_AFILIADOS", _pass: ADMIN_PASS }) })
+        ]);
+        const dataLeads = await resLeads.json();
+        const dataVend  = await resVend.json();
+        const vendMap = new Map((dataVend.vendedores||[]).map(v => [v.codigo, v]));
+        const ahora = Date.now();
+        const sinCompletar = (dataLeads.leads||[])
+            .filter(l => l.estado === "interesado" && !l.cliente)
+            .map(l => ({ ...l, dias: Math.floor((ahora - new Date(l.fecha||ahora).getTime()) / 86400000) }))
+            .filter(l => l.dias >= LEADS_SIN_COMPLETAR_DIAS)
+            .sort((a,b) => b.dias - a.dias); // más viejo primero — el más urgente
+
+        _badgeLeadsSinCompletar = sinCompletar.length;
+        actualizarTituloAlertas();
+
+        if (!sinCompletar.length) { card.style.display = "none"; return; }
+        card.style.display = "block";
+
+        cont.innerHTML = sinCompletar.map(l => {
+            const vend = vendMap.get(l.afiliado);
+            const nombreVend = vend?.nombre || l.afiliado || "—";
+            const tel = String(vend?.telefono || "").replace(/\D/g, "");
+            const msg = `Hola ${nombreVend}! Vi que tienes un cliente interesado en "${l.nombre||l.codigo}" desde hace ${l.dias} días y todavía falta completar sus datos en tu link de pedidos. ¿Puedes completarlo o me cuentas si ya no sigue interesado?`;
+            return `<div style="background:rgba(234,179,8,0.1);border:1px solid #eab308;border-radius:10px;padding:10px 12px;margin-bottom:8px;">
+                <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px;">
+                    <div style="flex:1;min-width:0;">
+                        <div style="font-weight:700;font-size:13px;">${esc(l.nombre||l.codigo)}</div>
+                        <div style="font-size:11px;color:#888;">🎯 ${esc(nombreVend)} · $${parseFloat(l.precio||0).toFixed(2)}</div>
+                        <div style="font-size:11px;font-weight:700;color:#eab308;margin-top:3px;">⚠️ ${l.dias} días sin que el afiliado complete los datos del cliente</div>
+                    </div>
+                    ${tel ? `<a href="https://wa.me/${tel}?text=${encodeURIComponent(msg)}" target="_blank" style="flex-shrink:0;padding:5px 10px;font-size:11px;background:#25D366;color:#fff;border-radius:6px;text-decoration:none;font-weight:700;">💬 Recordar</a>` : ''}
+                </div>
+            </div>`;
+        }).join("");
+    } catch(e) {
+        cont.innerHTML = '<p style="color:#e74c3c;font-size:13px;text-align:center;padding:16px 0;">Error al cargar leads sin completar.</p>';
+    }
 }
 
 // Pedidos de afiliados que ya se empacaron/enviaron pero cuya entrega real
@@ -1354,14 +1424,11 @@ async function cargarAfiliadosEnCamino() {
             .filter(l => l.estado === "en_camino")
             .sort((a,b) => new Date(a.fecha) - new Date(b.fecha)); // más antiguo primero — el más urgente
 
-        if (!enCamino.length) {
-            card.style.display = "none";
-            document.title = document.title.replace(/^🚚\(\d+\)\s*/, "");
-            return;
-        }
+        _badgeEnCamino = enCamino.length;
+        actualizarTituloAlertas();
+
+        if (!enCamino.length) { card.style.display = "none"; return; }
         card.style.display = "block";
-        if (!/^🚚\(\d+\)/.test(document.title)) document.title = `🚚(${enCamino.length}) ` + document.title;
-        else document.title = document.title.replace(/^🚚\(\d+\)/, `🚚(${enCamino.length})`);
 
         const ahora = Date.now();
         cont.innerHTML = enCamino.map(l => {
