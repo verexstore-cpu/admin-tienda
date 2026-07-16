@@ -3535,6 +3535,33 @@ async function desactivarLinkCatalogo(linkOrId) {
     }
 }
 
+// Cambia cuánto le queda de vida a un link YA generado, sin desactivarlo ni
+// tener que mandar uno nuevo — útil cuando se te olvidó limitar la vigencia
+// o quieres darle más tiempo del que pusiste originalmente.
+async function editarVigenciaCatalogo(linkOrId, dias) {
+    const raw = (linkOrId||"").trim();
+    if (!raw) return toast("⚠️ Pega el link o código a editar","#f97316");
+    const m = raw.match(/\/c\/([a-z0-9-]+)/i);
+    const id = m ? m[1] : raw.replace(/[^a-z0-9-]/gi,"");
+    if (!id) return toast("⚠️ No se pudo leer el código del link","#f97316");
+    if (!confirm(`¿Actualizar la vigencia del catálogo "${id}" a ${dias} día(s) desde ahora?`)) return;
+
+    try {
+        const res = await fetch("/edit-catalog-expiry", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ id, dias: parseInt(dias) })
+        });
+        const out = await res.json();
+        if (!res.ok) throw new Error(out.error || "No se pudo actualizar");
+        toast(`✅ Vigencia actualizada — ${dias} día(s) desde ahora`,"#22c55e");
+        document.getElementById("cat-link-editar-vig").value = "";
+    } catch(e) {
+        console.error(e);
+        toast("❌ Error: "+e.message,"#ef4444");
+    }
+}
+
 // ═════════════════════════════════════════════
 //  CATÁLOGO PARA CLIENTE
 // ═════════════════════════════════════════════
@@ -4625,6 +4652,23 @@ async function generarPDFCatalogo() {
                 <input type="text" id="cat-link-desactivar" placeholder="Link o código a desactivar" style="flex:1;">
                 <button onclick="desactivarLinkCatalogo(document.getElementById('cat-link-desactivar').value)"
                     style="background:#dc2626;color:#fff;border:none;padding:0 14px;border-radius:7px;font-size:12px;font-weight:700;cursor:pointer;white-space:nowrap;">Desactivar</button>
+            </div>
+        </div>
+
+        <div style="margin-top:14px;background:#eff6ff;border-radius:8px;padding:12px;border:1px solid #bfdbfe;">
+            <div style="font-size:11px;font-weight:700;color:#1e40af;text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px;">✏️ Editar vigencia de un link ya generado</div>
+            <div style="font-size:11px;color:#1e3a8a;margin-bottom:8px;">Acorta o extiende cuánto dura un link SIN desactivarlo ni tener que mandar uno nuevo — el mismo link sigue vivo, solo cambia cuándo vence.</div>
+            <div style="display:flex;gap:8px;">
+                <input type="text" id="cat-link-editar-vig" placeholder="Link o código" style="flex:1;">
+                <select id="cat-editar-vig-dias" style="width:120px;">
+                    <option value="1">1 día</option>
+                    <option value="3">3 días</option>
+                    <option value="7">7 días</option>
+                    <option value="15">15 días</option>
+                    <option value="30">30 días</option>
+                </select>
+                <button onclick="editarVigenciaCatalogo(document.getElementById('cat-link-editar-vig').value, document.getElementById('cat-editar-vig-dias').value)"
+                    style="background:#2563eb;color:#fff;border:none;padding:0 14px;border-radius:7px;font-size:12px;font-weight:700;cursor:pointer;white-space:nowrap;">Actualizar</button>
             </div>
         </div>
     </div>
