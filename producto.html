@@ -115,9 +115,30 @@
                 app.innerHTML = cardHtml(encontrados[0], 0);
             }
 
+            const afiliado = params.get("af") || "";
+
+            // Registro silencioso del interés del cliente — si el link se
+            // compartió a nombre de un afiliado, el Lead cae directo en su
+            // "Completar Pedidos", igual que si lo hubiera elegido desde su
+            // propio catálogo. No bloquea el WhatsApp aunque falle.
+            function registrarLead(p){
+                if(!afiliado) return;
+                try{
+                    fetch(API_URL, {
+                        method:"POST", headers:{"Content-Type":"application/json"},
+                        body: JSON.stringify({
+                            accion:"REGISTRAR_LEAD", afiliado, codigo:p.codigo,
+                            nombre:(p.nombre_base||p.nombre||"").trim(),
+                            precio: parseFloat(p.precio||0), foto: p.foto||""
+                        })
+                    }).catch(()=>{});
+                }catch(_){}
+            }
+
             window.pedir = function(idx){
                 const p = encontrados[idx];
                 const nombre = (p.nombre_base || p.nombre || "").trim();
+                registrarLead(p);
                 const msg = `Hola, me interesa este producto de VEREX:\n\n${nombre}\nPrecio: $${parseFloat(p.precio||0).toFixed(2)}\nRef: ${p.codigo}`;
                 window.open(`https://wa.me/?text=${encodeURIComponent(msg)}`,"_blank");
             };
