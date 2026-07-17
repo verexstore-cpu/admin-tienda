@@ -1446,8 +1446,14 @@ async function cargarAfiliadosEnCamino() {
                         ${c ? `<div style="font-size:11px;color:#aaa;margin-top:2px;">👤 ${esc(c.nombre||"—")} · ${esc(c.telefono||"—")}</div>` : ""}
                         <div style="font-size:11px;font-weight:700;color:${urgente?'#f97316':'#888'};margin-top:3px;">${urgente ? `⚠️ ${dias} día${dias>1?'s':''} sin confirmar entrega` : "En camino"}</div>
                     </div>
-                    <div style="display:flex;flex-direction:column;gap:4px;flex-shrink:0;">
-                        <button onclick="confirmarEntregaDesdeAdmin('${l.id}')" style="padding:5px 10px;font-size:11px;background:#27ae60;color:#fff;border:none;border-radius:6px;cursor:pointer;font-weight:700;">✅ Entregado</button>
+                    <div style="display:flex;flex-direction:column;gap:4px;flex-shrink:0;position:relative;">
+                        <div style="display:flex;gap:2px;">
+                            <button onclick="confirmarEntregaDesdeAdmin('${l.id}',false)" style="flex:1;padding:5px 8px;font-size:11px;background:#27ae60;color:#fff;border:none;border-radius:6px 0 0 6px;cursor:pointer;font-weight:700;">✅ Entregado</button>
+                            <button onclick="event.stopPropagation();toggleMenuCambioAdmin('${l.id}',this)" title="Otras opciones" style="padding:5px 6px;font-size:11px;background:#1e6b3e;color:#fff;border:none;border-radius:0 6px 6px 0;cursor:pointer;font-weight:700;border-left:1px solid rgba(255,255,255,.25);">▾</button>
+                        </div>
+                        <div id="menu-cambio-admin-${l.id}" style="display:none;position:absolute;top:32px;right:0;background:#111;border:1px solid #444;border-radius:8px;overflow:hidden;z-index:99;min-width:190px;box-shadow:0 4px 16px rgba(0,0,0,0.4);">
+                            <button onclick="event.stopPropagation();confirmarEntregaDesdeAdmin('${l.id}',true);document.getElementById('menu-cambio-admin-${l.id}').style.display='none';" style="display:block;width:100%;padding:9px 12px;font-size:11px;background:none;color:#a78bfa;border:none;cursor:pointer;text-align:left;font-weight:600;">🔄 Es un cambio (sin comisión)</button>
+                        </div>
                         <button onclick="rechazarEntregaDesdeAdmin('${l.id}')" style="padding:5px 10px;font-size:11px;background:#e74c3c;color:#fff;border:none;border-radius:6px;cursor:pointer;font-weight:700;">❌ Rechazado</button>
                     </div>
                 </div>
@@ -1458,14 +1464,27 @@ async function cargarAfiliadosEnCamino() {
     }
 }
 
-async function confirmarEntregaDesdeAdmin(id) {
-    const esCambio = confirm(
-        "¿Esta entrega es un CAMBIO de producto de una venta ya registrada antes " +
-        "(el cliente ya pagó y solo se le está reemplazando la pieza)?\n\n" +
-        "Aceptar = Sí, es un cambio (no genera venta ni comisión nueva)\n" +
-        "Cancelar = No, es una venta nueva — el transportista entregó y cobró"
-    );
-    const res = await fetch(API_URL, { method:'POST', body: JSON.stringify({ accion:"CONFIRMAR_LEAD_ENTREGA", _pass: ADMIN_PASS, id, esCambio }) }).then(r=>r.json());
+// Botón "Entregado" = venta normal, un clic. El "▾" abre un menú chiquito
+// para marcarlo como cambio (excepción, no interrumpe el caso de siempre).
+function toggleMenuCambioAdmin(id, btn) {
+    document.querySelectorAll('[id^="menu-cambio-admin-"]').forEach(m => {
+        if (m.id !== `menu-cambio-admin-${id}`) m.style.display = "none";
+    });
+    const menu = document.getElementById(`menu-cambio-admin-${id}`);
+    if (!menu) return;
+    menu.style.display = menu.style.display === "none" ? "block" : "none";
+    if (menu.style.display === "block") {
+        setTimeout(() => {
+            document.addEventListener("click", function cerrar() {
+                menu.style.display = "none";
+                document.removeEventListener("click", cerrar);
+            }, { once: true });
+        }, 10);
+    }
+}
+
+async function confirmarEntregaDesdeAdmin(id, esCambio) {
+    const res = await fetch(API_URL, { method:'POST', body: JSON.stringify({ accion:"CONFIRMAR_LEAD_ENTREGA", _pass: ADMIN_PASS, id, esCambio: !!esCambio }) }).then(r=>r.json());
     if (!res.ok) { toast("⚠️ " + (res.error || "No se pudo confirmar"), "#ef4444"); return; }
     toast(esCambio ? "✅ Cambio entregado — sin venta ni comisión nueva" : "✅ Entrega confirmada — venta y comisión cerradas", "#22c55e");
     cargarAfiliadosEnCamino();
