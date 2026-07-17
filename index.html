@@ -3846,7 +3846,13 @@ function onSeleccionarAfiliado() {
     document.getElementById("cat-afiliado-codigo").value = codigo;
     document.getElementById("cat-afiliado-nombre").value = v?.nombre || "";
     const waEl = document.getElementById("cat-wa");
-    if (waEl && v?.telefono) waEl.value = v.telefono;
+    if (waEl && v?.telefono) {
+        // El teléfono del vendedor se guarda local (8 dígitos, sin "503") —
+        // el link de WhatsApp del catálogo necesita el código de país o el
+        // cliente cree que envió el mensaje y nunca le llega a nadie.
+        const soloDigitos = String(v.telefono).replace(/\D/g, "");
+        waEl.value = soloDigitos.length === 8 ? "503" + soloDigitos : soloDigitos;
+    }
     if (v) generarIdAfiliado(v.nombre);
 
     const btnRefrescar = document.getElementById("btn-refrescar-catalogo-afiliado");

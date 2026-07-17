@@ -230,14 +230,26 @@
                 <h2>Este catálogo ya venció</h2>
                 <p>Hola${nombre?' <strong>'+esc(nombre)+'</strong>':''}, este catálogo ya no está disponible.<br>
                 Contáctanos para ver el inventario actualizado.</p>
-                <a href="https://wa.me/${esc(wa||'')}" class="wa-btn">📱 Contactar por WhatsApp</a>
+                <a href="https://wa.me/${esc(normalizarWA(wa))}" class="wa-btn">📱 Contactar por WhatsApp</a>
             </div>
             <footer>VEREX · La expresión de tu mejor versión</footer>`;
     }
 
+    // Normaliza el teléfono a formato internacional que wa.me realmente
+    // reconoce — el número guardado a veces se guardó local (8 dígitos, sin
+    // "503"), lo que rompe el link silenciosamente: el cliente cree que
+    // envió el mensaje, pero nunca le llega nada al afiliado/VEREX.
+    function normalizarWA(numero){
+        const solo = String(numero||"").replace(/\D/g,"");
+        if (!solo) return "";
+        if (solo.length === 8) return "503" + solo;      // local SV sin código de país
+        if (solo.startsWith("503") && solo.length === 11) return solo;
+        return solo;
+    }
+
     function render(data){
         _prods = data.prods || [];
-        _waNum = data.wa    || "";
+        _waNum = normalizarWA(data.wa);
         _descPct = Math.min(90, Math.max(0, parseInt(data.descPct) || 0));
         _afiliadoCodigo = data.afiliadoCodigo || "";
 
