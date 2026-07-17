@@ -20,10 +20,25 @@ export async function onRequest(context) {
 
     // Build OG tags with absolute URLs for WhatsApp/social previews
     let catalogNombre = "Catálogo VEREX";
+    let data = null;
     try {
-        const data = JSON.parse(raw);
+        data = JSON.parse(raw);
         if (data.nombre) catalogNombre = `Catálogo VEREX · ${data.nombre}`;
     } catch(_) {}
+
+    // El banner de afiliado es global (uno solo para todos sus catálogos) —
+    // se inyecta aquí en cada carga, así una edición del admin aplica de
+    // inmediato a todos los links de afiliado ya compartidos, sin regenerarlos.
+    if (data && data.afiliado) {
+        try {
+            const rawBanner = await context.env.CATALOGS.get("__banner_afiliado_global__");
+            if (rawBanner) {
+                const b = JSON.parse(rawBanner);
+                data.banner = (b.activo && b.txt) ? { txt: b.txt, sub: b.sub, color: b.color } : null;
+            }
+        } catch(_) {}
+    }
+    const rawFinal = data ? JSON.stringify(data) : raw;
 
     const ogTags = `
 <meta property="og:type"        content="website">
@@ -34,7 +49,7 @@ export async function onRequest(context) {
 <meta property="og:image:height" content="750">
 <meta name="twitter:card"       content="summary_large_image">
 <meta name="twitter:image"      content="${origin}/images/logo.jpg">
-<script>window.__CATALOG_DATA__ = ${raw};</script>`;
+<script>window.__CATALOG_DATA__ = ${rawFinal};</script>`;
 
     html = html.replace("</head>", ogTags + "\n</head>");
 

@@ -3829,6 +3829,8 @@ function onToggleAfiliado(checked) {
     // ellos ganan comisión por venta y un descuento no acordado les afecta esa comisión.
     const bannerWrap = document.getElementById("cat-banner-wrap");
     if (bannerWrap) bannerWrap.style.display = checked ? "none" : "block";
+    const bannerAfWrap = document.getElementById("cat-banner-afiliado-wrap");
+    if (bannerAfWrap) bannerAfWrap.style.display = checked ? "block" : "none";
     const nombreLabel = document.getElementById("cat-nombre-label");
     if (nombreLabel) nombreLabel.textContent = checked ? "Nota interna (opcional)" : "Nombre del cliente (opcional)";
     if (checked) {
@@ -3839,6 +3841,45 @@ function onToggleAfiliado(checked) {
         const prev = document.getElementById("banner-preview");
         if (prev) prev.style.display = "none";
         cargarVendedoresAfiliados();
+        cargarBannerAfiliadoGlobal();
+    }
+}
+
+let _bannerAfColor = "#7c3aed";
+function selBannerAfColor(btn, color) {
+    _bannerAfColor = color;
+    document.querySelectorAll("#banner-af-colors button").forEach(b => b.style.border = "3px solid transparent");
+    btn.style.border = "3px solid #111";
+}
+async function cargarBannerAfiliadoGlobal() {
+    try {
+        const res = await fetch("/banner-afiliado");
+        const b = await res.json();
+        document.getElementById("cat-banner-af-activo").checked = !!b.activo;
+        document.getElementById("cat-banner-af-txt").value = b.txt || "";
+        document.getElementById("cat-banner-af-sub").value = b.sub || "";
+        _bannerAfColor = b.color || "#7c3aed";
+        document.querySelectorAll("#banner-af-colors button").forEach(btn => {
+            btn.style.border = (btn.getAttribute("onclick")||"").includes(`'${_bannerAfColor}'`) ? "3px solid #111" : "3px solid transparent";
+        });
+    } catch (e) { /* si falla, se deja el formulario en blanco para no bloquear */ }
+}
+async function guardarBannerAfiliadoGlobal() {
+    const activo = document.getElementById("cat-banner-af-activo").checked;
+    const txt = document.getElementById("cat-banner-af-txt").value.trim();
+    const sub = document.getElementById("cat-banner-af-sub").value.trim();
+    if (activo && !txt) return toast("⚠️ Escribe el texto del banner antes de activarlo", "#f97316");
+    try {
+        const res = await fetch("/banner-afiliado", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ activo, txt, sub, color: _bannerAfColor }),
+        });
+        const data = await res.json();
+        if (data.error) throw new Error(data.error);
+        toast("✅ Banner global de afiliados actualizado", "#22c55e");
+    } catch (e) {
+        toast("❌ Error al guardar: " + e.message, "#ef4444");
     }
 }
 
@@ -4623,6 +4664,32 @@ async function generarPDFCatalogo() {
                 </div>
                 <div id="banner-preview" style="display:none;flex:1;padding:4px 10px;border-radius:5px;font-size:11px;font-weight:700;color:#fff;min-width:80px;text-align:center;"></div>
             </div>
+        </div>
+
+        <!-- Solo Afiliado — banner GLOBAL: uno solo compartido por TODOS los catálogos
+             de afiliado (no por cada link generado). Editar aquí y guardar aplica de
+             inmediato a todos los links de afiliado ya compartidos, sin regenerarlos. -->
+        <div id="cat-banner-afiliado-wrap" style="display:none;margin-bottom:12px;background:#f5f3ff;border:1px solid #ddd6fe;border-radius:8px;padding:10px;">
+            <label style="color:#5b21b6;font-weight:700;">🌐 Banner global de promoción para Afiliados</label>
+            <div style="font-size:10px;color:#5b21b6;margin-bottom:6px;">Este banner es UNO SOLO para todos los catálogos de afiliado — se aplica a todos los links ya compartidos apenas lo guardas, sin necesidad de generar links nuevos.</div>
+            <label style="display:flex;align-items:center;gap:6px;font-size:12px;color:#5b21b6;font-weight:600;margin-bottom:6px;">
+                <input type="checkbox" id="cat-banner-af-activo" style="width:auto;"> Banner activo
+            </label>
+            <input type="text" id="cat-banner-af-txt" placeholder="Ej: Nuevo catálogo de temporada 🎉" style="margin-top:2px;">
+            <input type="text" id="cat-banner-af-sub" placeholder="Subtítulo (opcional)" style="margin-top:6px;">
+            <div style="display:flex;align-items:center;gap:8px;margin-top:8px;flex-wrap:wrap;">
+                <span style="font-size:11px;color:#5b21b6;font-weight:700;">Color:</span>
+                <div id="banner-af-colors" style="display:flex;gap:6px;flex-wrap:wrap;">
+                    <button type="button" onclick="selBannerAfColor(this,'#ef4444')" style="width:26px;height:26px;border-radius:50%;background:#ef4444;border:3px solid transparent;cursor:pointer;"></button>
+                    <button type="button" onclick="selBannerAfColor(this,'#f97316')" style="width:26px;height:26px;border-radius:50%;background:#f97316;border:3px solid transparent;cursor:pointer;"></button>
+                    <button type="button" onclick="selBannerAfColor(this,'#7c3aed')" style="width:26px;height:26px;border-radius:50%;background:#7c3aed;border:3px solid transparent;cursor:pointer;"></button>
+                    <button type="button" onclick="selBannerAfColor(this,'#0277bd')" style="width:26px;height:26px;border-radius:50%;background:#0277bd;border:3px solid transparent;cursor:pointer;"></button>
+                    <button type="button" onclick="selBannerAfColor(this,'#111111')" style="width:26px;height:26px;border-radius:50%;background:#111111;border:3px solid transparent;cursor:pointer;"></button>
+                    <button type="button" onclick="selBannerAfColor(this,'#22c55e')" style="width:26px;height:26px;border-radius:50%;background:#22c55e;border:3px solid transparent;cursor:pointer;"></button>
+                </div>
+            </div>
+            <button type="button" onclick="guardarBannerAfiliadoGlobal()"
+                style="width:100%;margin-top:10px;background:#7c3aed;color:#fff;border:none;padding:9px;border-radius:7px;font-size:12px;font-weight:700;cursor:pointer;">💾 Guardar banner global</button>
         </div>
 
         <div id="cat-info" style="font-size:12px;color:#888;margin-bottom:8px;"></div>
