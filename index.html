@@ -3845,6 +3845,39 @@ function onToggleAfiliado(checked) {
     }
 }
 
+// Barra de emojis rápidos para los banners (cliente y afiliado) — inserta el
+// emoji en la posición del cursor del input indicado en data-target, sin
+// pisar lo que el admin ya escribió.
+const EMOJIS_BANNER = ["🎉","🔥","✨","💥","🎁","💸","📦","🚚","⏰","💯","❤️","🛍️","👑","⭐","🆕"];
+function insertarEnCursor(inputId, texto) {
+    const el = document.getElementById(inputId);
+    if (!el) return;
+    const start = el.selectionStart ?? el.value.length;
+    const end   = el.selectionEnd ?? el.value.length;
+    el.value = el.value.slice(0, start) + texto + el.value.slice(end);
+    el.focus();
+    el.setSelectionRange(start + texto.length, start + texto.length);
+    el.dispatchEvent(new Event("input", { bubbles: true }));
+}
+function _initEmojiQuickBars() {
+    document.querySelectorAll(".emoji-quick-bar").forEach(bar => {
+        if (bar.dataset.built) return;
+        bar.dataset.built = "1";
+        bar.style.cssText = "display:flex;gap:3px;flex-wrap:wrap;margin-top:4px;";
+        const target = bar.dataset.target;
+        EMOJIS_BANNER.forEach(emo => {
+            const b = document.createElement("button");
+            b.type = "button";
+            b.textContent = emo;
+            b.title = "Insertar " + emo;
+            b.style.cssText = "border:1px solid #ddd;background:#fff;border-radius:5px;font-size:14px;padding:2px 5px;cursor:pointer;line-height:1.4;";
+            b.onclick = () => insertarEnCursor(target, emo);
+            bar.appendChild(b);
+        });
+    });
+}
+document.addEventListener("DOMContentLoaded", _initEmojiQuickBars);
+
 let _bannerAfColor = "#7c3aed";
 function selBannerAfColor(btn, color) {
     _bannerAfColor = color;
@@ -4641,7 +4674,9 @@ async function generarPDFCatalogo() {
         <div id="cat-banner-wrap" style="margin-bottom:12px;background:#fffef0;border:1px solid #fde68a;border-radius:8px;padding:10px;">
             <label style="color:#92400e;font-weight:700;">🏷️ Banner de oferta (opcional)</label>
             <input type="text" id="cat-banner-txt" placeholder="Ej: 2x1 en aretes este fin de semana 🎉" style="margin-top:6px;">
+            <div class="emoji-quick-bar" data-target="cat-banner-txt"></div>
             <input type="text" id="cat-banner-sub" placeholder="Subtítulo (ej: Solo hasta el domingo)" style="margin-top:6px;">
+            <div class="emoji-quick-bar" data-target="cat-banner-sub"></div>
             <div style="margin-top:8px;">
                 <label style="color:#92400e;font-weight:700;font-size:12px;">% Descuento (requiere el texto del banner arriba — calcula el precio final en cada tarjeta)</label>
                 <input type="number" id="cat-banner-desc-pct" placeholder="Ej: 20" min="0" max="90" style="margin-top:4px;">
@@ -4676,7 +4711,9 @@ async function generarPDFCatalogo() {
                 <input type="checkbox" id="cat-banner-af-activo" style="width:auto;"> Banner activo
             </label>
             <input type="text" id="cat-banner-af-txt" placeholder="Ej: Nuevo catálogo de temporada 🎉" style="margin-top:2px;">
+            <div class="emoji-quick-bar" data-target="cat-banner-af-txt"></div>
             <input type="text" id="cat-banner-af-sub" placeholder="Subtítulo (opcional)" style="margin-top:6px;">
+            <div class="emoji-quick-bar" data-target="cat-banner-af-sub"></div>
             <div style="display:flex;align-items:center;gap:8px;margin-top:8px;flex-wrap:wrap;">
                 <span style="font-size:11px;color:#5b21b6;font-weight:700;">Color:</span>
                 <div id="banner-af-colors" style="display:flex;gap:6px;flex-wrap:wrap;">
