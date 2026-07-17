@@ -1459,10 +1459,15 @@ async function cargarAfiliadosEnCamino() {
 }
 
 async function confirmarEntregaDesdeAdmin(id) {
-    if (!confirm("¿El transportista entregó y cobró este pedido? Se cerrará la venta y se generará la comisión.")) return;
-    const res = await fetch(API_URL, { method:'POST', body: JSON.stringify({ accion:"CONFIRMAR_LEAD_ENTREGA", _pass: ADMIN_PASS, id }) }).then(r=>r.json());
+    const esCambio = confirm(
+        "¿Esta entrega es un CAMBIO de producto de una venta ya registrada antes " +
+        "(el cliente ya pagó y solo se le está reemplazando la pieza)?\n\n" +
+        "Aceptar = Sí, es un cambio (no genera venta ni comisión nueva)\n" +
+        "Cancelar = No, es una venta nueva — el transportista entregó y cobró"
+    );
+    const res = await fetch(API_URL, { method:'POST', body: JSON.stringify({ accion:"CONFIRMAR_LEAD_ENTREGA", _pass: ADMIN_PASS, id, esCambio }) }).then(r=>r.json());
     if (!res.ok) { toast("⚠️ " + (res.error || "No se pudo confirmar"), "#ef4444"); return; }
-    toast("✅ Entrega confirmada — venta y comisión cerradas", "#22c55e");
+    toast(esCambio ? "✅ Cambio entregado — sin venta ni comisión nueva" : "✅ Entrega confirmada — venta y comisión cerradas", "#22c55e");
     cargarAfiliadosEnCamino();
 }
 
