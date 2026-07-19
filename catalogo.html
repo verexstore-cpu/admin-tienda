@@ -48,12 +48,22 @@
         .card-nota{display:inline-block;font-size:10px;font-weight:700;color:#92400e;background:#fef3c7;border:1px solid #fcd34d;border-radius:5px;padding:2px 7px;margin-top:5px;line-height:1.5;}
         .card-footer{padding:0 10px 10px;display:flex;gap:6px;}
         .wa-order{
-            display:block;flex:1;text-align:center;
-            background:#25D366;color:#fff;
+            display:flex;align-items:center;justify-content:center;
+            flex:1;text-align:center;position:relative;overflow:hidden;
+            background:linear-gradient(135deg,#4a3410,#C9A84C,#E8C87A,#C9A84C,#4a3410);
+            color:#1a1207;
             padding:9px 0;border-radius:8px;
             font-size:13px;font-weight:700;
-            border:none;cursor:pointer;
+            border:3px solid #9a9a9a;box-shadow:0 0 0 1px #666;
+            cursor:pointer;
         }
+        .wa-shine{
+            position:absolute;top:0;left:-60%;width:40%;height:100%;
+            background:linear-gradient(120deg,transparent,rgba(255,255,255,.85),transparent);
+            transform:skewX(-20deg);pointer-events:none;
+        }
+        .wa-order.brillando .wa-shine{ animation:waShineSweep .6s ease; }
+        @keyframes waShineSweep{ from{left:-60%;} to{left:130%;} }
         .cart-add{
             flex-shrink:0;width:38px;
             background:#fff;color:#111;border:1.5px solid #ddd;
@@ -388,7 +398,7 @@
                     ${p.nota?`<div class="card-nota">${esc(p.nota)}</div>`:''}
                 </div>
                 <div class="card-footer">
-                    <button class="wa-order" onclick="elegirTalla(${i},'wa')">✨ ¡Hazlo tuyo!</button>
+                    <button class="wa-order" onclick="elegirTalla(${i},'wa',this)"><span style="position:relative;z-index:2;">✨ ¡Hazlo tuyo!</span><span class="wa-shine"></span></button>
                     <button class="cart-add" onclick="elegirTalla(${i},'carrito')" title="Agregar al carrito">🛒</button>
                 </div>
             </div>`;
@@ -422,8 +432,16 @@
         window._miniToastTimer = setTimeout(() => { t.style.display = "none"; }, 2200);
     }
 
-    function elegirTalla(i, modo){
+    function elegirTalla(i, modo, btnEl){
         _szModo = modo || "wa";
+        // Brillo plateado al tocar el botón dorado — se re-dispara quitando y
+        // volviendo a poner la clase (si no, el navegador no repite la misma
+        // animación en clics seguidos).
+        if(btnEl && btnEl.classList.contains("wa-order")){
+            btnEl.classList.remove("brillando");
+            void btnEl.offsetWidth;
+            btnEl.classList.add("brillando");
+        }
         const p = _prods[i];
         if(!p) return;
         if(p._agotado){ alert("Este producto ya no está disponible — el stock se agotó."); return; }
