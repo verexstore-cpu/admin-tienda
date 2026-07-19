@@ -4324,25 +4324,49 @@ async function autoSeleccionarVariado(evitarCodigos) {
     };
     Object.values(porCat).forEach(arr => arr.sort(cmp));
 
+    // Reparte la selección de una lista en 3 bandas de precio (bajo/medio/alto)
+    // en vez de tomar simplemente los `count` de mayor stock — sin esto, si las
+    // piezas más caras de una categoría (ej. pulseras) resultan tener más stock,
+    // el catálogo terminaba mostrando solo las caras, sin variedad de precio.
+    // Dentro de cada banda se sigue respetando el orden de variedad/stock (cmp).
+    function _seleccionarDiversoPrecio(lista, count) {
+        if (lista.length <= count) return lista.slice();
+        const porPrecio = lista.slice().sort((a, b) => parseFloat(a.precio || 0) - parseFloat(b.precio || 0));
+        const n = porPrecio.length;
+        const bandas = [
+            porPrecio.slice(0, Math.ceil(n / 3)),
+            porPrecio.slice(Math.ceil(n / 3), Math.ceil(2 * n / 3)),
+            porPrecio.slice(Math.ceil(2 * n / 3)),
+        ].map(b => b.sort(cmp));
+        const out = [];
+        let i = 0;
+        while (out.length < count && bandas.some(b => b.length)) {
+            const banda = bandas[i % 3];
+            if (banda.length) out.push(banda.shift());
+            i++;
+        }
+        return out;
+    }
+
     const selected = new Set();
 
     // Reservar primero la cuota de acero (prioriza variedad + stock igual que las demás)
-    _catFiltrada.filter(esAcero).sort(cmp).slice(0, ACERO_QUOTA)
+    _seleccionarDiversoPrecio(_catFiltrada.filter(esAcero), ACERO_QUOTA)
         .forEach(p => selected.add(p._codigos?.[0] || p.codigo));
 
     // Catálogo de afiliado: cupo combinado de alianzas (pares+tríos+individuales
     // juntos), tope fijo de 3 sin importar el tamaño del catálogo.
     if (esCatalogoAfiliado) {
-        [...(porCat.AN_pareja || []), ...(porCat.AN_alianza || [])]
-            .sort(cmp).slice(0, ALIANZA_TOTAL_CAP)
+        _seleccionarDiversoPrecio([...(porCat.AN_pareja || []), ...(porCat.AN_alianza || [])], ALIANZA_TOTAL_CAP)
             .forEach(p => selected.add(p._codigos?.[0] || p.codigo));
     }
 
-    // Seleccionar por distribución principal, priorizando variedad y stock alto
-    // (se descuenta lo que ya ocupó la cuota de acero para no pasarse del total)
+    // Seleccionar por distribución principal, priorizando variedad y diversidad
+    // de precio (se descuenta lo que ya ocupó la cuota de acero para no
+    // pasarse del total)
     Object.entries(DIST).forEach(([cat, count]) => {
-        (porCat[cat] || []).filter(p => !selected.has(p._codigos?.[0] || p.codigo))
-            .slice(0, count).forEach(p => selected.add(p._codigos?.[0] || p.codigo));
+        const disponibles = (porCat[cat] || []).filter(p => !selected.has(p._codigos?.[0] || p.codigo));
+        _seleccionarDiversoPrecio(disponibles, count).forEach(p => selected.add(p._codigos?.[0] || p.codigo));
     });
 
     // Completar con otras categorías si hay espacio (mismo criterio) — en
