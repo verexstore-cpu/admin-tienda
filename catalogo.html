@@ -166,7 +166,11 @@
         <div style="display:flex;justify-content:space-between;align-items:center;margin:14px 0;font-size:15px;font-weight:800;color:#111;">
             <span>Total</span><span id="cart-total">$0.00</span>
         </div>
-        <div id="cart-tel-wrap" style="display:none;margin-bottom:14px;">
+        <div id="cart-datos-wrap" style="margin-bottom:14px;">
+            <div style="font-size:12px;font-weight:700;color:#111;margin-bottom:6px;">Tu nombre</div>
+            <input type="text" id="cart-nombre" placeholder="Ej: María Pérez"
+                oninput="actualizarBotonCarrito()"
+                style="width:100%;padding:12px;border:2px solid #e2e2e2;border-radius:10px;font-size:15px;box-sizing:border-box;margin-bottom:10px;">
             <div style="font-size:12px;font-weight:700;color:#111;margin-bottom:6px;">Tu número de WhatsApp</div>
             <input type="tel" id="cart-tel" placeholder="Ej: 7000-0000" inputmode="numeric"
                 oninput="actualizarBotonCarrito()"
@@ -200,6 +204,10 @@
         </div>
 
         <div id="sz-tel-wrap" style="display:none;margin-bottom:18px;">
+            <div style="font-size:12px;font-weight:700;color:#111;margin-bottom:6px;">Tu nombre</div>
+            <input type="text" id="sz-nombre" placeholder="Ej: María Pérez"
+                oninput="actualizarBotonSz()"
+                style="width:100%;padding:12px;border:2px solid #e2e2e2;border-radius:10px;font-size:15px;box-sizing:border-box;margin-bottom:10px;">
             <div style="font-size:12px;font-weight:700;color:#111;margin-bottom:6px;">Tu número de WhatsApp</div>
             <input type="tel" id="sz-tel" placeholder="Ej: 7000-0000" inputmode="numeric"
                 oninput="actualizarBotonSz()"
@@ -220,7 +228,7 @@
     const params = new URLSearchParams(location.search);
     const c = params.get("c");
 
-    let _prods = [], _waNum = "", _szIdx = -1, _szD = "", _szH = "", _descPct = 0, _afiliadoCodigo = "", _szParMode = false, _szTel = "", _szNoTalla = false, _szModo = "wa";
+    let _prods = [], _waNum = "", _szIdx = -1, _szD = "", _szH = "", _descPct = 0, _afiliadoCodigo = "", _szParMode = false, _szTel = "", _szNombreCliente = "", _szNoTalla = false, _szModo = "wa";
     let _carrito = [];
     try { _carrito = JSON.parse(sessionStorage.getItem("verex-carrito") || "[]"); } catch(_) {}
 
@@ -244,7 +252,7 @@
 
     // Registro silencioso del interés del cliente ANTES de abrir WhatsApp — no bloquea
     // la apertura del chat aunque falle (la venta nunca debe depender de esto).
-    function registrarLead(p, telefono){
+    function registrarLead(p, telefono, nombreCliente){
         if (!p?.c) return;
         try {
             fetch(API_URL, {
@@ -257,11 +265,15 @@
                     nombre: p.n || "",
                     precio: precioFinal(p.p),
                     foto: p.i || "",
-                    // Teléfono capturado ANTES de abrir WhatsApp — si el envío
-                    // falla o el cliente no lo manda, ya queda un dato de
+                    // Teléfono y nombre capturados ANTES de abrir WhatsApp — si el
+                    // envío falla o el cliente no lo manda, ya queda un dato de
                     // contacto guardado, en vez de un Lead sin nadie a quién
-                    // darle seguimiento.
-                    telefonoCliente: telefono || ""
+                    // darle seguimiento. Antes solo se pedía en catálogo de
+                    // afiliado; ahora se pide siempre (también en cliente) porque
+                    // un mismo link se puede compartir a varios clientes distintos
+                    // por distintos canales, y sin nombre no se sabe quién pidió.
+                    telefonoCliente: telefono || "",
+                    nombreCliente: nombreCliente || ""
                 })
             }).catch(()=>{});
         } catch(_){}
@@ -418,19 +430,19 @@
 
         const esPareja = ES_PAR.test(p.n) || p.par;
 
-        // Preparar el campo de teléfono — obligatorio SOLO en catálogos de
-        // afiliado, porque ahí el WhatsApp va al número del afiliado (más
-        // propenso a fallar/no enviarse) y si eso pasa, hoy no queda ningún
-        // dato del cliente para darle seguimiento. En catálogo de cliente
-        // normal (va al WhatsApp de VEREX) no se pide, para no meter
-        // fricción de más donde no hace falta.
-        // En modo carrito el teléfono se pide UNA vez al enviar todo el pedido
-        // (en el cajón del carrito), no por cada producto que se va agregando.
-        _szTel = "";
+        // Nombre + teléfono obligatorios SIEMPRE (cliente y afiliado) cuando se
+        // manda directo por WhatsApp — un mismo link de catálogo se puede
+        // compartir por varios canales a varios clientes distintos, y sin estos
+        // datos no hay forma de saber quién pidió qué cuando llega el mensaje.
+        // En modo carrito se piden UNA vez al enviar todo el pedido junto (en
+        // el cajón del carrito), no por cada producto que se va agregando.
+        _szTel = ""; _szNombreCliente = "";
         const telWrap = document.getElementById("sz-tel-wrap");
         const telInput = document.getElementById("sz-tel");
-        if(telWrap){ telWrap.style.display = (_afiliadoCodigo && _szModo === "wa") ? "block" : "none"; }
+        const nombreInput = document.getElementById("sz-nombre");
+        if(telWrap){ telWrap.style.display = (_szModo === "wa") ? "block" : "none"; }
         if(telInput){ telInput.value = ""; }
+        if(nombreInput){ nombreInput.value = ""; }
 
         // Argollas/pares/tríos: si hay tallas registradas para dama y/o
         // caballero, se eligen con botones igual que un anillo individual.
@@ -531,9 +543,16 @@
     function actualizarBotonSz(){
         const tallaLista = _szNoTalla ? true : (_szParMode ? (_szD && _szH) : !!_szD);
         const telInput = document.getElementById("sz-tel");
-        const telOk = (_afiliadoCodigo && _szModo === "wa") ? !!(telInput && telInput.value.trim().length >= 4) : true;
+        const nombreInput = document.getElementById("sz-nombre");
+        // Nombre y teléfono se exigen siempre que se vaya a mandar YA por
+        // WhatsApp (cliente o afiliado) — en modo carrito no aplica aquí, se
+        // piden una sola vez al final en el cajón del carrito.
+        const requiereDatos = _szModo === "wa";
+        const telOk = requiereDatos ? !!(telInput && telInput.value.trim().length >= 4) : true;
+        const nombreOk = requiereDatos ? !!(nombreInput && nombreInput.value.trim().length >= 2) : true;
         _szTel = telInput ? telInput.value.trim() : "";
-        const listo = tallaLista && telOk;
+        _szNombreCliente = nombreInput ? nombreInput.value.trim() : "";
+        const listo = tallaLista && telOk && nombreOk;
         const btn = document.getElementById("sz-confirm");
         btn.disabled = !listo;
         btn.style.opacity = listo ? "1" : ".5";
@@ -574,7 +593,9 @@
         }
 
         let msg;
-        const telLinea = _szTel ? `\nMi WhatsApp: ${_szTel}` : '';
+        const telLinea = (_szNombreCliente || _szTel)
+            ? `\n\nMis datos:${_szNombreCliente?`\nNombre: ${_szNombreCliente}`:''}${_szTel?`\nWhatsApp: ${_szTel}`:''}`
+            : '';
 
         if(_szParMode && _szNoTalla){
             const precioInfo = (p.pD && p.pH && p.pD !== p.pH)
@@ -599,7 +620,7 @@
         } else {
             msg = `Hola, me interesa este producto del catálogo VEREX:\n\n${p.n}\nPrecio: $${precioFinal(p.p).toFixed(2)}\nTalla: T${_szD}${telLinea}`;
         }
-        registrarLead(p, _szTel);
+        registrarLead(p, _szTel, _szNombreCliente);
         cerrarTallas();
         window.open(`https://wa.me/${_waNum}?text=${encodeURIComponent(msg)}`,"_blank");
     }
@@ -665,19 +686,22 @@
         actualizarBotonCarrito();
     }
 
+    // Nombre y teléfono se piden SIEMPRE al enviar el carrito (cliente o
+    // afiliado) — un mismo link se puede compartir por varios canales a
+    // varios clientes distintos, y sin estos datos no se sabe quién pidió.
     function actualizarBotonCarrito(){
         const telInput = document.getElementById("cart-tel");
-        const telOk = _afiliadoCodigo ? !!(telInput && telInput.value.trim().length >= 4) : true;
+        const nombreInput = document.getElementById("cart-nombre");
+        const telOk = !!(telInput && telInput.value.trim().length >= 4);
+        const nombreOk = !!(nombreInput && nombreInput.value.trim().length >= 2);
         const btn = document.getElementById("cart-confirm");
-        const listo = _carrito.length > 0 && telOk;
+        const listo = _carrito.length > 0 && telOk && nombreOk;
         btn.disabled = !listo;
         btn.style.opacity = listo ? "1" : ".5";
     }
 
     function abrirCarrito(){
         renderCarritoLista();
-        const telWrap = document.getElementById("cart-tel-wrap");
-        if(telWrap) telWrap.style.display = _afiliadoCodigo ? "block" : "none";
         actualizarBotonCarrito();
         document.getElementById("cart-overlay").classList.add("open");
     }
@@ -689,21 +713,22 @@
     function enviarCarritoWhatsApp(){
         if(!_carrito.length) return;
         const telInput = document.getElementById("cart-tel");
+        const nombreInput = document.getElementById("cart-nombre");
         const tel = telInput ? telInput.value.trim() : "";
-        if(_afiliadoCodigo && tel.length < 4) return;
+        const nombreCliente = nombreInput ? nombreInput.value.trim() : "";
+        if(tel.length < 4 || nombreCliente.length < 2) return;
 
         const lineas = _carrito.map((it, idx) =>
             `${idx+1}. ${it.nombre}${it.tallaLabel ? ` (${it.tallaLabel})` : ''}${it.qty > 1 ? ` x${it.qty}` : ''} — $${(it.precioUnit*it.qty).toFixed(2)}`
         );
         const total = _carrito.reduce((s, it) => s + it.precioUnit * it.qty, 0);
-        const telLinea = tel ? `\n\nMi WhatsApp: ${tel}` : '';
-        const msg = `Hola, quiero pedir estos productos del catálogo VEREX:\n\n${lineas.join("\n")}\n\nTotal: $${total.toFixed(2)}${telLinea}`;
+        const msg = `Hola, soy ${nombreCliente}. Quiero pedir estos productos del catálogo VEREX:\n\n${lineas.join("\n")}\n\nTotal: $${total.toFixed(2)}\n\nMi WhatsApp: ${tel}`;
 
         // Registro de lead best-effort por cada producto del carrito — igual
         // que el flujo directo, no debe bloquear el envío si falla.
         _carrito.forEach(it => {
             const prod = _prods.find(p => p.c === it.codigo);
-            if(prod) registrarLead(prod, tel);
+            if(prod) registrarLead(prod, tel, nombreCliente);
         });
 
         _carrito = [];
