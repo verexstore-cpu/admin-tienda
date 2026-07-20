@@ -2,7 +2,7 @@
 <html lang="es">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>VEREX · Producto</title>
     <style>
         *{box-sizing:border-box;margin:0;padding:0;}
@@ -17,9 +17,12 @@
         .grid-multi .card-name{font-size:12px;margin-bottom:5px;}
         .grid-multi .card-price{font-size:16px;}
         .grid-multi .card-ref{margin-bottom:8px;}
-        .grid-multi .wa-btn{padding:8px;font-size:12px;}
-        .card{background:#fff;border-radius:16px;overflow:hidden;box-shadow:0 4px 18px rgba(0,0,0,.1);}
-        .card-img{width:100%;aspect-ratio:1/1;object-fit:contain;background:#f7f7f7;display:block;}
+
+        /* Mismo diseño que el catálogo de clientes/afiliados (catalogo.html) —
+           borde dorado discreto en la tarjeta, y el botón con degradado
+           dorado + borde plateado + brillo al tocar. */
+        .card{background:#fff;border:1.5px solid #d9c184;border-radius:16px;overflow:hidden;box-shadow:0 4px 18px rgba(0,0,0,.1);}
+        .card-img{width:100%;aspect-ratio:1/1;object-fit:contain;background:#f7f7f7;display:block;cursor:zoom-in;}
         .card-img-ph{width:100%;aspect-ratio:1/1;background:#f0f0f0;display:flex;align-items:center;justify-content:center;font-size:56px;color:#ccc;}
         .card-body{padding:18px;text-align:center;}
         .card-name{font-size:16px;font-weight:800;color:#1a1a1a;line-height:1.35;margin-bottom:8px;}
@@ -34,13 +37,47 @@
         .card-price{font-size:26px;font-weight:800;color:#111;margin-bottom:4px;}
         .card-ref{font-size:11px;color:#9ca3af;font-weight:600;margin-bottom:16px;}
         .card-ne{display:inline-block;font-size:10px;font-weight:700;color:#92400e;background:#fef3c7;border:1px solid #fcd34d;border-radius:5px;padding:2px 7px;margin-bottom:8px;line-height:1.5;}
+
         .wa-btn{
-            display:block;width:100%;background:#25D366;color:#fff;text-decoration:none;
-            padding:13px;border-radius:10px;font-size:15px;font-weight:700;border:none;cursor:pointer;
+            position:relative;overflow:hidden;display:flex;align-items:center;justify-content:center;
+            width:100%;background:linear-gradient(135deg,#4a3410,#C9A84C,#E8C87A,#C9A84C,#4a3410);
+            color:#1a1207;text-decoration:none;
+            padding:13px;border-radius:10px;font-size:15px;font-weight:700;
+            border:3px solid #9a9a9a;box-shadow:0 0 0 1px #666;cursor:pointer;
         }
+        .wa-shine{
+            position:absolute;top:0;left:-60%;width:40%;height:100%;
+            background:linear-gradient(120deg,transparent,rgba(255,255,255,.85),transparent);
+            transform:skewX(-20deg);pointer-events:none;
+        }
+        .wa-btn.brillando .wa-shine{ animation:waShineSweep .6s ease; }
+        @keyframes waShineSweep{ from{left:-60%;} to{left:130%;} }
+        .grid-multi .wa-btn{padding:9px;font-size:12px;}
+
         footer{text-align:center;padding:20px;color:#999;font-size:11px;}
         .estado{text-align:center;padding:60px 20px;color:#888;}
         .estado .icon{font-size:44px;margin-bottom:12px;}
+
+        /* Confirmación con nombre + teléfono antes de enviar — mismo criterio
+           que el catálogo: un link se puede compartir por varios canales a
+           varios clientes distintos, y sin estos datos no se sabe quién pidió. */
+        #confirm-overlay{
+            display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);
+            z-index:999;align-items:flex-end;justify-content:center;
+        }
+        #confirm-overlay.open{display:flex;}
+        #confirm-box{
+            background:#fff;border-radius:16px 16px 0 0;
+            padding:20px 16px 32px;width:100%;max-width:480px;
+        }
+        #confirm-box input{
+            width:100%;padding:12px;border:2px solid #e2e2e2;border-radius:10px;
+            font-size:15px;box-sizing:border-box;margin-bottom:10px;
+        }
+
+        /* Zoom de foto */
+        #foto-zoom-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.92);z-index:1200;align-items:center;justify-content:center;padding:20px;cursor:zoom-out;}
+        #foto-zoom-overlay img{max-width:100%;max-height:100%;object-fit:contain;border-radius:8px;}
     </style>
 </head>
 <body>
@@ -48,12 +85,35 @@
 <div class="wrap" id="app"><div class="estado"><div class="icon">⏳</div>Cargando…</div></div>
 <footer>VEREX · La expresión de tu mejor versión</footer>
 
+<div id="foto-zoom-overlay" onclick="cerrarFotoZoom()">
+    <img id="foto-zoom-img" src="">
+</div>
+
+<div id="confirm-overlay">
+    <div id="confirm-box">
+        <div style="font-weight:800;font-size:15px;color:#111;text-align:center;margin-bottom:4px;" id="confirm-title"></div>
+        <div style="font-size:12px;color:#888;text-align:center;margin-bottom:18px;">Confirma tu pedido</div>
+        <div style="font-size:12px;font-weight:700;color:#111;margin-bottom:6px;">Tu nombre</div>
+        <input type="text" id="conf-nombre" placeholder="Ej: María Pérez" oninput="actualizarBotonConfirm()">
+        <div style="font-size:12px;font-weight:700;color:#111;margin-bottom:6px;">Tu número de WhatsApp</div>
+        <input type="tel" id="conf-tel" placeholder="Ej: 7000-0000" inputmode="numeric" oninput="actualizarBotonConfirm()">
+        <button id="confirm-btn" onclick="confirmarPedido()"
+            style="width:100%;background:#25D366;color:#fff;border:none;padding:13px;border-radius:10px;font-size:15px;font-weight:700;cursor:pointer;margin-bottom:10px;opacity:.5;"
+            disabled>💬 Enviar por WhatsApp</button>
+        <button onclick="cerrarConfirm()"
+            style="width:100%;background:#f0f2f5;color:#555;border:none;padding:11px;border-radius:10px;font-size:14px;cursor:pointer;">
+            Cancelar</button>
+    </div>
+</div>
+
 <script>
 (function(){
     const params = new URLSearchParams(location.search);
     const raw = window.__PRODUCTO_CODIGO__ || params.get("c") || "";
     const codigos = raw.split(",").map(s => s.trim()).filter(Boolean);
     const API_URL = "https://verex-api.verexstore.workers.dev/";
+    let encontrados = [];
+    let _idxActual = -1;
 
     function esc(s){ const d=document.createElement("div"); d.textContent=String(s||""); return d.innerHTML; }
 
@@ -69,15 +129,25 @@
         document.getElementById("app").innerHTML = `<div class="estado"><div class="icon">${icon}</div><h3>${esc(titulo)}</h3><p style="margin-top:6px;font-size:13px;">${texto||""}</p></div>`;
     }
 
+    // Mismos nombres de campo que revisa el admin (getNotaEspecial) — el
+    // worker/API puede devolver la característica especial con distintos
+    // nombres según de dónde venga el dato.
+    function notaEspecial(p){
+        const v = p.caracterEspecial || p.caractEspecial || p.caracter_especial || p.caracteristicaEspecial
+               || p.caracteristica_especial || p.notaEspecial || p.nota_especial
+               || p.caract || p.nota || p.etiqueta || "";
+        return String(v).trim();
+    }
+
     function cardHtml(p, idx){
         const totalStock = (parseInt(p.stock_bodega)||0) + (parseInt(p.stock_tienda)||0) + (parseInt(p.stock_consignacion)||0);
         const agotado = p.reservado || totalStock <= 0;
         const material = p.material || "";
         const nombre = (p.nombre_base || p.nombre || "").trim();
-        const nota = p.caracterEspecial || p.caractEspecial || p.caracter_especial || p.caracteristicaEspecial || "";
+        const nota = notaEspecial(p);
         return `<div class="card">
             ${p.foto
-                ? `<img class="card-img" src="${esc(p.foto)}" alt="${esc(nombre)}" onerror="this.outerHTML='<div class=\\'card-img-ph\\'>💍</div>'">`
+                ? `<img class="card-img" src="${esc(p.foto)}" alt="${esc(nombre)}" onclick="abrirFotoZoom('${esc(p.foto)}')" onerror="this.outerHTML='<div class=\\'card-img-ph\\'>💍</div>'">`
                 : `<div class="card-img-ph">💍</div>`}
             <div class="card-body">
                 <div class="card-name">${esc(nombre)}</div>
@@ -87,9 +157,43 @@
                     ? `<div class="card-price" style="color:#C0392B;font-size:16px;">AGOTADO</div>`
                     : `<div class="card-price">$${parseFloat(p.precio||0).toFixed(2)}</div>`}
                 <div class="card-ref">Ref: ${esc(p.codigo)}</div>
-                ${agotado ? '' : `<button class="wa-btn" onclick="pedir(${idx})">💬 Quiero este</button>`}
+                ${agotado ? '' : `<button class="wa-btn" onclick="abrirConfirm(${idx}, this)"><span style="position:relative;z-index:2;">✦ Quiero este</span><span class="wa-shine"></span></button>`}
             </div>
         </div>`;
+    }
+
+    function abrirFotoZoom(url){
+        document.getElementById("foto-zoom-img").src = url;
+        document.getElementById("foto-zoom-overlay").style.display = "flex";
+    }
+    function cerrarFotoZoom(){
+        document.getElementById("foto-zoom-overlay").style.display = "none";
+    }
+
+    function abrirConfirm(idx, btnEl){
+        if(btnEl){
+            btnEl.classList.remove("brillando");
+            void btnEl.offsetWidth;
+            btnEl.classList.add("brillando");
+        }
+        _idxActual = idx;
+        const p = encontrados[idx];
+        document.getElementById("confirm-title").textContent = (p.nombre_base || p.nombre || "").trim();
+        document.getElementById("conf-nombre").value = "";
+        document.getElementById("conf-tel").value = "";
+        actualizarBotonConfirm();
+        document.getElementById("confirm-overlay").classList.add("open");
+    }
+    function cerrarConfirm(){
+        document.getElementById("confirm-overlay").classList.remove("open");
+    }
+    function actualizarBotonConfirm(){
+        const nombreOk = document.getElementById("conf-nombre").value.trim().length >= 2;
+        const telOk = document.getElementById("conf-tel").value.trim().length >= 4;
+        const btn = document.getElementById("confirm-btn");
+        const listo = nombreOk && telOk;
+        btn.disabled = !listo;
+        btn.style.opacity = listo ? "1" : ".5";
     }
 
     if(!codigos.length){ mostrarEstado("⚠️","Link inválido",""); return; }
@@ -104,7 +208,7 @@
         .then(r => r.json())
         .then(data => {
             const stock = data.stock || [];
-            const encontrados = codigos.map(c => stock.find(s => s.codigo === c)).filter(Boolean);
+            encontrados = codigos.map(c => stock.find(s => s.codigo === c)).filter(Boolean);
             if(!encontrados.length){ mostrarEstado("😕","Producto no encontrado","Es posible que ya no esté disponible."); return; }
 
             const app = document.getElementById("app");
@@ -121,29 +225,40 @@
             // compartió a nombre de un afiliado, el Lead cae directo en su
             // "Completar Pedidos", igual que si lo hubiera elegido desde su
             // propio catálogo. No bloquea el WhatsApp aunque falle.
-            function registrarLead(p){
-                if(!afiliado) return;
+            function registrarLead(p, telefono, nombreCliente){
                 try{
                     fetch(API_URL, {
                         method:"POST", headers:{"Content-Type":"application/json"},
                         body: JSON.stringify({
                             accion:"REGISTRAR_LEAD", afiliado, codigo:p.codigo,
                             nombre:(p.nombre_base||p.nombre||"").trim(),
-                            precio: parseFloat(p.precio||0), foto: p.foto||""
+                            precio: parseFloat(p.precio||0), foto: p.foto||"",
+                            telefonoCliente: telefono || "", nombreCliente: nombreCliente || ""
                         })
                     }).catch(()=>{});
                 }catch(_){}
             }
 
-            window.pedir = function(idx){
-                const p = encontrados[idx];
+            window.confirmarPedido = function(){
+                const p = encontrados[_idxActual];
+                if(!p) return;
+                const nombreCliente = document.getElementById("conf-nombre").value.trim();
+                const tel = document.getElementById("conf-tel").value.trim();
+                if(nombreCliente.length < 2 || tel.length < 4) return;
                 const nombre = (p.nombre_base || p.nombre || "").trim();
-                registrarLead(p);
-                const msg = `Hola, me interesa este producto de VEREX:\n\n${nombre}\nPrecio: $${parseFloat(p.precio||0).toFixed(2)}\nRef: ${p.codigo}`;
+                registrarLead(p, tel, nombreCliente);
+                cerrarConfirm();
+                const msg = `Hola, soy ${nombreCliente}. Me interesa este producto de VEREX:\n\n${nombre}\nPrecio: $${parseFloat(p.precio||0).toFixed(2)}\nRef: ${p.codigo}\n\nMi WhatsApp: ${tel}`;
                 window.open(`https://wa.me/?text=${encodeURIComponent(msg)}`,"_blank");
             };
         })
         .catch(() => mostrarEstado("⚠️","Error al cargar","Intenta de nuevo en un momento."));
+
+    window.abrirFotoZoom = abrirFotoZoom;
+    window.cerrarFotoZoom = cerrarFotoZoom;
+    window.abrirConfirm = abrirConfirm;
+    window.cerrarConfirm = cerrarConfirm;
+    window.actualizarBotonConfirm = actualizarBotonConfirm;
 })();
 </script>
 </body>
