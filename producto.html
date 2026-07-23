@@ -152,6 +152,7 @@
             <div class="card-body">
                 <div class="card-name">${esc(nombre)}</div>
                 ${material ? `<div><span class="card-material ${claseMaterial(material)}">${esc(material)}</span></div>` : ''}
+                ${p.categoria === "AN" && p.talla ? `<div><span class="card-material" style="background:#e8f4fd;color:#0277bd;border:1px solid #90caf9;">Talla ${esc(p.talla)}</span></div>` : ''}
                 ${nota ? `<div><span class="card-ne">♦ ${esc(nota)}</span></div>` : ''}
                 ${agotado
                     ? `<div class="card-price" style="color:#C0392B;font-size:16px;">AGOTADO</div>`
