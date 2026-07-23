@@ -3145,7 +3145,7 @@ async function generarImagenCatalogo() {
         ctx.fillStyle="#fff"; ctx.fillRect(0,HDR,CW,SUB);
         ctx.fillStyle="#555"; ctx.font="italic 13px 'Segoe UI',Arial";
         let sub=nombre?`Catálogo para: ${nombre}`:"Catálogo de productos";
-        if(talla) sub+=`  ·  Talla ${talla}`;
+        if(talla) sub+=`  ·  Talla ${_tallasDisplay(talla)}`;
         ctx.fillText(sub,CW/2,HDR+15);
         ctx.fillStyle="#f97316"; ctx.font="bold 12px 'Segoe UI',Arial";
         const expStr=new Date(Date.now()+dias*864e5).toLocaleDateString("es-CO");
@@ -3259,6 +3259,7 @@ function aplicarPromptIA() {
     const hasAN = catsDetect.length === 0 || catsDetect.includes("AN");
     document.getElementById("cat-sec-talla").style.display = hasAN ? "block" : "none";
     document.getElementById("cat-talla").value   = talla;
+    sincronizarChipsCatTalla();
     document.getElementById("cat-tipo-an").value = tipoAN;
     document.getElementById("cat-genero").value  = "";
     const pfEl = document.getElementById("cat-prefijo-txt");
@@ -3325,22 +3326,26 @@ function getNotaEspecial(p) {
 }
 
 // Cuando hay un filtro de Talla activo, el catálogo exportado (Link/PDF/Imagen)
-// debe mostrar SOLO esa talla en la tarjeta — no todas las que el diseño tiene en stock.
-function _sizesParaExport(p, talla, genero) {
+// debe mostrar SOLO esas tallas en la tarjeta — no todas las que el diseño
+// tiene en stock. Admite varias tallas a la vez ("6.5,7"), no solo una — el
+// cliente puede necesitar ver más de una talla en el mismo link.
+function _sizesParaExport(p, tallaCsv, genero) {
     const catKey = p._catKey || getCatKey(p);
-    if (catKey !== "AN" || !talla) {
+    const tallas = (tallaCsv || "").split(",").filter(Boolean);
+    if (catKey !== "AN" || !tallas.length) {
         return { sizes: p._sizes||[], sizesD: p._sizesD||[], sizesH: p._sizesH||[] };
     }
-    const tieneD = (p._sizesD||[]).includes(talla);
-    const tieneH = (p._sizesH||[]).includes(talla);
-    if (tieneD || tieneH) {
+    const interD = (p._sizesD||[]).filter(s => tallas.includes(s));
+    const interH = (p._sizesH||[]).filter(s => tallas.includes(s));
+    if (interD.length || interH.length) {
         return {
             sizes:  [],
-            sizesD: genero === "caballero" ? [] : (tieneD ? [talla] : []),
-            sizesH: genero === "dama"      ? [] : (tieneH ? [talla] : []),
+            sizesD: genero === "caballero" ? [] : interD,
+            sizesH: genero === "dama"      ? [] : interH,
         };
     }
-    return { sizes: (p._sizes||[]).includes(talla) ? [talla] : (p._sizes||[]), sizesD: [], sizesH: [] };
+    const inter = (p._sizes||[]).filter(s => tallas.includes(s));
+    return { sizes: inter.length ? inter : (p._sizes||[]), sizesD: [], sizesH: [] };
 }
 
 async function generarLinkCatalogo() {
@@ -3973,6 +3978,7 @@ function refrescarCatalogoAfiliado() {
     document.querySelectorAll(".cat-cat-chk").forEach(chk => { chk.checked = (receta.categorias||[]).includes(chk.value); });
     onPillChange();
     if (document.getElementById("cat-talla"))   document.getElementById("cat-talla").value   = receta.talla   || "";
+    sincronizarChipsCatTalla();
     if (document.getElementById("cat-genero"))  document.getElementById("cat-genero").value  = receta.genero  || "";
     if (document.getElementById("cat-tipo-an")) document.getElementById("cat-tipo-an").value = receta.tipoAN  || "";
     if (document.getElementById("cat-var-size")) document.getElementById("cat-var-size").value = receta.cantidad || 36;
@@ -3989,6 +3995,7 @@ function abrirModalCatalogo(tipo) {
         : "📋 Catálogo para Cliente";
     document.getElementById("cat-tipo-an").value = "";
     document.getElementById("cat-talla").value   = "";
+    sincronizarChipsCatTalla();
     document.getElementById("cat-genero").value  = "";
     document.getElementById("cat-nombre").value  = "";
     document.getElementById("cat-validez").value = esAfiliado ? "30" : "15";
@@ -4039,7 +4046,7 @@ function _actualizarResumenVariado() {
     if (cats.length) partes.push(`Solo: ${cats.map(k => CAT_MAP[k]).join(", ")}`);
     const hasAN = cats.length === 0 || cats.includes("AN");
     if (hasAN) {
-        if (talla)  partes.push(`Anillos → Talla ${talla}`);
+        if (talla)  partes.push(`Anillos → Talla ${_tallasDisplay(talla)}`);
         if (genero) partes.push(`Anillos → ${genero === "dama" ? "Dama" : "Caballero"}`);
         if (tipoAN) partes.push(`Anillos → ${tipoAN === "pareja" ? "Pareja/Argolla" : "Sencillos"}`);
         if (pfx)    partes.push(`Anillos → Prefijo ${pfx}`);
@@ -4051,6 +4058,46 @@ function _actualizarResumenVariado() {
     }
     box.style.display = "block";
     box.innerHTML = `🎯 <strong>Auto-seleccionar variado</strong> respetará: ${partes.join(" · ")}. El resto de categorías se incluyen sin restricción.`;
+}
+
+// Selección múltiple de talla al generar catálogo — antes solo se podía
+// elegir una sola talla (dropdown), pero un cliente puede necesitar ver
+// varias tallas juntas (ej. 6.5 y 7) en el mismo link. El valor real se
+// guarda en el input oculto #cat-talla como texto separado por comas
+// ("6.5,7"), para no tener que tocar los demás lugares del código que ya
+// leen su .value.
+function toggleCatTallaChip(t, btn) {
+    const inp = document.getElementById("cat-talla");
+    const actuales = inp.value ? inp.value.split(",") : [];
+    const idx = actuales.indexOf(t);
+    if (idx >= 0) { actuales.splice(idx, 1); btn.style.background = "#fff"; btn.style.color = "#111"; btn.style.borderColor = "var(--borde)"; }
+    else { actuales.push(t); btn.style.background = "var(--azul)"; btn.style.color = "#fff"; btn.style.borderColor = "var(--azul)"; }
+    inp.value = actuales.join(",");
+    filtrarParaCatalogo();
+}
+
+function limpiarCatTallaChips() {
+    document.getElementById("cat-talla").value = "";
+    document.querySelectorAll(".cat-talla-chip").forEach(b => { b.style.background = "#fff"; b.style.color = "#111"; b.style.borderColor = "var(--borde)"; });
+    filtrarParaCatalogo();
+}
+
+// Repinta los chips activos según el valor actual del input oculto — hace
+// falta llamarla cada vez que #cat-talla.value se asigna desde código (recetas
+// guardadas, reset del modal) en vez de por clic directo en un chip.
+function sincronizarChipsCatTalla() {
+    const seleccionadas = (document.getElementById("cat-talla")?.value || "").split(",").filter(Boolean);
+    document.querySelectorAll(".cat-talla-chip").forEach(b => {
+        const activa = seleccionadas.includes(b.dataset.talla);
+        b.style.background = activa ? "var(--azul)" : "#fff";
+        b.style.color = activa ? "#fff" : "#111";
+        b.style.borderColor = activa ? "var(--azul)" : "var(--borde)";
+    });
+}
+
+// Texto legible para mostrar en resúmenes/subtítulos ("6.5, 7" en vez de "6.5,7")
+function _tallasDisplay(tallaCsv) {
+    return (tallaCsv || "").split(",").filter(Boolean).join(", ");
 }
 
 function filtrarParaCatalogo() {
@@ -4117,8 +4164,9 @@ function filtrarParaCatalogo() {
         return cod.includes("T" + t) || cod.includes("T0" + t);
     };
 
-    if (hasAN && talla) {
-        lista = lista.filter(p => getCatKey(p) !== "AN" || tieneTalla(p, talla));
+    const tallasFiltro = (talla || "").split(",").filter(Boolean);
+    if (hasAN && tallasFiltro.length) {
+        lista = lista.filter(p => getCatKey(p) !== "AN" || tallasFiltro.some(t => tieneTalla(p, t)));
     }
 
     // Agrupar anillos; dejar el resto sin agrupar
@@ -4130,7 +4178,7 @@ function filtrarParaCatalogo() {
     _catFiltrada = lista;
     const catLabel = cats.length ? cats.map(k => CAT_MAP[k]).join(", ") : "Todos los productos";
     info.textContent = lista.length
-        ? `${lista.length} producto(s) — ${catLabel}${talla ? ", Talla " + talla : ""}. Marca los que quieres mostrar:`
+        ? `${lista.length} producto(s) — ${catLabel}${talla ? ", Talla " + _tallasDisplay(talla) : ""}. Marca los que quieres mostrar:`
         : "";
 
     if (!lista.length) {
@@ -4142,14 +4190,14 @@ function filtrarParaCatalogo() {
         let stockLabel = "";
         try {
             const s = JSON.parse(p.caracteristicas || "{}");
-            if (talla) {
+            if (tallasFiltro.length) {
                 const esPareja = Object.keys(s).some(k => k.startsWith("D") || k.startsWith("H"));
                 if (esPareja) {
-                    const d = s["D" + talla] || 0;
-                    const h = s["H" + talla] || 0;
+                    const d = tallasFiltro.reduce((sum, t) => sum + (s["D" + t] || 0), 0);
+                    const h = tallasFiltro.reduce((sum, t) => sum + (s["H" + t] || 0), 0);
                     stockLabel = [d > 0 ? `D:${d}` : "", h > 0 ? `C:${h}` : ""].filter(Boolean).join(" ");
                 } else {
-                    const q = s[talla] || 0;
+                    const q = tallasFiltro.reduce((sum, t) => sum + (s[t] || 0), 0);
                     stockLabel = q > 0 ? `Stock:${q}` : "";
                 }
             }
@@ -4469,7 +4517,7 @@ async function generarPDFCatalogo() {
         doc.setFontSize(10);
         doc.setTextColor(60, 60, 60);
         let sub = nombre ? `Catálogo para: ${nombre}` : "Catálogo de productos";
-        if (talla) sub += `  ·  Talla ${talla}`;
+        if (talla) sub += `  ·  Talla ${_tallasDisplay(talla)}`;
         doc.text(sub, PW / 2, 38, { align: "center" });
 
         // ── Cuadrícula de productos ──
@@ -4624,20 +4672,27 @@ async function generarPDFCatalogo() {
             </div>
             <div class="g2" style="margin-bottom:10px;">
                 <div>
-                    <label>Talla (solo Anillos)</label>
-                    <select id="cat-talla" onchange="filtrarParaCatalogo()">
-                        <option value="">— Todas —</option>
-                        <option value="5">Talla 5</option>
-                        <option value="6">Talla 6</option>
-                        <option value="7">Talla 7</option>
-                        <option value="8">Talla 8</option>
-                        <option value="9">Talla 9</option>
-                        <option value="10">Talla 10</option>
-                        <option value="11">Talla 11</option>
-                        <option value="12">Talla 12</option>
-                        <option value="13">Talla 13</option>
-                        <option value="14">Talla 14</option>
-                    </select>
+                    <label>Talla (solo Anillos) — puedes elegir varias</label>
+                    <input type="hidden" id="cat-talla" value="">
+                    <div id="cat-talla-chips" style="display:flex;flex-wrap:wrap;gap:5px;margin-top:4px;">
+                        <button type="button" class="cat-talla-chip" data-talla="5" onclick="toggleCatTallaChip('5',this)" style="padding:5px 9px;border-radius:16px;border:1.5px solid var(--borde);background:#fff;color:#111;font-size:11px;font-weight:700;cursor:pointer;">T5</button>
+                        <button type="button" class="cat-talla-chip" data-talla="5.5" onclick="toggleCatTallaChip('5.5',this)" style="padding:5px 9px;border-radius:16px;border:1.5px solid var(--borde);background:#fff;color:#111;font-size:11px;font-weight:700;cursor:pointer;">T5.5</button>
+                        <button type="button" class="cat-talla-chip" data-talla="6" onclick="toggleCatTallaChip('6',this)" style="padding:5px 9px;border-radius:16px;border:1.5px solid var(--borde);background:#fff;color:#111;font-size:11px;font-weight:700;cursor:pointer;">T6</button>
+                        <button type="button" class="cat-talla-chip" data-talla="6.5" onclick="toggleCatTallaChip('6.5',this)" style="padding:5px 9px;border-radius:16px;border:1.5px solid var(--borde);background:#fff;color:#111;font-size:11px;font-weight:700;cursor:pointer;">T6.5</button>
+                        <button type="button" class="cat-talla-chip" data-talla="7" onclick="toggleCatTallaChip('7',this)" style="padding:5px 9px;border-radius:16px;border:1.5px solid var(--borde);background:#fff;color:#111;font-size:11px;font-weight:700;cursor:pointer;">T7</button>
+                        <button type="button" class="cat-talla-chip" data-talla="7.5" onclick="toggleCatTallaChip('7.5',this)" style="padding:5px 9px;border-radius:16px;border:1.5px solid var(--borde);background:#fff;color:#111;font-size:11px;font-weight:700;cursor:pointer;">T7.5</button>
+                        <button type="button" class="cat-talla-chip" data-talla="8" onclick="toggleCatTallaChip('8',this)" style="padding:5px 9px;border-radius:16px;border:1.5px solid var(--borde);background:#fff;color:#111;font-size:11px;font-weight:700;cursor:pointer;">T8</button>
+                        <button type="button" class="cat-talla-chip" data-talla="8.5" onclick="toggleCatTallaChip('8.5',this)" style="padding:5px 9px;border-radius:16px;border:1.5px solid var(--borde);background:#fff;color:#111;font-size:11px;font-weight:700;cursor:pointer;">T8.5</button>
+                        <button type="button" class="cat-talla-chip" data-talla="9" onclick="toggleCatTallaChip('9',this)" style="padding:5px 9px;border-radius:16px;border:1.5px solid var(--borde);background:#fff;color:#111;font-size:11px;font-weight:700;cursor:pointer;">T9</button>
+                        <button type="button" class="cat-talla-chip" data-talla="9.5" onclick="toggleCatTallaChip('9.5',this)" style="padding:5px 9px;border-radius:16px;border:1.5px solid var(--borde);background:#fff;color:#111;font-size:11px;font-weight:700;cursor:pointer;">T9.5</button>
+                        <button type="button" class="cat-talla-chip" data-talla="10" onclick="toggleCatTallaChip('10',this)" style="padding:5px 9px;border-radius:16px;border:1.5px solid var(--borde);background:#fff;color:#111;font-size:11px;font-weight:700;cursor:pointer;">T10</button>
+                        <button type="button" class="cat-talla-chip" data-talla="10.5" onclick="toggleCatTallaChip('10.5',this)" style="padding:5px 9px;border-radius:16px;border:1.5px solid var(--borde);background:#fff;color:#111;font-size:11px;font-weight:700;cursor:pointer;">T10.5</button>
+                        <button type="button" class="cat-talla-chip" data-talla="11" onclick="toggleCatTallaChip('11',this)" style="padding:5px 9px;border-radius:16px;border:1.5px solid var(--borde);background:#fff;color:#111;font-size:11px;font-weight:700;cursor:pointer;">T11</button>
+                        <button type="button" class="cat-talla-chip" data-talla="12" onclick="toggleCatTallaChip('12',this)" style="padding:5px 9px;border-radius:16px;border:1.5px solid var(--borde);background:#fff;color:#111;font-size:11px;font-weight:700;cursor:pointer;">T12</button>
+                        <button type="button" class="cat-talla-chip" data-talla="13" onclick="toggleCatTallaChip('13',this)" style="padding:5px 9px;border-radius:16px;border:1.5px solid var(--borde);background:#fff;color:#111;font-size:11px;font-weight:700;cursor:pointer;">T13</button>
+                        <button type="button" class="cat-talla-chip" data-talla="14" onclick="toggleCatTallaChip('14',this)" style="padding:5px 9px;border-radius:16px;border:1.5px solid var(--borde);background:#fff;color:#111;font-size:11px;font-weight:700;cursor:pointer;">T14</button>
+                        <button type="button" onclick="limpiarCatTallaChips()" style="padding:5px 9px;border-radius:16px;border:none;background:#f0f0f0;color:#888;font-size:11px;font-weight:700;cursor:pointer;">✕ Todas</button>
+                    </div>
                 </div>
                 <div>
                     <label>Género (pareja, solo Anillos)</label>
