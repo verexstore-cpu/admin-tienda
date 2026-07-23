@@ -115,6 +115,22 @@
     let encontrados = [];
     let _idxActual = -1;
 
+    // Número de WhatsApp de destino — obligatoriamente el del afiliado si el
+    // link se generó a nombre de uno (?wa=), o el oficial de VEREX si no.
+    // Antes el botón "Hazlo tuyo" no fijaba ningún número y el cliente tenía
+    // que elegir a quién mandárselo desde sus propios contactos — eso podía
+    // terminar en cualquier lado, o en ningún lado.
+    const VEREX_WA_OFICIAL = "71250725";
+    function normalizarWA(numero){
+        const solo = String(numero||"").replace(/\D/g,"");
+        if (!solo) return "";
+        if (solo.length === 8) return "503" + solo;
+        if (solo.startsWith("503") && solo.length === 11) return solo;
+        return solo;
+    }
+    const _waParam = (params.get("wa") || "").trim();
+    const _waDestino = normalizarWA(_waParam || VEREX_WA_OFICIAL);
+
     function esc(s){ const d=document.createElement("div"); d.textContent=String(s||""); return d.innerHTML; }
 
     function claseMaterial(m){
@@ -250,7 +266,7 @@
                 registrarLead(p, tel, nombreCliente);
                 cerrarConfirm();
                 const msg = `Hola, soy ${nombreCliente}. Me interesa este producto de VEREX:\n\n${nombre}\nPrecio: $${parseFloat(p.precio||0).toFixed(2)}\nRef: ${p.codigo}\n\nMi WhatsApp: ${tel}`;
-                window.open(`https://wa.me/?text=${encodeURIComponent(msg)}`,"_blank");
+                window.open(`https://wa.me/${_waDestino}?text=${encodeURIComponent(msg)}`,"_blank");
             };
         })
         .catch(() => mostrarEstado("⚠️","Error al cargar","Intenta de nuevo en un momento."));
