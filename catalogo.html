@@ -17,6 +17,23 @@
             padding:10px 16px;text-align:center;font-size:13px;color:#555;
         }
         .info-bar strong{color:#111;}
+
+        /* Filtro de talla — solo aparece si el catálogo tiene anillos */
+        #filtro-talla-bar{
+            background:#fff;border-bottom:1px solid #e2e2e2;
+            padding:10px 16px;display:flex;flex-wrap:wrap;gap:6px;align-items:center;
+        }
+        #filtro-talla-bar .flt-lbl{font-size:11px;font-weight:700;color:#555;margin-right:2px;}
+        .chip-talla{
+            padding:5px 11px;border-radius:20px;border:1.5px solid #ddd;background:#fff;
+            color:#111;font-size:11px;font-weight:700;cursor:pointer;
+        }
+        .chip-talla.activa{background:#0277bd;color:#fff;border-color:#0277bd;}
+        .chip-talla-limpiar{
+            padding:5px 11px;border-radius:20px;border:none;background:#f0f0f0;
+            color:#888;font-size:11px;font-weight:700;cursor:pointer;
+        }
+        .card.oculto-talla{display:none;}
         .validez{color:#f97316;font-weight:700;font-size:12px;margin-top:4px;}
 
         .grid{
@@ -411,6 +428,24 @@
                 ${b.sub?`<div style="font-size:12px;font-weight:500;margin-top:4px;opacity:.9;">${esc(b.sub)}</div>`:''}
             </div>` : '';
 
+        // Filtro de talla — solo se arma si el catálogo tiene al menos un
+        // anillo con tallas registradas; junta las tallas de todos los
+        // anillos (sencillos y pares dama/caballero) sin repetir.
+        const tallasSet = new Set();
+        _prods.forEach(p => {
+            if (p.cat !== "AN") return;
+            (p.sizes||[]).forEach(s => tallasSet.add(s));
+            (p.sizesD||[]).forEach(s => tallasSet.add(s));
+            (p.sizesH||[]).forEach(s => tallasSet.add(s));
+        });
+        const tallasOrdenadas = [...tallasSet].sort((a,b) => parseFloat(a)-parseFloat(b));
+        const filtroTallaHTML = tallasOrdenadas.length ? `
+            <div id="filtro-talla-bar">
+                <span class="flt-lbl">💍 Talla de anillo:</span>
+                ${tallasOrdenadas.map(t => `<button class="chip-talla" data-talla="${esc(t)}" onclick="toggleFiltroTalla('${esc(t)}',this)">T${esc(t)}</button>`).join("")}
+                <button class="chip-talla-limpiar" onclick="limpiarFiltroTalla()">✕ Todas</button>
+            </div>` : '';
+
         document.getElementById("app").innerHTML=`
             <header><img class="logo" src="/images/logo.webp" alt="VEREX"></header>
             ${bannerHTML}
@@ -418,8 +453,39 @@
                 ${subHTML?`<div>${subHTML}</div>`:''}
                 <div class="validez">⏰ Válido hasta: ${expStr}</div>
             </div>
+            ${filtroTallaHTML}
             <div class="grid">${cards}</div>
             <footer>VEREX · La expresión de tu mejor versión</footer>`;
+    }
+
+    /* ── Filtro de talla (anillos) ── */
+    let _filtroTallas = new Set();
+
+    function toggleFiltroTalla(talla, btn){
+        if(_filtroTallas.has(talla)){ _filtroTallas.delete(talla); btn.classList.remove("activa"); }
+        else { _filtroTallas.add(talla); btn.classList.add("activa"); }
+        aplicarFiltroTalla();
+    }
+
+    function limpiarFiltroTalla(){
+        _filtroTallas.clear();
+        document.querySelectorAll(".chip-talla").forEach(b => b.classList.remove("activa"));
+        aplicarFiltroTalla();
+    }
+
+    // Solo oculta/muestra anillos — el resto de categorías (aretes, pulseras,
+    // etc.) siempre se quedan visibles, el filtro de talla no les aplica.
+    // Usa una clase (no style.display directo) para no chocar con el
+    // display:none que ya pone actualizarDisponibilidad() en lo agotado.
+    function aplicarFiltroTalla(){
+        document.querySelectorAll(".card").forEach(card => {
+            const idx = parseInt(card.dataset.idx);
+            const p = _prods[idx];
+            if(!p || p.cat !== "AN" || _filtroTallas.size === 0){ card.classList.remove("oculto-talla"); return; }
+            const tallas = [...(p.sizes||[]), ...(p.sizesD||[]), ...(p.sizesH||[])];
+            const coincide = tallas.some(t => _filtroTallas.has(t));
+            card.classList.toggle("oculto-talla", !coincide);
+        });
     }
 
     /* ── Selector de talla ── */
@@ -842,6 +908,8 @@
     window.cambiarQtyCarrito     = cambiarQtyCarrito;
     window.actualizarBotonCarrito = actualizarBotonCarrito;
     window.enviarCarritoWhatsApp  = enviarCarritoWhatsApp;
+    window.toggleFiltroTalla = toggleFiltroTalla;
+    window.limpiarFiltroTalla = limpiarFiltroTalla;
 
     /* ── Arranque ── */
 
