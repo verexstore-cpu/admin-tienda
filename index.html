@@ -1095,6 +1095,10 @@ function esc(str) {
 //  CONFIG
 // ═════════════════════════════════════════════
 const API_URL    = "https://verex-api.verexstore.workers.dev/";
+// Número oficial de WhatsApp de VEREX (mismo que aparece en los recibos:
+// 7125-0725) — el catálogo de Cliente SIEMPRE debe usar este, nunca el
+// número de un afiliado guardado de una sesión anterior.
+const VEREX_WA_OFICIAL = "71250725";
 const SECRET_KEY = "";
 let   ADMIN_PASS = ""; // Hash SHA-256 de la contraseña, nunca el texto plano
 
@@ -3361,7 +3365,12 @@ async function generarLinkCatalogo() {
     const talla      = document.getElementById("cat-talla").value;
     const genero     = document.getElementById("cat-genero")?.value || "";
     const dias       = parseInt(document.getElementById("cat-validez").value)||3;
-    const wa         = (document.getElementById("cat-wa")?.value||localStorage.getItem("verex-wa")||"").trim();
+    // Defensa adicional: en catálogo de Cliente, el número SIEMPRE es el
+    // oficial de VEREX, sin importar qué haya quedado en el campo/localStorage
+    // — nunca debe poder colarse el número de un afiliado por error.
+    const wa         = esAfiliado
+        ? (document.getElementById("cat-wa")?.value||localStorage.getItem("verex-wa")||"").trim()
+        : VEREX_WA_OFICIAL;
     const afiliadoId = (document.getElementById("cat-afiliado-id")?.value||"").trim();
     const afiliadoCodigo = (document.getElementById("cat-afiliado-codigo")?.value||"").trim();
 
@@ -3433,7 +3442,10 @@ async function generarLinkCatalogo() {
             })
         };
 
-        if(wa) localStorage.setItem("verex-wa", wa);
+        // Solo se recuerda el número para el próximo catálogo de AFILIADO
+        // (conveniencia si generas varios seguidos para el mismo afiliado) —
+        // nunca para Cliente, que siempre debe ser el oficial de VEREX.
+        if(esAfiliado && wa) localStorage.setItem("verex-wa", wa);
 
         // Save to KV and get short URL
         const saveRes = await fetch("/save-catalog", {
@@ -4008,7 +4020,12 @@ function abrirModalCatalogo(tipo) {
     const afChk = document.getElementById("cat-es-afiliado");
     if (afChk) afChk.checked = esAfiliado;
     onToggleAfiliado(esAfiliado);
-    const waEl  = document.getElementById("cat-wa");            if (waEl)  waEl.value  = esAfiliado ? "" : (localStorage.getItem("verex-wa")||"");
+    // El WhatsApp de catálogo Cliente SIEMPRE es el oficial de VEREX — nunca
+    // se debe rellenar con "verex-wa" (eso guarda el ÚLTIMO número usado, que
+    // puede ser el de un afiliado si el admin generó un catálogo de afiliado
+    // justo antes). Reusar ese valor causó que un pedido de cliente directo
+    // le llegara por error al WhatsApp de un afiliado en vez de a VEREX.
+    const waEl  = document.getElementById("cat-wa");            if (waEl)  waEl.value  = esAfiliado ? "" : VEREX_WA_OFICIAL;
     const afNom = document.getElementById("cat-afiliado-nombre"); if (afNom) afNom.value = "";
     const afId  = document.getElementById("cat-afiliado-id");     if (afId)  afId.value  = "";
     const afCod = document.getElementById("cat-afiliado-codigo"); if (afCod) afCod.value = "";
