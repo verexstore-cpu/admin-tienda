@@ -21,6 +21,13 @@ export async function onRequest(context) {
             return new Response(JSON.stringify({ error: "Falta el id del catálogo" }), { status: 400, headers });
         }
 
+        // Verify admin password hash if ADMIN_PASS_HASH is configured in Cloudflare Pages env
+        const expectedHash = context.env.ADMIN_PASS_HASH;
+        const sentPass = String(body?._pass || "").trim();
+        if (expectedHash && sentPass !== expectedHash) {
+            return new Response(JSON.stringify({ error: "No autorizado" }), { status: 401, headers });
+        }
+
         const existing = await context.env.CATALOGS.get(id);
         if (!existing) {
             return new Response(JSON.stringify({ error: "Ese link no existe o ya expiró" }), { status: 404, headers });

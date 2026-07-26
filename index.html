@@ -1797,7 +1797,7 @@ async function generarCuponCliente(codigo, nombre, telefono) {
     const codigoCupon = `${codigo}-${Math.random().toString(36).substr(2,4).toUpperCase()}`;
     const datos = {
         accion: "CREAR_CUPON", _pass: ADMIN_PASS,
-        codigo: codigoCupon, tipo: "porcentaje",
+        codigo: codigoCupon, tipo: "porcentaje_total",
         descuento: parseFloat(descuento), categorias: "",
         montoMinimo: 0, limiteUsos: 1, activo: true,
         codigoCliente: codigo
@@ -2720,7 +2720,8 @@ async function guardarNuevaClave() {
     if (!actual || !nueva || !confirmar) { errEl.textContent = "⚠️ Completa todos los campos"; errEl.style.display = "block"; return; }
     if (nueva.length < 6) { errEl.textContent = "⚠️ Mínimo 6 caracteres"; errEl.style.display = "block"; return; }
     if (nueva !== confirmar) { errEl.textContent = "⚠️ Las contraseñas no coinciden"; errEl.style.display = "block"; return; }
-    if (actual !== ADMIN_PASS) { errEl.textContent = "⚠️ Contraseña actual incorrecta"; errEl.style.display = "block"; return; }
+    const actualHash = await hashStr(actual);
+    if (actualHash !== ADMIN_PASS) { errEl.textContent = "⚠️ Contraseña actual incorrecta"; errEl.style.display = "block"; return; }
 
     const btn = document.querySelector("#modal-pass button:last-child");
     btn.textContent = "⏳ Guardando..."; btn.disabled = true;
@@ -2748,9 +2749,12 @@ let _consigData = null;   // { vendedores, consignacion }
 let _vendorActual = null; // vendedor abierto en el modal
 
 async function cargarConsignacion(forzar = false) {
+    const loadEl = document.getElementById("vend-loading");
+    const listaEl = document.getElementById("vend-lista");
+    if (!loadEl || !listaEl) return; // tab replaced with redirect card
     if (_consigData && !forzar) { renderVendedores(); return; }
-    document.getElementById("vend-loading").style.display = "block";
-    document.getElementById("vend-lista").innerHTML = "";
+    loadEl.style.display = "block";
+    listaEl.innerHTML = "";
     try {
         const res  = await fetch(API_URL, { method:"POST", body: JSON.stringify({ accion:"GET_CONSIGNACION", _pass: ADMIN_PASS }) });
         const data = await res.json();
@@ -2758,18 +2762,21 @@ async function cargarConsignacion(forzar = false) {
         _consigData = data;
         renderVendedores();
     } catch(e) {
-        document.getElementById("vend-loading").style.display = "none";
-        document.getElementById("vend-lista").innerHTML = '<p style="color:#ef4444;font-size:13px;">⚠️ Error al cargar datos de consignación.</p>';
+        loadEl.style.display = "none";
+        listaEl.innerHTML = '<p style="color:#ef4444;font-size:13px;">⚠️ Error al cargar datos de consignación.</p>';
     }
 }
 
 function renderVendedores() {
-    document.getElementById("vend-loading").style.display = "none";
+    const loadEl = document.getElementById("vend-loading");
+    const listaEl = document.getElementById("vend-lista");
+    if (!loadEl || !listaEl) return;
+    loadEl.style.display = "none";
     const vendedores   = _consigData.vendedores   || [];
     const consignacion = _consigData.consignacion  || [];
 
     if (!vendedores.length) {
-        document.getElementById("vend-lista").innerHTML = '<p style="color:#aaa;font-size:13px;">No hay vendedores registrados.</p>';
+        listaEl.innerHTML = '<p style="color:#aaa;font-size:13px;">No hay vendedores registrados.</p>';
         return;
     }
 
@@ -2799,7 +2806,7 @@ function renderVendedores() {
         </div>`;
     }).join("");
 
-    document.getElementById("vend-lista").innerHTML = html +
+    listaEl.innerHTML = html +
         `<button class="btn bg" onclick="cargarConsignacion(true)" style="margin-top:6px;">🔄 Actualizar</button>`;
 }
 
@@ -3280,7 +3287,7 @@ async function desactivarLinkCatalogo(linkOrId) {
         const res = await fetch("/deactivate-catalog", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ id })
+            body: JSON.stringify({ id, _pass: ADMIN_PASS })
         });
         const out = await res.json();
         if (!res.ok) throw new Error(out.error || "No se pudo desactivar");
