@@ -3372,7 +3372,7 @@ function tieneStock(p, talla) {
 }
 
 function agruparParaCatalogo(lista) {
-    if (lista.length) console.log("[VEREX] campos producto:", Object.keys(lista[0]));
+
     const ES_PAR_GRP  = /matrimonio|argolla|novios|pareja|alianza/i;
     const ES_DAMA_GRP = /\b(dama|mujer)\b/i;
     const ES_CAB_GRP  = /\b(caballero|hombre)\b/i;
@@ -3744,7 +3744,6 @@ function filtrarParaCatalogo() {
     // Agrupar anillos; dejar el resto sin agrupar
     const anLista    = lista.filter(p => getCatKey(p) === "AN");
     const otherLista = lista.filter(p => getCatKey(p) !== "AN");
-    if (lista.length) console.log("[VEREX] campos producto:", Object.keys(lista[0]), "| caractEspecial:", lista[0].caractEspecial, "| getNotaEspecial:", getNotaEspecial(lista[0]));
     lista = [...agruparParaCatalogo(anLista), ...otherLista];
 
     _catFiltrada = lista;
