@@ -20,20 +20,29 @@ export async function onRequest(context) {
 
     // Build OG tags with absolute URLs for WhatsApp/social previews
     let catalogNombre = "Catálogo VEREX";
+    let ogImage = `${origin}/images/logo.jpg`;
+    let ogImageW = "1500";
+    let ogImageH = "750";
     try {
         const data = JSON.parse(raw);
         if (data.nombre) catalogNombre = `Catálogo VEREX · ${data.nombre}`;
+        const firstWithPhoto = (data.prods || []).find(p => p.i);
+        if (firstWithPhoto?.i) {
+            ogImage  = firstWithPhoto.i;
+            ogImageW = "800";
+            ogImageH = "800";
+        }
     } catch(_) {}
 
     const ogTags = `
 <meta property="og:type"        content="website">
 <meta property="og:title"       content="${catalogNombre}">
 <meta property="og:description" content="La expresión de tu mejor versión">
-<meta property="og:image"       content="${origin}/images/logo.jpg">
-<meta property="og:image:width" content="1500">
-<meta property="og:image:height" content="750">
+<meta property="og:image"       content="${ogImage}">
+<meta property="og:image:width" content="${ogImageW}">
+<meta property="og:image:height" content="${ogImageH}">
 <meta name="twitter:card"       content="summary_large_image">
-<meta name="twitter:image"      content="${origin}/images/logo.jpg">
+<meta name="twitter:image"      content="${ogImage}">
 <script>window.__CATALOG_DATA__ = ${raw};</script>`;
 
     html = html.replace("</head>", ogTags + "\n</head>");

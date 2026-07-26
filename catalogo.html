@@ -456,6 +456,12 @@
     // KV route: data injected server-side
     if(window.__CATALOG_DATA__){
         data = window.__CATALOG_DATA__;
+    } else if(params.get("previewKey")){
+        // Admin preview: data stored temporarily in localStorage
+        const raw = localStorage.getItem(params.get("previewKey"));
+        localStorage.removeItem(params.get("previewKey"));
+        if(!raw){ document.getElementById("app").innerHTML='<div style="text-align:center;padding:60px;color:#888;">Vista previa expirada — vuelve a generarla.</div>'; return; }
+        data = JSON.parse(raw);
     } else {
         if(!c){
             document.getElementById("app").innerHTML='<div style="text-align:center;padding:60px;color:#888;">Link inválido.</div>';
@@ -474,6 +480,14 @@
             document.getElementById("app").innerHTML='<div style="text-align:center;padding:60px;color:#888;">Link inválido o corrupto.</div>';
             return;
         }
+    }
+    if(params.get("previewKey") !== null || params.get("preview")){
+        // Show a non-intrusive preview banner at the top
+        const bar = document.createElement("div");
+        bar.style.cssText = "position:fixed;top:0;left:0;right:0;z-index:2000;background:#f59e0b;color:#fff;text-align:center;padding:7px 16px;font-size:12px;font-weight:700;letter-spacing:.3px;";
+        bar.textContent = "👁 VISTA PREVIA — así verá el cliente este catálogo";
+        document.body.prepend(bar);
+        document.body.style.paddingTop = "34px";
     }
     if(data.expiry && Date.now()>data.expiry) showExpired(data.nombre, data.wa);
     else { render(data); actualizarDisponibilidad(); }
