@@ -871,6 +871,12 @@
                 <input type="number" id="cup-limite" placeholder="0" min="0" value="0">
             </div>
 
+            <!-- Fecha de vencimiento -->
+            <div style="margin-top:12px;">
+                <label>Fecha de vencimiento <span style="font-weight:400;color:#888;font-size:11px;">(dejar vacío = sin vencimiento)</span></label>
+                <input type="date" id="cup-expiry">
+            </div>
+
             <!-- Preview del cupón -->
             <div id="cup-preview" style="display:none;background:#e1f5fe;border:1px dashed var(--azul);
                  border-radius:8px;padding:11px 14px;margin-top:14px;font-size:13px;color:#0277bd;">
@@ -2317,18 +2323,25 @@ function descCuponLabel(cup) {
 function renderCupones() {
     const cont=document.getElementById("lista-cup"); cont.innerHTML="";
     if (!cupones.length) { cont.innerHTML='<p style="color:#aaa;font-size:13px;">Sin cupones registrados.</p>'; return; }
+    const hoy = new Date(); hoy.setHours(0,0,0,0);
     cupones.forEach((cup,i)=>{
-        const tipo  = TIPO_LABEL[cup.tipo] || cup.tipo || "General";
-        const desc  = descCuponLabel(cup);
-        const cats  = cup.categorias ? ` · ${cup.categorias}` : "";
-        const usos  = cup.limiteUsos > 0 ? ` · ${cup.usosActuales||0}/${cup.limiteUsos} usos` : "";
-        cont.innerHTML+=`<div class="cr">
+        const tipo    = TIPO_LABEL[cup.tipo] || cup.tipo || "General";
+        const desc    = descCuponLabel(cup);
+        const cats    = cup.categorias ? ` · ${cup.categorias}` : "";
+        const usos    = cup.limiteUsos > 0 ? ` · ${cup.usosActuales||0}/${cup.limiteUsos} usos` : "";
+        const vencido = cup.fechaExpiry && new Date(cup.fechaExpiry + "T23:59:59") < hoy;
+        const expStr  = cup.fechaExpiry
+            ? (vencido
+                ? ` · <span style="color:#ef4444;font-weight:700;">⚠ Venció ${cup.fechaExpiry}</span>`
+                : ` · Vence ${cup.fechaExpiry}`)
+            : "";
+        cont.innerHTML+=`<div class="cr" style="${vencido?'opacity:.7':''}">
             <span class="cc">${cup.codigo}</span>
             <span style="font-size:11px;background:#e1f5fe;color:#0277bd;padding:3px 8px;border-radius:20px;font-weight:600;">${tipo}</span>
             <span class="cd">${desc}</span>
-            <span class="cf" style="font-size:12px;color:#888;">${cats}${usos}</span>
-            <span class="cf"><span class="badge ${cup.activo?"bv2":"br2"}">${cup.activo?"Activo":"Inactivo"}</span></span>
-            <button class="btn ${cup.activo?"bn":"bv"}" style="padding:5px 11px;font-size:12px;" onclick="toggleCupon(${i})">${cup.activo?"Desactivar":"Activar"}</button>
+            <span class="cf" style="font-size:12px;color:#888;">${cats}${usos}${expStr}</span>
+            <span class="cf"><span class="badge ${vencido?"br2":cup.activo?"bv2":"br2"}">${vencido?"Vencido":cup.activo?"Activo":"Inactivo"}</span></span>
+            <button class="btn ${cup.activo?"bn":"bv"}" style="padding:5px 11px;font-size:12px;" onclick="toggleCupon(${i})"${vencido?' disabled title="Cupón vencido"':''}>${cup.activo?"Desactivar":"Activar"}</button>
             <button class="btn br" style="padding:5px 11px;font-size:12px;" onclick="eliminarCupon(${i})">Eliminar</button>
         </div>`;
     });
@@ -2436,8 +2449,10 @@ async function crearCupon() {
             break;
     }
 
+    const fechaExpiry = document.getElementById("cup-expiry").value || "";
     const nuevo = { codigo:cod, tipo:tipoFinal, descuento, descuentoFijo, montoMinimo,
-                    categorias:cats, limiteUsos:limite, usosActuales:0, activo:act };
+                    categorias:cats, limiteUsos:limite, usosActuales:0, activo:act,
+                    ...(fechaExpiry && { fechaExpiry }) };
     cupones.push(nuevo); renderCupones();
 
     // Limpiar form
@@ -2447,6 +2462,7 @@ async function crearCupon() {
     document.getElementById("cup-min").value = "";
     document.getElementById("cup-desc-min").value = "";
     document.getElementById("cup-limite").value = "0";
+    document.getElementById("cup-expiry").value = "";
     document.querySelectorAll(".cup-cat").forEach(x => x.checked = false);
     document.getElementById("cup-preview").style.display = "none";
 
