@@ -1303,7 +1303,7 @@ async function cargarDatos(silencioso=false) {
             localStorage.setItem("vx_cfg", JSON.stringify(cfg));
         }
         renderAll(silencioso);
-        cargarVentasUnificadas().then(() => renderStats());
+        cargarVentasUnificadas().then(() => { renderStats(); renderChart(); });
     } catch(e) {
         if (!silencioso) toast("⚠️ Error conectando con la API","#ef4444");
     }
@@ -1492,10 +1492,11 @@ function renderStats() {
 function renderChart() {
     const cont = document.getElementById("chart"); cont.innerHTML="";
     const hoy  = new Date();
+    const fuente = _ventasUnificadas || pedidos;
     const sem  = Array.from({length:8},(_,i)=>{
         const ini = new Date(hoy); ini.setDate(hoy.getDate()-i*7);
         const fin = new Date(hoy); fin.setDate(hoy.getDate()-(i-1)*7);
-        const ps  = pedidos.filter(p=>{ const f=new Date(p.fecha); return f>=ini&&f<fin; });
+        const ps  = fuente.filter(p=>{ const f=new Date(p.fecha); return f>=ini&&f<fin; });
         const ing = ps.reduce((s,p)=>s+(parseFloat(String(p.total).replace(/[^0-9.]/g,""))||0),0);
         return { lbl:`S${8-i}`, n: ps.length, ing };
     }).reverse();
@@ -1504,7 +1505,7 @@ function renderChart() {
         const pct   = Math.max(s.n/mx*100,4);
         const isLast = i === sem.length-1;
         cont.innerHTML += `
-        <div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:4px;cursor:default;" title="${s.n} pedidos · $${s.ing.toFixed(0)}">
+        <div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:4px;cursor:default;" title="${s.n} ventas · $${s.ing.toFixed(0)}">
             <span style="font-size:11px;font-weight:700;color:${isLast?'#00BFFF':'rgba(255,255,255,0.5)'};">${s.n||''}</span>
             <div style="width:100%;border-radius:8px 8px 0 0;transition:height 0.6s ease;
                 background:${isLast?'linear-gradient(180deg,#00BFFF,#0080ff)':'linear-gradient(180deg,rgba(0,191,255,0.4),rgba(0,191,255,0.15))'};
