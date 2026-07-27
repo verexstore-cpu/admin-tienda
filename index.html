@@ -1185,8 +1185,35 @@ function logout() {
     location.reload();
 }
 
-// Auto-login si la sesión del día sigue válida
-(function() {
+// SSO desde el Hub: si viene un token en la URL (?sso=...), lo canjea con
+// el worker y entra directo, sin pedir contraseña ni código de Telegram —
+// el Hub ya se autenticó para generarlo. Token de un solo uso, expira a
+// los 90s, así que no sirve de nada si alguien lo copia después.
+async function intentarSSO() {
+    const params = new URLSearchParams(location.search);
+    const token = params.get("sso");
+    if (!token) return false;
+    // Limpiar el token de la URL de inmediato para que no quede en el
+    // historial del navegador ni se pueda reusar recargando la página.
+    history.replaceState({}, "", location.pathname);
+    try {
+        const res = await fetch(API_URL, {
+            method: 'POST',
+            body: JSON.stringify({ accion: "SSO_CANJEAR_TOKEN", token })
+        });
+        const data = await res.json();
+        if (data.ok && data.hash) {
+            localStorage.setItem("vx_sesion_dia", JSON.stringify({ fecha: new Date().toDateString(), hash: data.hash }));
+            entrarConSesion(data.hash);
+            return true;
+        }
+    } catch(e) {}
+    return false;
+}
+
+// Auto-login si la sesión del día sigue válida (o si viene un token SSO del Hub)
+(async function() {
+    if (await intentarSSO()) return;
     const sesion = JSON.parse(localStorage.getItem("vx_sesion_dia") || "{}");
     const hoy    = new Date().toDateString();
     if (sesion.fecha === hoy && sesion.hash) {
