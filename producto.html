@@ -139,6 +139,15 @@
     const _waParam = (params.get("wa") || "").trim();
     const _waDestino = normalizarWA(_waParam || VEREX_WA_OFICIAL);
 
+    // Descuento opcional para promos de un solo producto (?desc=20 = 20% off)
+    // — mismo mecanismo que ya usa el catálogo de varios productos.
+    const _descPct = Math.min(90, Math.max(0, parseInt(params.get("desc")) || 0));
+    function precioFinal(precio){
+        const n = parseFloat(precio) || 0;
+        if (!_descPct) return n;
+        return Math.round(n * (1 - _descPct / 100) * 100) / 100;
+    }
+
     function esc(s){ const d=document.createElement("div"); d.textContent=String(s||""); return d.innerHTML; }
 
     function claseMaterial(m){
@@ -180,7 +189,10 @@
                 ${nota ? `<div><span class="card-ne">♦ ${esc(nota)}</span></div>` : ''}
                 ${agotado
                     ? `<div class="card-price" style="color:#C0392B;font-size:16px;">AGOTADO</div>`
-                    : `<div class="card-price">$${parseFloat(p.precio||0).toFixed(2)}</div>`}
+                    : _descPct
+                        ? `<div class="card-price"><span style="font-size:15px;font-weight:600;color:#9ca3af;text-decoration:line-through;margin-right:8px;">$${parseFloat(p.precio||0).toFixed(2)}</span>$${precioFinal(p.precio).toFixed(2)}</div>
+                           <div style="display:inline-block;font-size:11px;font-weight:800;color:#fff;background:#D85A30;border-radius:5px;padding:2px 8px;margin-bottom:6px;">-${_descPct}% OFF</div>`
+                        : `<div class="card-price">$${parseFloat(p.precio||0).toFixed(2)}</div>`}
                 <div class="card-ref">Ref: ${esc(p.codigo)}</div>
                 ${agotado ? '' : `<button class="wa-btn" onclick="abrirConfirm(${idx}, this)"><span style="position:relative;z-index:2;">✦ ¡Hazlo tuyo!</span><span class="wa-shine"></span></button>`}
             </div>
@@ -259,7 +271,7 @@
                         body: JSON.stringify({
                             accion:"REGISTRAR_LEAD", afiliado, codigo:p.codigo,
                             nombre:(p.nombre_base||p.nombre||"").trim(),
-                            precio: parseFloat(p.precio||0), foto: p.foto||"",
+                            precio: precioFinal(p.precio), foto: p.foto||"",
                             telefonoCliente: telefono || "", nombreCliente: nombreCliente || "",
                             direccionCliente: direccionCliente || ""
                         })
@@ -277,7 +289,10 @@
                 const nombre = (p.nombre_base || p.nombre || "").trim();
                 registrarLead(p, tel, nombreCliente, direccionCliente);
                 cerrarConfirm();
-                const msg = `Hola, soy ${nombreCliente}. Me interesa este producto de VEREX:\n\n${nombre}\nPrecio: $${parseFloat(p.precio||0).toFixed(2)}\nRef: ${p.codigo}\n\nMi WhatsApp: ${tel}\nDirección de envío: ${direccionCliente}`;
+                const precioTxt = _descPct
+                    ? `$${precioFinal(p.precio).toFixed(2)} (-${_descPct}% de $${parseFloat(p.precio||0).toFixed(2)})`
+                    : `$${parseFloat(p.precio||0).toFixed(2)}`;
+                const msg = `Hola, soy ${nombreCliente}. Me interesa este producto de VEREX:\n\n${nombre}\nPrecio: ${precioTxt}\nRef: ${p.codigo}\n\nMi WhatsApp: ${tel}\nDirección de envío: ${direccionCliente}`;
                 window.open(`https://wa.me/${_waDestino}?text=${encodeURIComponent(msg)}`,"_blank");
             };
         })
