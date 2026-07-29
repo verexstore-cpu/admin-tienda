@@ -91,10 +91,14 @@
         .wa-order.brillando .wa-shine{ animation:waShineSweep .6s ease; }
         @keyframes waShineSweep{ from{left:-60%;} to{left:130%;} }
         .cart-add{
-            align-self:flex-end;width:34px;height:28px;
+            align-self:flex-end;width:44px;
             background:#fff;color:#111;border:1.5px solid #ddd;
-            border-radius:8px;font-size:14px;cursor:pointer;
-            display:flex;align-items:center;justify-content:center;
+            border-radius:8px;font-size:13px;cursor:pointer;
+            display:flex;flex-direction:column;align-items:center;justify-content:center;
+            padding:5px 4px 4px;gap:1px;line-height:1;
+        }
+        .cart-add .cart-label{
+            font-size:7.5px;font-weight:600;color:#888;text-align:center;line-height:1.2;
         }
 
         /* Carrito flotante — discreto, no interrumpe el catálogo hasta que
@@ -435,7 +439,7 @@
                 </div>
                 <div class="card-footer">
                     <button class="wa-order" onclick="elegirTalla(${i},'wa',this)"><span class="wa-main">✦ ¡Hazlo tuyo!</span><span class="wa-sub">Presiona aquí para ordenar</span><span class="wa-shine"></span></button>
-                    <button class="cart-add" onclick="elegirTalla(${i},'carrito')" title="Agregar al carrito">🛒</button>
+                    <button class="cart-add" onclick="elegirTalla(${i},'carrito')" title="Agregar al carrito">🛒<span class="cart-label">2+ piezas</span></button>
                 </div>
             </div>`;
         }).join("");
