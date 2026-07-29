@@ -1577,7 +1577,9 @@ async function cargarPedidosAfiliadosPendientes() {
             const c = l.cliente;
             const clienteHtml = c
                 ? `<div style="font-size:11px;color:#166534;margin-top:3px;">👤 ${esc(c.nombre||"—")} · ${esc(c.telefono||"—")} · ${esc(c.municipio||"")}${c.municipio?", ":""}${esc(c.departamento||"")}</div>`
-                : `<div style="font-size:11px;color:#f97316;margin-top:3px;">⏳ El afiliado todavía no completó los datos del cliente</div>`;
+                : (l.nombreCliente || l.telefonoCliente)
+                    ? `<div style="font-size:11px;color:#166534;margin-top:3px;">👤 ${esc(l.nombreCliente||"—")} · ${esc(l.telefonoCliente||"—")}${l.direccionCliente ? ` · ${esc(l.direccionCliente)}` : ""}</div>`
+                    : `<div style="font-size:11px;color:#f97316;margin-top:3px;">⏳ El afiliado todavía no completó los datos del cliente</div>`;
             return `<div style="display:flex;justify-content:space-between;align-items:flex-start;gap:10px;padding:10px 0;border-bottom:1px solid var(--borde);">
                 <div style="flex:1;min-width:0;">
                     <div style="font-size:12px;font-weight:700;">${esc(l.nombre||l.codigo||"—")}</div>
