@@ -4905,264 +4905,292 @@ async function generarPDFCatalogo() {
 
 <!-- MODAL CATÁLOGO CLIENTE -->
 <div class="mo" id="modal-catalogo">
-    <div class="mb" style="max-width:920px;">
-        <button class="mc" onclick="cerrarModalCatalogo()">✕</button>
-        <h3 id="modal-catalogo-titulo">📋 Catálogo para Cliente</h3>
+  <div class="mb" style="max-width:940px;">
+    <button class="mc" onclick="cerrarModalCatalogo()">✕</button>
+    <h3 id="modal-catalogo-titulo" style="margin-bottom:18px;">📋 Catálogo para Cliente</h3>
 
-        <div style="background:#f0f7ff;border:1.5px solid #bfdbfe;border-radius:10px;padding:12px;margin-bottom:14px;">
-            <label style="font-weight:700;color:#1e40af;font-size:12px;">🤖 Armar catálogo con IA</label>
-            <div style="display:flex;gap:8px;margin-top:6px;">
-                <input type="text" id="cat-ia-prompt" placeholder='Ej: "anillos talla 7 dama" o "argollas matrimonio talla 9"'
-                    style="flex:1;font-size:13px;"
-                    onkeydown="if(event.key==='Enter') aplicarPromptIA()">
-                <button onclick="aplicarPromptIA()"
-                    style="background:#1e40af;color:#fff;border:none;padding:8px 14px;border-radius:8px;font-size:13px;font-weight:700;cursor:pointer;white-space:nowrap;">✨ Armar</button>
-            </div>
-            <div id="cat-ia-resultado" style="font-size:11px;color:#1e40af;margin-top:5px;min-height:14px;"></div>
-        </div>
+    <!-- inputs ocultos necesarios para JS -->
+    <input type="checkbox" id="cat-es-afiliado" style="display:none;">
+    <input type="hidden" id="cat-afiliado-nombre">
+    <input type="hidden" id="cat-afiliado-codigo">
+    <input type="hidden" id="cat-talla" value="">
 
-        <div style="margin-bottom:10px;">
-            <label>Categorías / Prefijos</label>
-            <div id="cat-categoria-pills" style="display:flex;flex-wrap:wrap;gap:6px;margin-top:6px;"></div>
-        </div>
-
-        <div id="cat-sec-talla">
-            <div style="background:#fff7ed;border:1px solid #fdba74;border-radius:8px;padding:8px 10px;margin-bottom:10px;font-size:11px;color:#9a3412;">
-                💍 Estos filtros solo aplican a la sección de <strong>Anillos</strong> — el resto de categorías (aretes, cadenas, pulseras, etc.) no se ven afectadas y seguirán apareciendo completas en el catálogo variado.
-            </div>
-            <div style="margin-bottom:10px;">
-                <label>Buscar por prefijo del código</label>
-                <div style="position:relative;">
-                    <span style="position:absolute;left:10px;top:50%;transform:translateY(-50%);font-size:15px;pointer-events:none;">🔍</span>
-                    <input type="text" id="cat-prefijo-txt" placeholder="Ej: C, D, U  (varias separadas por coma)"
-                        oninput="filtrarParaCatalogo()"
-                        style="padding-left:34px;width:100%;box-sizing:border-box;font-size:13px;">
-                </div>
-                <div style="font-size:11px;color:#888;margin-top:3px;">C=Caballero &nbsp;·&nbsp; D=Dama &nbsp;·&nbsp; T=Talla &nbsp;·&nbsp; U=Único/Alianza &nbsp;·&nbsp; H=Hombre &nbsp;·&nbsp; Varias: <strong>C, D</strong></div>
-            </div>
-            <div style="margin-bottom:10px;">
-                <label>Tipo de anillo</label>
-                <select id="cat-tipo-an" onchange="filtrarParaCatalogo()">
-                    <option value="">— Todos —</option>
-                    <option value="sencillo">💍 Anillos sencillos</option>
-                    <option value="pareja">💑 Argollas / Pareja / Matrimonio</option>
-                </select>
-            </div>
-            <div class="g2" style="margin-bottom:10px;">
-                <div>
-                    <label>Talla (solo Anillos) — puedes elegir varias</label>
-                    <input type="hidden" id="cat-talla" value="">
-                    <div id="cat-talla-chips" style="display:flex;flex-wrap:wrap;gap:5px;margin-top:4px;">
-                        <button type="button" class="cat-talla-chip" data-talla="5" onclick="toggleCatTallaChip('5',this)" style="padding:5px 9px;border-radius:16px;border:1.5px solid var(--borde);background:#fff;color:#111;font-size:11px;font-weight:700;cursor:pointer;">T5</button>
-                        <button type="button" class="cat-talla-chip" data-talla="5.5" onclick="toggleCatTallaChip('5.5',this)" style="padding:5px 9px;border-radius:16px;border:1.5px solid var(--borde);background:#fff;color:#111;font-size:11px;font-weight:700;cursor:pointer;">T5.5</button>
-                        <button type="button" class="cat-talla-chip" data-talla="6" onclick="toggleCatTallaChip('6',this)" style="padding:5px 9px;border-radius:16px;border:1.5px solid var(--borde);background:#fff;color:#111;font-size:11px;font-weight:700;cursor:pointer;">T6</button>
-                        <button type="button" class="cat-talla-chip" data-talla="6.5" onclick="toggleCatTallaChip('6.5',this)" style="padding:5px 9px;border-radius:16px;border:1.5px solid var(--borde);background:#fff;color:#111;font-size:11px;font-weight:700;cursor:pointer;">T6.5</button>
-                        <button type="button" class="cat-talla-chip" data-talla="7" onclick="toggleCatTallaChip('7',this)" style="padding:5px 9px;border-radius:16px;border:1.5px solid var(--borde);background:#fff;color:#111;font-size:11px;font-weight:700;cursor:pointer;">T7</button>
-                        <button type="button" class="cat-talla-chip" data-talla="7.5" onclick="toggleCatTallaChip('7.5',this)" style="padding:5px 9px;border-radius:16px;border:1.5px solid var(--borde);background:#fff;color:#111;font-size:11px;font-weight:700;cursor:pointer;">T7.5</button>
-                        <button type="button" class="cat-talla-chip" data-talla="8" onclick="toggleCatTallaChip('8',this)" style="padding:5px 9px;border-radius:16px;border:1.5px solid var(--borde);background:#fff;color:#111;font-size:11px;font-weight:700;cursor:pointer;">T8</button>
-                        <button type="button" class="cat-talla-chip" data-talla="8.5" onclick="toggleCatTallaChip('8.5',this)" style="padding:5px 9px;border-radius:16px;border:1.5px solid var(--borde);background:#fff;color:#111;font-size:11px;font-weight:700;cursor:pointer;">T8.5</button>
-                        <button type="button" class="cat-talla-chip" data-talla="9" onclick="toggleCatTallaChip('9',this)" style="padding:5px 9px;border-radius:16px;border:1.5px solid var(--borde);background:#fff;color:#111;font-size:11px;font-weight:700;cursor:pointer;">T9</button>
-                        <button type="button" class="cat-talla-chip" data-talla="9.5" onclick="toggleCatTallaChip('9.5',this)" style="padding:5px 9px;border-radius:16px;border:1.5px solid var(--borde);background:#fff;color:#111;font-size:11px;font-weight:700;cursor:pointer;">T9.5</button>
-                        <button type="button" class="cat-talla-chip" data-talla="10" onclick="toggleCatTallaChip('10',this)" style="padding:5px 9px;border-radius:16px;border:1.5px solid var(--borde);background:#fff;color:#111;font-size:11px;font-weight:700;cursor:pointer;">T10</button>
-                        <button type="button" class="cat-talla-chip" data-talla="10.5" onclick="toggleCatTallaChip('10.5',this)" style="padding:5px 9px;border-radius:16px;border:1.5px solid var(--borde);background:#fff;color:#111;font-size:11px;font-weight:700;cursor:pointer;">T10.5</button>
-                        <button type="button" class="cat-talla-chip" data-talla="11" onclick="toggleCatTallaChip('11',this)" style="padding:5px 9px;border-radius:16px;border:1.5px solid var(--borde);background:#fff;color:#111;font-size:11px;font-weight:700;cursor:pointer;">T11</button>
-                        <button type="button" class="cat-talla-chip" data-talla="12" onclick="toggleCatTallaChip('12',this)" style="padding:5px 9px;border-radius:16px;border:1.5px solid var(--borde);background:#fff;color:#111;font-size:11px;font-weight:700;cursor:pointer;">T12</button>
-                        <button type="button" class="cat-talla-chip" data-talla="13" onclick="toggleCatTallaChip('13',this)" style="padding:5px 9px;border-radius:16px;border:1.5px solid var(--borde);background:#fff;color:#111;font-size:11px;font-weight:700;cursor:pointer;">T13</button>
-                        <button type="button" class="cat-talla-chip" data-talla="14" onclick="toggleCatTallaChip('14',this)" style="padding:5px 9px;border-radius:16px;border:1.5px solid var(--borde);background:#fff;color:#111;font-size:11px;font-weight:700;cursor:pointer;">T14</button>
-                        <button type="button" onclick="limpiarCatTallaChips()" style="padding:5px 9px;border-radius:16px;border:none;background:#f0f0f0;color:#888;font-size:11px;font-weight:700;cursor:pointer;">✕ Todas</button>
-                    </div>
-                </div>
-                <div>
-                    <label>Género (pareja, solo Anillos)</label>
-                    <select id="cat-genero" onchange="filtrarParaCatalogo()">
-                        <option value="">— Todos —</option>
-                        <option value="dama">👩 Dama</option>
-                        <option value="caballero">👨 Caballero</option>
-                    </select>
-                </div>
-            </div>
-        </div>
-
-        <div style="margin-bottom:12px;">
-            <label id="cat-nombre-label">Nombre del cliente (opcional)</label>
-            <input type="text" id="cat-nombre" placeholder="Ej: María, Juan...">
-        </div>
-
-        <!-- Checkbox oculto — el tipo ya lo decide la pestaña (Catálogo Cliente / Catálogo Afiliado) -->
-        <input type="checkbox" id="cat-es-afiliado" style="display:none;">
-
-        <!-- Solo Afiliado -->
-        <div id="cat-sec-afiliado" style="display:none;background:#f0fdf4;border:1.5px solid #86efac;border-radius:10px;padding:12px;margin-bottom:12px;">
-            <div style="font-weight:700;color:#166534;font-size:12px;text-transform:uppercase;margin-bottom:10px;">🤝 Datos del Afiliado</div>
-            <div id="cat-afiliado-fields">
-                <div style="margin-bottom:8px;">
-                    <label style="color:#166534;">Afiliado (registrado en Consignación → Vendedores)</label>
-                    <select id="cat-afiliado-select" style="margin-top:4px;" onchange="onSeleccionarAfiliado()">
-                        <option value="">— Selecciona un afiliado —</option>
-                    </select>
-                    <div style="font-size:10px;color:#166534;margin-top:3px;">
-                        Si no aparece, créalo primero en Consignación → Vendedores → tipo 🤝 Afiliado.
-                    </div>
-                    <button type="button" id="btn-refrescar-catalogo-afiliado" onclick="refrescarCatalogoAfiliado()"
-                        style="display:none;width:100%;margin-top:8px;padding:8px 0;border:1px solid #0ea5e9;border-radius:8px;background:#f0f9ff;color:#0369a1;font-size:12px;font-weight:700;cursor:pointer;">
-                        🔄 Refrescar catálogo con stock actual
-                    </button>
-                    <div id="txt-refrescar-nota" style="display:none;font-size:10px;color:#0369a1;margin-top:3px;">
-                        Repone lo agotado y prioriza productos que NO se mostraron la vez anterior (variedad mensual). Solo prellena la selección — falta darle "🔗 Link" para publicar.
-                    </div>
-                </div>
-                <input type="hidden" id="cat-afiliado-nombre">
-                <input type="hidden" id="cat-afiliado-codigo">
-                <div style="margin-bottom:8px;">
-                    <label style="color:#166534;">WhatsApp del afiliado</label>
-                    <input type="text" id="cat-wa" placeholder="Ej: 573001234567" inputmode="numeric" style="margin-top:4px;">
-                    <div style="font-size:10px;color:#166534;margin-top:3px;">Los botones "Quiero este" abrirán este número</div>
-                </div>
-                <div>
-                    <label style="color:#166534;">ID del afiliado (link fijo)</label>
-                    <input type="text" id="cat-afiliado-id" placeholder="Se llena automático al elegir el afiliado" style="margin-top:4px;"
-                        oninput="this.value=this.value.toLowerCase().replace(/[^a-z0-9-]/g,'-')">
-                    <div style="font-size:10px;color:#166534;margin-top:3px;">El link siempre será el mismo — actualizable sin cambiar URL</div>
-                </div>
-            </div>
-        </div>
-
-        <!-- Solo Cliente -->
-        <div id="cat-banner-wrap" style="margin-bottom:12px;background:#fffef0;border:1px solid #fde68a;border-radius:8px;padding:10px;">
-            <label style="color:#92400e;font-weight:700;">🏷️ Banner de oferta (opcional)</label>
-            <input type="text" id="cat-banner-txt" placeholder="Ej: 2x1 en aretes este fin de semana 🎉" style="margin-top:6px;">
-            <div class="emoji-quick-bar" data-target="cat-banner-txt"></div>
-            <input type="text" id="cat-banner-sub" placeholder="Subtítulo (ej: Solo hasta el domingo)" style="margin-top:6px;">
-            <div class="emoji-quick-bar" data-target="cat-banner-sub"></div>
-            <div style="margin-top:8px;">
-                <label style="color:#92400e;font-weight:700;font-size:12px;">% Descuento (requiere el texto del banner arriba — calcula el precio final en cada tarjeta)</label>
-                <input type="number" id="cat-banner-desc-pct" placeholder="Ej: 20" min="0" max="90" style="margin-top:4px;">
-            </div>
-            <div style="display:flex;align-items:center;gap:8px;margin-top:8px;flex-wrap:wrap;">
-                <span style="font-size:11px;color:#92400e;font-weight:700;">Color:</span>
-                <div id="banner-colors" style="display:flex;gap:6px;flex-wrap:wrap;">
-                    <button type="button" onclick="selBannerColor(this,'#ef4444')" data-banner-color="#ef4444"
-                        style="width:26px;height:26px;border-radius:50%;background:#ef4444;border:3px solid transparent;cursor:pointer;"></button>
-                    <button type="button" onclick="selBannerColor(this,'#f97316')" data-banner-color="#f97316"
-                        style="width:26px;height:26px;border-radius:50%;background:#f97316;border:3px solid transparent;cursor:pointer;"></button>
-                    <button type="button" onclick="selBannerColor(this,'#7c3aed')" data-banner-color="#7c3aed"
-                        style="width:26px;height:26px;border-radius:50%;background:#7c3aed;border:3px solid transparent;cursor:pointer;"></button>
-                    <button type="button" onclick="selBannerColor(this,'#0277bd')" data-banner-color="#0277bd"
-                        style="width:26px;height:26px;border-radius:50%;background:#0277bd;border:3px solid transparent;cursor:pointer;"></button>
-                    <button type="button" onclick="selBannerColor(this,'#111111')" data-banner-color="#111111"
-                        style="width:26px;height:26px;border-radius:50%;background:#111111;border:3px solid transparent;cursor:pointer;"></button>
-                    <button type="button" onclick="selBannerColor(this,'#22c55e')" data-banner-color="#22c55e"
-                        style="width:26px;height:26px;border-radius:50%;background:#22c55e;border:3px solid transparent;cursor:pointer;"></button>
-                </div>
-                <div id="banner-preview" style="display:none;flex:1;padding:4px 10px;border-radius:5px;font-size:11px;font-weight:700;color:#fff;min-width:80px;text-align:center;"></div>
-            </div>
-        </div>
-
-        <!-- Solo Afiliado — banner GLOBAL: uno solo compartido por TODOS los catálogos
-             de afiliado (no por cada link generado). Editar aquí y guardar aplica de
-             inmediato a todos los links de afiliado ya compartidos, sin regenerarlos. -->
-        <div id="cat-banner-afiliado-wrap" style="display:none;margin-bottom:12px;background:#f5f3ff;border:1px solid #ddd6fe;border-radius:8px;padding:10px;">
-            <label style="color:#5b21b6;font-weight:700;">🌐 Banner global de promoción para Afiliados</label>
-            <div style="font-size:10px;color:#5b21b6;margin-bottom:6px;">Este banner es UNO SOLO para todos los catálogos de afiliado — se aplica a todos los links ya compartidos apenas lo guardas, sin necesidad de generar links nuevos.</div>
-            <label style="display:flex;align-items:center;gap:6px;font-size:12px;color:#5b21b6;font-weight:600;margin-bottom:6px;">
-                <input type="checkbox" id="cat-banner-af-activo" style="width:auto;"> Banner activo
-            </label>
-            <input type="text" id="cat-banner-af-txt" placeholder="Ej: Nuevo catálogo de temporada 🎉" style="margin-top:2px;">
-            <div class="emoji-quick-bar" data-target="cat-banner-af-txt"></div>
-            <input type="text" id="cat-banner-af-sub" placeholder="Subtítulo (opcional)" style="margin-top:6px;">
-            <div class="emoji-quick-bar" data-target="cat-banner-af-sub"></div>
-            <div style="display:flex;align-items:center;gap:8px;margin-top:8px;flex-wrap:wrap;">
-                <span style="font-size:11px;color:#5b21b6;font-weight:700;">Color:</span>
-                <div id="banner-af-colors" style="display:flex;gap:6px;flex-wrap:wrap;">
-                    <button type="button" onclick="selBannerAfColor(this,'#ef4444')" style="width:26px;height:26px;border-radius:50%;background:#ef4444;border:3px solid transparent;cursor:pointer;"></button>
-                    <button type="button" onclick="selBannerAfColor(this,'#f97316')" style="width:26px;height:26px;border-radius:50%;background:#f97316;border:3px solid transparent;cursor:pointer;"></button>
-                    <button type="button" onclick="selBannerAfColor(this,'#7c3aed')" style="width:26px;height:26px;border-radius:50%;background:#7c3aed;border:3px solid transparent;cursor:pointer;"></button>
-                    <button type="button" onclick="selBannerAfColor(this,'#0277bd')" style="width:26px;height:26px;border-radius:50%;background:#0277bd;border:3px solid transparent;cursor:pointer;"></button>
-                    <button type="button" onclick="selBannerAfColor(this,'#111111')" style="width:26px;height:26px;border-radius:50%;background:#111111;border:3px solid transparent;cursor:pointer;"></button>
-                    <button type="button" onclick="selBannerAfColor(this,'#22c55e')" style="width:26px;height:26px;border-radius:50%;background:#22c55e;border:3px solid transparent;cursor:pointer;"></button>
-                </div>
-            </div>
-            <button type="button" onclick="guardarBannerAfiliadoGlobal()"
-                style="width:100%;margin-top:10px;background:#7c3aed;color:#fff;border:none;padding:9px;border-radius:7px;font-size:12px;font-weight:700;cursor:pointer;">💾 Guardar banner global</button>
-        </div>
-
-        <div id="cat-info" style="font-size:12px;color:#888;margin-bottom:8px;"></div>
-        <div id="cat-lista" style="max-height:380px;overflow-y:auto;border:1px solid var(--borde);border-radius:8px;padding:8px;background:var(--gris);"></div>
-
-        <div id="cat-var-resumen" style="font-size:11px;color:#166534;background:#f0fdf4;border:1px solid #bbf7d0;border-radius:7px;padding:7px 10px;margin-top:10px;display:none;"></div>
-        <div style="display:flex;gap:8px;margin-top:8px;margin-bottom:12px;flex-wrap:wrap;">
-            <button class="btn bg" style="flex:1;font-size:12px;min-width:80px;" onclick="seleccionarTodosCatalogo(true)">✅ Todos</button>
-            <button class="btn bg" style="flex:1;font-size:12px;min-width:80px;" onclick="seleccionarTodosCatalogo(false)">⬜ Ninguno</button>
-            <button class="btn bg" title="Quitar 10 piezas al tamaño del catálogo" style="flex:0 0 auto;font-size:14px;padding:0 10px;font-weight:800;" onclick="ajustarTamanoCatalogo(-10)">−10</button>
-            <input type="number" id="cat-var-size" value="36" min="10" step="10" onchange="onCambiarTamanoCatalogo()"
-                title="Cantidad de piezas para 'Auto-seleccionar variado' — ajústalo con los botones -10/+10 si quieres mandar un catálogo más grande"
-                style="flex:0 0 70px;font-size:12px;padding:0 6px;border-radius:8px;border:1.5px solid var(--borde);background:var(--gris);color:inherit;font-weight:600;text-align:center;">
-            <button class="btn bg" title="Agregar 10 piezas al tamaño del catálogo" style="flex:0 0 auto;font-size:14px;padding:0 10px;font-weight:800;" onclick="ajustarTamanoCatalogo(10)">+10</button>
-            <button class="btn ba" style="flex:2;font-size:12px;min-width:160px;" onclick="autoSeleccionarVariado()">🔀 Auto-seleccionar variado</button>
-        </div>
-
-        <div style="margin-bottom:12px;">
-            <label>Validez del catálogo</label>
-            <select id="cat-validez">
-                <option value="1">1 día</option>
-                <option value="3">3 días</option>
-                <option value="7">7 días</option>
-                <option value="15">15 días (cliente)</option>
-                <option value="30">30 días (afiliado)</option>
-            </select>
-        </div>
-
-        <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:4px;">
-            <button class="btn bv" id="btn-gen-pdf"  onclick="generarPDFCatalogo()"    style="justify-content:center;padding:11px 6px;">📥 PDF</button>
-            <button class="btn bn" id="btn-gen-img"  onclick="generarImagenCatalogo()" style="justify-content:center;padding:11px 6px;">🖼️ Imagen</button>
-            <button class="btn ba" id="btn-gen-link" onclick="generarLinkCatalogo()"   style="justify-content:center;padding:11px 6px;">🔗 Link</button>
-        </div>
-        <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:10px;font-size:9.5px;color:#888;line-height:1.3;">
-            <div>Descarga un PDF estático — para imprimir o enviar como archivo.</div>
-            <div>Genera una imagen (JPG) del catálogo — ideal para estado de WhatsApp.</div>
-            <div>Crea/actualiza el link web interactivo — el que se comparte y detecta stock en vivo.</div>
-        </div>
-
-        <div id="cat-link-box" style="display:none;background:#f0f2f5;border-radius:8px;padding:12px;border:1px solid var(--borde);">
-            <div style="font-size:11px;font-weight:700;color:#888;text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px;">Link generado</div>
-            <div id="cat-link-out" style="font-size:13px;color:#0277bd;word-break:break-all;margin-bottom:10px;font-weight:600;"></div>
-            <div style="display:flex;gap:8px;">
-                <button onclick="navigator.clipboard.writeText(document.getElementById('cat-link-out').textContent);toast('✅ Copiado','#22c55e')"
-                    style="flex:1;background:#111;color:#fff;border:none;padding:9px;border-radius:7px;font-size:12px;font-weight:700;cursor:pointer;">📋 Copiar</button>
-                <button onclick="window.open('https://wa.me/?text='+encodeURIComponent('Hola, aquí está tu catálogo VEREX: '+document.getElementById('cat-link-out').textContent))"
-                    style="flex:1;background:#25D366;color:#fff;border:none;padding:9px;border-radius:7px;font-size:12px;font-weight:700;cursor:pointer;">📱 WhatsApp</button>
-            </div>
-            <button onclick="desactivarLinkCatalogo(document.getElementById('cat-link-out').textContent)"
-                style="width:100%;margin-top:8px;background:#fef2f2;color:#dc2626;border:1px solid #fecaca;padding:9px;border-radius:7px;font-size:12px;font-weight:700;cursor:pointer;">🚫 Desactivar este link</button>
-        </div>
-
-        <div style="margin-top:14px;background:#fef2f2;border-radius:8px;padding:12px;border:1px solid #fecaca;">
-            <div style="font-size:11px;font-weight:700;color:#991b1b;text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px;">🚫 Desactivar un link ya generado antes</div>
-            <div style="font-size:11px;color:#7f1d1d;margin-bottom:8px;">Pega aquí el link completo o solo el código (ej. verexstore.com/c/abc123) para dejarlo sin efecto de inmediato.</div>
-            <div style="display:flex;gap:8px;">
-                <input type="text" id="cat-link-desactivar" placeholder="Link o código a desactivar" style="flex:1;">
-                <button onclick="desactivarLinkCatalogo(document.getElementById('cat-link-desactivar').value)"
-                    style="background:#dc2626;color:#fff;border:none;padding:0 14px;border-radius:7px;font-size:12px;font-weight:700;cursor:pointer;white-space:nowrap;">Desactivar</button>
-            </div>
-        </div>
-
-        <div style="margin-top:14px;background:#eff6ff;border-radius:8px;padding:12px;border:1px solid #bfdbfe;">
-            <div style="font-size:11px;font-weight:700;color:#1e40af;text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px;">✏️ Editar vigencia de un link ya generado</div>
-            <div style="font-size:11px;color:#1e3a8a;margin-bottom:8px;">Acorta o extiende cuánto dura un link SIN desactivarlo ni tener que mandar uno nuevo — el mismo link sigue vivo, solo cambia cuándo vence.</div>
-            <div style="display:flex;gap:8px;">
-                <input type="text" id="cat-link-editar-vig" placeholder="Link o código" style="flex:1;">
-                <select id="cat-editar-vig-dias" style="width:120px;">
-                    <option value="1">1 día</option>
-                    <option value="3">3 días</option>
-                    <option value="7">7 días</option>
-                    <option value="15">15 días</option>
-                    <option value="30">30 días</option>
-                </select>
-                <button onclick="editarVigenciaCatalogo(document.getElementById('cat-link-editar-vig').value, document.getElementById('cat-editar-vig-dias').value)"
-                    style="background:#2563eb;color:#fff;border:none;padding:0 14px;border-radius:7px;font-size:12px;font-weight:700;cursor:pointer;white-space:nowrap;">Actualizar</button>
-            </div>
-        </div>
+    <!-- ══ PASO 1: ¿PARA QUIÉN? ══════════════════════════════════════ -->
+    <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px;">
+      <div style="width:24px;height:24px;border-radius:50%;background:#C9A84C;color:#000;font-size:12px;font-weight:800;display:flex;align-items:center;justify-content:center;flex-shrink:0;">1</div>
+      <span style="font-size:13px;font-weight:700;color:#C9A84C;text-transform:uppercase;letter-spacing:.5px;">¿Para quién es?</span>
     </div>
+    <div style="border:1px solid #2a2a2a;border-radius:10px;padding:14px;margin-bottom:16px;background:#111;">
+
+      <!-- Cliente: solo nombre -->
+      <div id="cat-sec-cliente-nombre">
+        <label id="cat-nombre-label" style="font-size:12px;color:#aaa;margin-bottom:4px;display:block;">Nombre del cliente (opcional)</label>
+        <input type="text" id="cat-nombre" placeholder="Ej: María, Juan..." style="width:100%;box-sizing:border-box;">
+      </div>
+
+      <!-- Afiliado: selector + WA + ID -->
+      <div id="cat-sec-afiliado" style="display:none;">
+        <div style="margin-bottom:10px;">
+          <label style="font-size:12px;color:#86efac;margin-bottom:4px;display:block;">Afiliado registrado en Vendedores</label>
+          <select id="cat-afiliado-select" onchange="onSeleccionarAfiliado()" style="width:100%;box-sizing:border-box;">
+            <option value="">— Selecciona un afiliado —</option>
+          </select>
+          <div style="font-size:10px;color:#666;margin-top:3px;">Si no aparece, créalo en Consignación → Vendedores → tipo 🤝 Afiliado.</div>
+        </div>
+        <div id="cat-afiliado-fields">
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px;">
+            <div>
+              <label style="font-size:12px;color:#86efac;margin-bottom:4px;display:block;">WhatsApp del afiliado</label>
+              <input type="text" id="cat-wa" placeholder="Ej: 50371250725" inputmode="numeric" style="width:100%;box-sizing:border-box;">
+              <div style="font-size:10px;color:#666;margin-top:2px;">Botones "Quiero este" abrirán este número</div>
+            </div>
+            <div>
+              <label style="font-size:12px;color:#86efac;margin-bottom:4px;display:block;">ID del link (fijo)</label>
+              <input type="text" id="cat-afiliado-id" placeholder="Se llena automático" style="width:100%;box-sizing:border-box;"
+                oninput="this.value=this.value.toLowerCase().replace(/[^a-z0-9-]/g,'-')">
+              <div style="font-size:10px;color:#666;margin-top:2px;">El link siempre será el mismo URL</div>
+            </div>
+          </div>
+          <button type="button" id="btn-refrescar-catalogo-afiliado" onclick="refrescarCatalogoAfiliado()"
+            style="display:none;width:100%;padding:8px 0;border:1px solid #0ea5e9;border-radius:8px;background:rgba(14,165,233,0.08);color:#38bdf8;font-size:12px;font-weight:700;cursor:pointer;">
+            🔄 Refrescar catálogo con stock actual
+          </button>
+          <div id="txt-refrescar-nota" style="display:none;font-size:10px;color:#0369a1;margin-top:4px;">
+            Repone lo agotado y prioriza productos NO mostrados la vez anterior. Solo prellena — falta darle "🔗 Link" para publicar.
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ══ PASO 2: FILTRAR PRODUCTOS ════════════════════════════════ -->
+    <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px;">
+      <div style="width:24px;height:24px;border-radius:50%;background:#C9A84C;color:#000;font-size:12px;font-weight:800;display:flex;align-items:center;justify-content:center;flex-shrink:0;">2</div>
+      <span style="font-size:13px;font-weight:700;color:#C9A84C;text-transform:uppercase;letter-spacing:.5px;">Filtrar productos</span>
+    </div>
+    <div style="border:1px solid #2a2a2a;border-radius:10px;padding:14px;margin-bottom:16px;background:#111;">
+
+      <!-- IA -->
+      <div style="background:rgba(30,64,175,0.12);border:1px solid rgba(191,219,254,0.2);border-radius:8px;padding:10px;margin-bottom:12px;">
+        <div style="font-size:11px;font-weight:700;color:#93c5fd;margin-bottom:6px;">🤖 Armar con IA — describe lo que buscas</div>
+        <div style="display:flex;gap:8px;">
+          <input type="text" id="cat-ia-prompt" placeholder='Ej: "anillos talla 7 dama" o "argollas matrimonio talla 9"'
+            style="flex:1;font-size:13px;" onkeydown="if(event.key==='Enter') aplicarPromptIA()">
+          <button onclick="aplicarPromptIA()"
+            style="background:#2563eb;color:#fff;border:none;padding:8px 14px;border-radius:8px;font-size:13px;font-weight:700;cursor:pointer;white-space:nowrap;">✨ Armar</button>
+        </div>
+        <div id="cat-ia-resultado" style="font-size:11px;color:#93c5fd;margin-top:5px;min-height:14px;"></div>
+      </div>
+
+      <!-- Categorías -->
+      <div style="margin-bottom:12px;">
+        <label style="font-size:12px;color:#aaa;margin-bottom:6px;display:block;">Categorías <span style="color:#666;font-weight:400;">(sin selección = todas)</span></label>
+        <div id="cat-categoria-pills" style="display:flex;flex-wrap:wrap;gap:6px;"></div>
+      </div>
+
+      <!-- Filtros de Anillos -->
+      <div id="cat-sec-talla" style="background:rgba(251,191,36,0.05);border:1px solid rgba(251,191,36,0.2);border-radius:8px;padding:10px;">
+        <div style="font-size:11px;font-weight:700;color:#fbbf24;margin-bottom:10px;">💍 Filtros de Anillos <span style="color:#888;font-weight:400;">(no afectan otras categorías)</span></div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px;">
+          <div>
+            <label style="font-size:12px;color:#aaa;margin-bottom:4px;display:block;">Tipo</label>
+            <select id="cat-tipo-an" onchange="filtrarParaCatalogo()" style="width:100%;box-sizing:border-box;">
+              <option value="">— Todos —</option>
+              <option value="sencillo">💍 Sencillos</option>
+              <option value="pareja">💑 Argollas / Pareja</option>
+            </select>
+          </div>
+          <div>
+            <label style="font-size:12px;color:#aaa;margin-bottom:4px;display:block;">Género (para argollas)</label>
+            <select id="cat-genero" onchange="filtrarParaCatalogo()" style="width:100%;box-sizing:border-box;">
+              <option value="">— Todos —</option>
+              <option value="dama">👩 Dama</option>
+              <option value="caballero">👨 Caballero</option>
+            </select>
+          </div>
+        </div>
+        <div style="margin-bottom:10px;">
+          <label style="font-size:12px;color:#aaa;margin-bottom:6px;display:block;">Talla — puedes elegir varias</label>
+          <div id="cat-talla-chips" style="display:flex;flex-wrap:wrap;gap:5px;">
+            <button type="button" class="cat-talla-chip" data-talla="5"    onclick="toggleCatTallaChip('5',this)"    style="padding:5px 10px;border-radius:16px;border:1.5px solid #333;background:#1a1a1a;color:#ccc;font-size:11px;font-weight:700;cursor:pointer;">T5</button>
+            <button type="button" class="cat-talla-chip" data-talla="5.5"  onclick="toggleCatTallaChip('5.5',this)"  style="padding:5px 10px;border-radius:16px;border:1.5px solid #333;background:#1a1a1a;color:#ccc;font-size:11px;font-weight:700;cursor:pointer;">T5.5</button>
+            <button type="button" class="cat-talla-chip" data-talla="6"    onclick="toggleCatTallaChip('6',this)"    style="padding:5px 10px;border-radius:16px;border:1.5px solid #333;background:#1a1a1a;color:#ccc;font-size:11px;font-weight:700;cursor:pointer;">T6</button>
+            <button type="button" class="cat-talla-chip" data-talla="6.5"  onclick="toggleCatTallaChip('6.5',this)"  style="padding:5px 10px;border-radius:16px;border:1.5px solid #333;background:#1a1a1a;color:#ccc;font-size:11px;font-weight:700;cursor:pointer;">T6.5</button>
+            <button type="button" class="cat-talla-chip" data-talla="7"    onclick="toggleCatTallaChip('7',this)"    style="padding:5px 10px;border-radius:16px;border:1.5px solid #333;background:#1a1a1a;color:#ccc;font-size:11px;font-weight:700;cursor:pointer;">T7</button>
+            <button type="button" class="cat-talla-chip" data-talla="7.5"  onclick="toggleCatTallaChip('7.5',this)"  style="padding:5px 10px;border-radius:16px;border:1.5px solid #333;background:#1a1a1a;color:#ccc;font-size:11px;font-weight:700;cursor:pointer;">T7.5</button>
+            <button type="button" class="cat-talla-chip" data-talla="8"    onclick="toggleCatTallaChip('8',this)"    style="padding:5px 10px;border-radius:16px;border:1.5px solid #333;background:#1a1a1a;color:#ccc;font-size:11px;font-weight:700;cursor:pointer;">T8</button>
+            <button type="button" class="cat-talla-chip" data-talla="8.5"  onclick="toggleCatTallaChip('8.5',this)"  style="padding:5px 10px;border-radius:16px;border:1.5px solid #333;background:#1a1a1a;color:#ccc;font-size:11px;font-weight:700;cursor:pointer;">T8.5</button>
+            <button type="button" class="cat-talla-chip" data-talla="9"    onclick="toggleCatTallaChip('9',this)"    style="padding:5px 10px;border-radius:16px;border:1.5px solid #333;background:#1a1a1a;color:#ccc;font-size:11px;font-weight:700;cursor:pointer;">T9</button>
+            <button type="button" class="cat-talla-chip" data-talla="9.5"  onclick="toggleCatTallaChip('9.5',this)"  style="padding:5px 10px;border-radius:16px;border:1.5px solid #333;background:#1a1a1a;color:#ccc;font-size:11px;font-weight:700;cursor:pointer;">T9.5</button>
+            <button type="button" class="cat-talla-chip" data-talla="10"   onclick="toggleCatTallaChip('10',this)"   style="padding:5px 10px;border-radius:16px;border:1.5px solid #333;background:#1a1a1a;color:#ccc;font-size:11px;font-weight:700;cursor:pointer;">T10</button>
+            <button type="button" class="cat-talla-chip" data-talla="10.5" onclick="toggleCatTallaChip('10.5',this)" style="padding:5px 10px;border-radius:16px;border:1.5px solid #333;background:#1a1a1a;color:#ccc;font-size:11px;font-weight:700;cursor:pointer;">T10.5</button>
+            <button type="button" class="cat-talla-chip" data-talla="11"   onclick="toggleCatTallaChip('11',this)"   style="padding:5px 10px;border-radius:16px;border:1.5px solid #333;background:#1a1a1a;color:#ccc;font-size:11px;font-weight:700;cursor:pointer;">T11</button>
+            <button type="button" class="cat-talla-chip" data-talla="12"   onclick="toggleCatTallaChip('12',this)"   style="padding:5px 10px;border-radius:16px;border:1.5px solid #333;background:#1a1a1a;color:#ccc;font-size:11px;font-weight:700;cursor:pointer;">T12</button>
+            <button type="button" class="cat-talla-chip" data-talla="13"   onclick="toggleCatTallaChip('13',this)"   style="padding:5px 10px;border-radius:16px;border:1.5px solid #333;background:#1a1a1a;color:#ccc;font-size:11px;font-weight:700;cursor:pointer;">T13</button>
+            <button type="button" class="cat-talla-chip" data-talla="14"   onclick="toggleCatTallaChip('14',this)"   style="padding:5px 10px;border-radius:16px;border:1.5px solid #333;background:#1a1a1a;color:#ccc;font-size:11px;font-weight:700;cursor:pointer;">T14</button>
+            <button type="button" onclick="limpiarCatTallaChips()" style="padding:5px 10px;border-radius:16px;border:none;background:#222;color:#666;font-size:11px;font-weight:700;cursor:pointer;">✕ Todas</button>
+          </div>
+        </div>
+        <div>
+          <label style="font-size:12px;color:#aaa;margin-bottom:4px;display:block;">Buscar por prefijo de código</label>
+          <input type="text" id="cat-prefijo-txt" placeholder="C=Cab · D=Dama · U=Único · varias: C, D"
+            oninput="filtrarParaCatalogo()" style="width:100%;box-sizing:border-box;font-size:13px;">
+        </div>
+      </div>
+    </div>
+
+    <!-- ══ PASO 3: SELECCIÓN DE PRODUCTOS ══════════════════════════ -->
+    <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px;">
+      <div style="width:24px;height:24px;border-radius:50%;background:#C9A84C;color:#000;font-size:12px;font-weight:800;display:flex;align-items:center;justify-content:center;flex-shrink:0;">3</div>
+      <span style="font-size:13px;font-weight:700;color:#C9A84C;text-transform:uppercase;letter-spacing:.5px;">Seleccionar productos</span>
+      <span id="cat-info" style="font-size:12px;color:#888;margin-left:4px;"></span>
+    </div>
+    <div style="border:1px solid #2a2a2a;border-radius:10px;padding:14px;margin-bottom:16px;background:#111;">
+      <div id="cat-lista" style="max-height:340px;overflow-y:auto;border:1px solid #222;border-radius:8px;padding:8px;background:#0d0d0d;"></div>
+      <div id="cat-var-resumen" style="font-size:11px;color:#86efac;background:rgba(34,197,94,0.07);border:1px solid rgba(34,197,94,0.2);border-radius:7px;padding:7px 10px;margin-top:10px;display:none;"></div>
+
+      <!-- Controles de selección -->
+      <div style="margin-top:10px;display:flex;flex-wrap:wrap;gap:8px;align-items:center;">
+        <button class="btn bg" style="flex:1;min-width:80px;font-size:12px;" onclick="seleccionarTodosCatalogo(true)">✅ Todos</button>
+        <button class="btn bg" style="flex:1;min-width:80px;font-size:12px;" onclick="seleccionarTodosCatalogo(false)">⬜ Ninguno</button>
+        <div style="flex:1;min-width:200px;display:flex;gap:6px;align-items:center;background:#0d0d0d;border:1px solid #333;border-radius:8px;padding:6px 10px;">
+          <button onclick="ajustarTamanoCatalogo(-10)" style="background:none;border:none;color:#aaa;font-size:16px;font-weight:800;cursor:pointer;padding:0 4px;line-height:1;">−</button>
+          <input type="number" id="cat-var-size" value="36" min="1" style="flex:1;background:none;border:none;color:#fff;font-size:14px;font-weight:700;text-align:center;outline:none;width:40px;">
+          <button onclick="ajustarTamanoCatalogo(10)"  style="background:none;border:none;color:#aaa;font-size:16px;font-weight:800;cursor:pointer;padding:0 4px;line-height:1;">+</button>
+          <span style="font-size:11px;color:#666;white-space:nowrap;">productos</span>
+        </div>
+        <button class="btn ba" style="flex:2;min-width:160px;font-size:12px;" onclick="autoSeleccionarVariado()">🔀 Auto-seleccionar</button>
+      </div>
+    </div>
+
+    <!-- ══ PASO 4: DETALLES DEL LINK ════════════════════════════════ -->
+    <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px;">
+      <div style="width:24px;height:24px;border-radius:50%;background:#C9A84C;color:#000;font-size:12px;font-weight:800;display:flex;align-items:center;justify-content:center;flex-shrink:0;">4</div>
+      <span style="font-size:13px;font-weight:700;color:#C9A84C;text-transform:uppercase;letter-spacing:.5px;">Detalles del link</span>
+    </div>
+    <div style="border:1px solid #2a2a2a;border-radius:10px;padding:14px;margin-bottom:16px;background:#111;">
+      <div style="margin-bottom:12px;">
+        <label style="font-size:12px;color:#aaa;margin-bottom:4px;display:block;">Vigencia</label>
+        <select id="cat-validez" style="width:100%;box-sizing:border-box;">
+          <option value="1">1 día</option>
+          <option value="3">3 días</option>
+          <option value="7">7 días</option>
+          <option value="15">15 días</option>
+          <option value="30">30 días</option>
+        </select>
+      </div>
+
+      <!-- Banner cliente -->
+      <div id="cat-banner-wrap" style="background:rgba(251,191,36,0.06);border:1px solid rgba(251,191,36,0.2);border-radius:8px;padding:10px;">
+        <div style="font-size:11px;font-weight:700;color:#fbbf24;margin-bottom:8px;">🏷️ Banner de oferta <span style="color:#666;font-weight:400;">(opcional)</span></div>
+        <input type="text" id="cat-banner-txt" placeholder="Ej: 2x1 en aretes este fin de semana 🎉" style="width:100%;box-sizing:border-box;margin-bottom:6px;">
+        <div class="emoji-quick-bar" data-target="cat-banner-txt"></div>
+        <input type="text" id="cat-banner-sub" placeholder="Subtítulo (ej: Solo hasta el domingo)" style="width:100%;box-sizing:border-box;margin-top:6px;">
+        <div class="emoji-quick-bar" data-target="cat-banner-sub"></div>
+        <div style="display:flex;align-items:center;gap:12px;margin-top:10px;flex-wrap:wrap;">
+          <div style="flex:1;min-width:160px;">
+            <label style="font-size:11px;color:#aaa;margin-bottom:4px;display:block;">% Descuento <span style="color:#666;">(requiere texto del banner)</span></label>
+            <input type="number" id="cat-banner-desc-pct" placeholder="Ej: 20" min="0" max="90" style="width:100%;box-sizing:border-box;">
+          </div>
+          <div>
+            <label style="font-size:11px;color:#aaa;margin-bottom:6px;display:block;">Color del banner</label>
+            <div id="banner-colors" style="display:flex;gap:6px;flex-wrap:wrap;">
+              <button type="button" onclick="selBannerColor(this,'#ef4444')" data-banner-color="#ef4444" style="width:26px;height:26px;border-radius:50%;background:#ef4444;border:3px solid transparent;cursor:pointer;"></button>
+              <button type="button" onclick="selBannerColor(this,'#f97316')" data-banner-color="#f97316" style="width:26px;height:26px;border-radius:50%;background:#f97316;border:3px solid transparent;cursor:pointer;"></button>
+              <button type="button" onclick="selBannerColor(this,'#7c3aed')" data-banner-color="#7c3aed" style="width:26px;height:26px;border-radius:50%;background:#7c3aed;border:3px solid transparent;cursor:pointer;"></button>
+              <button type="button" onclick="selBannerColor(this,'#0277bd')" data-banner-color="#0277bd" style="width:26px;height:26px;border-radius:50%;background:#0277bd;border:3px solid transparent;cursor:pointer;"></button>
+              <button type="button" onclick="selBannerColor(this,'#111111')" data-banner-color="#111111" style="width:26px;height:26px;border-radius:50%;background:#111111;border:2px solid #555;cursor:pointer;"></button>
+              <button type="button" onclick="selBannerColor(this,'#22c55e')" data-banner-color="#22c55e" style="width:26px;height:26px;border-radius:50%;background:#22c55e;border:3px solid transparent;cursor:pointer;"></button>
+            </div>
+          </div>
+          <div id="banner-preview" style="display:none;padding:4px 12px;border-radius:5px;font-size:11px;font-weight:700;color:#fff;text-align:center;"></div>
+        </div>
+      </div>
+
+      <!-- Banner global afiliado -->
+      <div id="cat-banner-afiliado-wrap" style="display:none;background:rgba(124,58,237,0.08);border:1px solid rgba(167,139,250,0.25);border-radius:8px;padding:10px;margin-top:10px;">
+        <div style="font-size:11px;font-weight:700;color:#c4b5fd;margin-bottom:4px;">🌐 Banner global de Afiliados</div>
+        <div style="font-size:10px;color:#7c3aed;margin-bottom:8px;">Un solo banner para TODOS los catálogos de afiliado — se aplica a todos los links ya compartidos al guardar.</div>
+        <label style="display:flex;align-items:center;gap:6px;font-size:12px;color:#c4b5fd;font-weight:600;margin-bottom:6px;">
+          <input type="checkbox" id="cat-banner-af-activo" style="width:auto;"> Banner activo
+        </label>
+        <input type="text" id="cat-banner-af-txt" placeholder="Ej: Nuevo catálogo de temporada 🎉" style="width:100%;box-sizing:border-box;margin-bottom:6px;">
+        <div class="emoji-quick-bar" data-target="cat-banner-af-txt"></div>
+        <input type="text" id="cat-banner-af-sub" placeholder="Subtítulo (opcional)" style="width:100%;box-sizing:border-box;margin-top:6px;">
+        <div class="emoji-quick-bar" data-target="cat-banner-af-sub"></div>
+        <div style="display:flex;align-items:center;gap:8px;margin-top:8px;">
+          <div id="banner-af-colors" style="display:flex;gap:6px;">
+            <button type="button" onclick="selBannerAfColor(this,'#ef4444')" style="width:24px;height:24px;border-radius:50%;background:#ef4444;border:3px solid transparent;cursor:pointer;"></button>
+            <button type="button" onclick="selBannerAfColor(this,'#f97316')" style="width:24px;height:24px;border-radius:50%;background:#f97316;border:3px solid transparent;cursor:pointer;"></button>
+            <button type="button" onclick="selBannerAfColor(this,'#7c3aed')" style="width:24px;height:24px;border-radius:50%;background:#7c3aed;border:3px solid transparent;cursor:pointer;"></button>
+            <button type="button" onclick="selBannerAfColor(this,'#0277bd')" style="width:24px;height:24px;border-radius:50%;background:#0277bd;border:3px solid transparent;cursor:pointer;"></button>
+            <button type="button" onclick="selBannerAfColor(this,'#22c55e')" style="width:24px;height:24px;border-radius:50%;background:#22c55e;border:3px solid transparent;cursor:pointer;"></button>
+          </div>
+          <button type="button" onclick="guardarBannerAfiliadoGlobal()"
+            style="flex:1;background:#7c3aed;color:#fff;border:none;padding:7px;border-radius:7px;font-size:12px;font-weight:700;cursor:pointer;">💾 Guardar banner global</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- ══ GENERAR ══════════════════════════════════════════════════ -->
+    <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:4px;">
+      <button class="btn bv" id="btn-gen-pdf"  onclick="generarPDFCatalogo()"    style="justify-content:center;padding:12px 6px;">📥 PDF</button>
+      <button class="btn bn" id="btn-gen-img"  onclick="generarImagenCatalogo()" style="justify-content:center;padding:12px 6px;">🖼️ Imagen</button>
+      <button class="btn ba" id="btn-gen-link" onclick="generarLinkCatalogo()"   style="justify-content:center;padding:12px 6px;">🔗 Link</button>
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:14px;font-size:10px;color:#555;line-height:1.3;text-align:center;">
+      <div>PDF estático para imprimir o enviar como archivo</div>
+      <div>Imagen JPG — ideal para estado de WhatsApp</div>
+      <div>Link web interactivo con stock en vivo</div>
+    </div>
+
+    <!-- Link generado -->
+    <div id="cat-link-box" style="display:none;background:rgba(34,197,94,0.07);border:1px solid rgba(34,197,94,0.3);border-radius:10px;padding:14px;margin-bottom:14px;">
+      <div style="font-size:11px;font-weight:700;color:#86efac;text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px;">✅ Link generado</div>
+      <div id="cat-link-out" style="font-size:13px;color:#4ade80;word-break:break-all;margin-bottom:10px;font-weight:600;"></div>
+      <div style="display:flex;gap:8px;">
+        <button onclick="navigator.clipboard.writeText(document.getElementById('cat-link-out').textContent);toast('✅ Copiado','#22c55e')"
+          style="flex:1;background:#166534;color:#fff;border:none;padding:9px;border-radius:7px;font-size:12px;font-weight:700;cursor:pointer;">📋 Copiar</button>
+        <button onclick="window.open('https://wa.me/?text='+encodeURIComponent('Hola, aquí está tu catálogo VEREX: '+document.getElementById('cat-link-out').textContent))"
+          style="flex:1;background:#25D366;color:#fff;border:none;padding:9px;border-radius:7px;font-size:12px;font-weight:700;cursor:pointer;">📱 WhatsApp</button>
+        <button onclick="desactivarLinkCatalogo(document.getElementById('cat-link-out').textContent)"
+          style="background:rgba(239,68,68,0.1);color:#f87171;border:1px solid rgba(239,68,68,0.3);padding:9px 12px;border-radius:7px;font-size:12px;font-weight:700;cursor:pointer;white-space:nowrap;">🚫 Desactivar</button>
+      </div>
+    </div>
+
+    <!-- ⚙️ Gestión avanzada (colapsable) -->
+    <details style="border:1px solid #222;border-radius:8px;overflow:hidden;">
+      <summary style="padding:10px 14px;font-size:12px;font-weight:700;color:#666;cursor:pointer;list-style:none;display:flex;justify-content:space-between;align-items:center;">
+        ⚙️ Gestión de links anteriores
+        <span style="font-size:10px;color:#444;">▼ expandir</span>
+      </summary>
+      <div style="padding:14px;border-top:1px solid #222;background:#0d0d0d;display:flex;flex-direction:column;gap:12px;">
+        <div>
+          <div style="font-size:11px;font-weight:700;color:#f87171;margin-bottom:6px;">🚫 Desactivar link</div>
+          <div style="display:flex;gap:8px;">
+            <input type="text" id="cat-link-desactivar" placeholder="Link completo o código (ej: abc123)" style="flex:1;">
+            <button onclick="desactivarLinkCatalogo(document.getElementById('cat-link-desactivar').value)"
+              style="background:#dc2626;color:#fff;border:none;padding:0 14px;border-radius:7px;font-size:12px;font-weight:700;cursor:pointer;white-space:nowrap;">Desactivar</button>
+          </div>
+        </div>
+        <div>
+          <div style="font-size:11px;font-weight:700;color:#93c5fd;margin-bottom:6px;">✏️ Editar vigencia</div>
+          <div style="display:flex;gap:8px;">
+            <input type="text" id="cat-link-editar-vig" placeholder="Link completo o código" style="flex:1;">
+            <select id="cat-editar-vig-dias" style="width:110px;">
+              <option value="1">1 día</option>
+              <option value="3">3 días</option>
+              <option value="7">7 días</option>
+              <option value="15">15 días</option>
+              <option value="30">30 días</option>
+            </select>
+            <button onclick="editarVigenciaCatalogo(document.getElementById('cat-link-editar-vig').value, document.getElementById('cat-editar-vig-dias').value)"
+              style="background:#2563eb;color:#fff;border:none;padding:0 14px;border-radius:7px;font-size:12px;font-weight:700;cursor:pointer;white-space:nowrap;">Actualizar</button>
+          </div>
+        </div>
+      </div>
+    </details>
+
+  </div>
 </div>
 
 <!-- Modal Cambiar Contraseña -->
