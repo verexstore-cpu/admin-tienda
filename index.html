@@ -3435,6 +3435,7 @@ function _renderHistLinks(filtro) {
                     ${!l.activo ? `
                     <div style="display:flex;gap:5px;align-items:center;">
                         <select id="dias-react-${l.id}" style="background:#111;border:1px solid #444;color:#fff;border-radius:7px;padding:4px 6px;font-size:11px;">
+                            <option value="1">1 día</option>
                             <option value="7">7 días</option>
                             <option value="15" selected>15 días</option>
                             <option value="30">30 días</option>
@@ -3443,11 +3444,34 @@ function _renderHistLinks(filtro) {
                             style="background:rgba(201,168,76,0.15);border:1px solid #C9A84C;color:#C9A84C;border-radius:7px;padding:4px 10px;font-size:11px;cursor:pointer;white-space:nowrap;">
                             ↺ Reactivar
                         </button>
-                    </div>` : ""}
+                    </div>` : `
+                    <button onclick="eliminarLink('${l.id}')"
+                        style="background:rgba(239,68,68,0.1);border:1px solid #ef4444;color:#ef4444;border-radius:7px;padding:4px 10px;font-size:11px;cursor:pointer;white-space:nowrap;">
+                        🗑 Eliminar
+                    </button>`}
                 </div>
             </div>
         </div>`;
     }).join("");
+}
+
+async function eliminarLink(id) {
+    if (!confirm("¿Eliminar este link del historial? Esta acción no se puede deshacer.")) return;
+    try {
+        const res  = await fetch("/deactivate-catalog", {
+            method: "POST", headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ id, eliminarHistorial: true })
+        });
+        const json = await res.json();
+        if (json.ok) {
+            toast("🗑 Link eliminado", "#22c55e");
+            cargarHistorialLinks();
+        } else {
+            toast("❌ " + (json.error || "Error"), "#ef4444");
+        }
+    } catch(e) {
+        toast("❌ " + e.message, "#ef4444");
+    }
 }
 
 async function reactivarLink(id) {

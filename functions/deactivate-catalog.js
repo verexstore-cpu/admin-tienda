@@ -21,12 +21,12 @@ export async function onRequest(context) {
             return new Response(JSON.stringify({ error: "Falta el id del catálogo" }), { status: 400, headers });
         }
 
-        const existing = await context.env.CATALOGS.get(id);
-        if (!existing) {
-            return new Response(JSON.stringify({ error: "Ese link no existe o ya expiró" }), { status: 404, headers });
-        }
-
         await context.env.CATALOGS.delete(id);
+
+        // Si se pide eliminar del historial también, borrar el registro permanente
+        if (body?.eliminarHistorial) {
+            await context.env.CATALOGS.delete("__hist__" + id);
+        }
 
         return new Response(JSON.stringify({ ok: true }), { headers });
     } catch (e) {
