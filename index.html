@@ -3445,14 +3445,102 @@ function _renderHistLinks(filtro) {
                             ↺ Reactivar
                         </button>
                     </div>` : `
-                    <button onclick="eliminarLink('${l.id}')"
-                        style="background:rgba(239,68,68,0.1);border:1px solid #ef4444;color:#ef4444;border-radius:7px;padding:4px 10px;font-size:11px;cursor:pointer;white-space:nowrap;">
-                        🗑 Eliminar
-                    </button>`}
+                    <div style="display:flex;flex-direction:column;gap:6px;align-items:flex-end;">
+                        ${esAfil ? `<button onclick="abrirAgregarProductos('${l.id}','${(l.nombre||'').replace(/'/g,'\\\'')}')"
+                            style="background:rgba(34,197,94,0.1);border:1px solid #22c55e;color:#22c55e;border-radius:7px;padding:4px 10px;font-size:11px;cursor:pointer;white-space:nowrap;">
+                            ✚ Agregar productos
+                        </button>` : ''}
+                        <button onclick="eliminarLink('${l.id}')"
+                            style="background:rgba(239,68,68,0.1);border:1px solid #ef4444;color:#ef4444;border-radius:7px;padding:4px 10px;font-size:11px;cursor:pointer;white-space:nowrap;">
+                            🗑 Eliminar
+                        </button>
+                    </div>`}
                 </div>
             </div>
         </div>`;
     }).join("");
+}
+
+let _editandoLinkId = null;  // cuando está en modo "agregar a link existente"
+
+function abrirAgregarProductos(id, nombre) {
+    _editandoLinkId = id;
+    // Abrir el modal de catálogo afiliado con la UI normal de selección de productos
+    abrirModalCatalogo("afiliado");
+    // Marcar visualmente que estamos en modo edición
+    const titulo = document.getElementById("modal-catalogo-titulo");
+    if (titulo) titulo.innerHTML = `✚ Agregar productos a <span style="color:#C9A84C;">${nombre || id}</span>`;
+    // Cambiar el botón de generar para que haga "Agregar" en vez de crear link nuevo
+    const btn = document.getElementById("btn-gen-link");
+    if (btn) {
+        btn.textContent = "✚ Agregar al link";
+        btn.onclick = agregarProductosAlLink;
+    }
+}
+
+function _resetModalCatalogo() {
+    if (!_editandoLinkId) return;
+    _editandoLinkId = null;
+    const btn = document.getElementById("btn-gen-link");
+    if (btn) { btn.textContent = "🔗 Link"; btn.onclick = generarLinkCatalogo; }
+}
+
+async function agregarProductosAlLink() {
+    const codsSel = [...document.querySelectorAll(".cat-chk:checked")].map(c => c.dataset.cod);
+    if (!codsSel.length) return toast("⚠️ Selecciona al menos un producto", "#f97316");
+
+    const talla  = document.getElementById("cat-talla").value;
+    const genero = document.getElementById("cat-genero")?.value || "";
+    const lista  = _catFiltrada.filter(p => codsSel.includes(p._codigos?.[0] || p.codigo));
+
+    const nuevosProductos = lista.map(p => {
+        const szExport = _sizesParaExport(p, talla, genero);
+        return {
+            n: p.nombre || "—",
+            p: parseFloat(p.precio || 0).toFixed(2),
+            i: p.foto || p.img || "",
+            m: p.material || detectarMaterial(p.nombre) || "",
+            cat: p._catKey || getCatKey(p),
+            c: p._codigos?.[0] || p.codigo || "",
+            sizes:  szExport.sizes,
+            sizesD: szExport.sizesD,
+            sizesH: szExport.sizesH,
+            par:    p._esPareja || false,
+            piezas: p._piezas || (p._esPareja ? 2 : null),
+            pD: p._precioDama || null,
+            pH: p._precioCab  || null,
+            cD: p._piezasCodigosDama || null,
+            cC: p._piezasCodigosCab  || null,
+            avisoPieza: /matrimonio|argolla|novios|pareja|alianza/i.test(p.nombre || ""),
+            ne:   getNotaEspecial(p),
+            nota: (document.querySelector(`.cat-nota[data-cod="${p._codigos?.[0] || p.codigo}"]`)?.value || "").trim()
+        };
+    });
+
+    const btn = document.getElementById("btn-gen-link");
+    btn.disabled = true; btn.textContent = "⏳ Agregando...";
+
+    try {
+        const res = await fetch("/edit-catalog-products", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ id: _editandoLinkId, nuevosProductos })
+        });
+        const json = await res.json();
+        if (json.ok) {
+            toast(`✅ ${codsSel.length} producto${codsSel.length !== 1 ? "s" : ""} agregado${codsSel.length !== 1 ? "s" : ""} — total en link: ${json.totalProductos}`, "#22c55e");
+            cerrarModalCatalogo();
+            _resetModalCatalogo();
+            cargarHistorialLinks();
+        } else {
+            toast("❌ " + (json.error || "Error al agregar"), "#ef4444");
+        }
+    } catch(e) {
+        toast("❌ " + e.message, "#ef4444");
+    } finally {
+        btn.disabled = false;
+        btn.textContent = "✚ Agregar al link";
+    }
 }
 
 async function eliminarLink(id) {
@@ -4211,6 +4299,7 @@ function abrirModalCatalogo(tipo) {
 
 function cerrarModalCatalogo() {
     document.getElementById("modal-catalogo").classList.remove("open");
+    _resetModalCatalogo();
 }
 
 function detectarMaterial(nombre) {
