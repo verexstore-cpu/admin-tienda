@@ -278,7 +278,7 @@
     try { _carrito = JSON.parse(sessionStorage.getItem("verex-carrito") || "[]"); } catch(_) {}
 
     const SIZES   = ["5","5.5","6","6.5","7","7.5","8","8.5","9","9.5","10","10.5","11","12","13","14"];
-    const ES_PAR  = /matrimonio|argolla|novios|pareja|alianza/i;
+    const ES_PAR  = /matrimonio|novios|pareja|alianza/i;
     const API_URL = "https://verex-api.verexstore.workers.dev/";
 
     function esc(s){
