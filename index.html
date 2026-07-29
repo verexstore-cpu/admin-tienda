@@ -490,6 +490,24 @@
             <h2>💳 Métodos de Pago</h2>
             <div id="stats-pagos" style="display:flex;gap:12px;flex-wrap:wrap;margin-top:8px;"></div>
         </div>
+
+        <!-- Historial de Links de Catálogo -->
+        <div class="card" id="card-hist-links">
+            <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;">
+                <h2 style="margin:0;">🔗 Historial de Links</h2>
+                <button onclick="cargarHistorialLinks()" style="background:none;border:1px solid #444;color:#aaa;border-radius:8px;padding:5px 12px;font-size:12px;cursor:pointer;">↻ Actualizar</button>
+            </div>
+            <!-- Filtros -->
+            <div style="display:flex;gap:8px;margin:14px 0 10px;flex-wrap:wrap;">
+                <button class="hist-filter active" data-f="todos"     onclick="filtrarHistLinks(this)" style="padding:5px 14px;border-radius:20px;border:1px solid #C9A84C;background:rgba(201,168,76,0.15);color:#C9A84C;font-size:12px;cursor:pointer;">Todos</button>
+                <button class="hist-filter"        data-f="cliente"   onclick="filtrarHistLinks(this)" style="padding:5px 14px;border-radius:20px;border:1px solid #444;background:none;color:#aaa;font-size:12px;cursor:pointer;">📋 Clientes</button>
+                <button class="hist-filter"        data-f="afiliado"  onclick="filtrarHistLinks(this)" style="padding:5px 14px;border-radius:20px;border:1px solid #444;background:none;color:#aaa;font-size:12px;cursor:pointer;">🤝 Afiliados</button>
+                <button class="hist-filter"        data-f="vencido"   onclick="filtrarHistLinks(this)" style="padding:5px 14px;border-radius:20px;border:1px solid #444;background:none;color:#aaa;font-size:12px;cursor:pointer;">🔴 Vencidos</button>
+            </div>
+            <div id="hist-links-list" style="display:flex;flex-direction:column;gap:8px;min-height:50px;">
+                <p style="color:#666;font-size:13px;">Cargando…</p>
+            </div>
+        </div>
     </div>
 
     <!-- TAB 1: PEDIDOS -->
@@ -1342,6 +1360,7 @@ async function init() {
     renderEstado(); renderEnvio(); actualizarNombre();
     await cargarDatos();
     setInterval(()=>cargarDatos(true), 45000);
+    cargarHistorialLinks();
 }
 
 async function cargarDatos(silencioso=false) {
@@ -3347,6 +3366,108 @@ document.addEventListener("DOMContentLoaded", () => {
         else { prev.style.display="none"; }
     });
 });
+
+// ── HISTORIAL DE LINKS ──────────────────────────────────────────────────────
+let _histLinks = [];
+
+async function cargarHistorialLinks() {
+    const cont = document.getElementById("hist-links-list");
+    cont.innerHTML = '<p style="color:#666;font-size:13px;">Cargando…</p>';
+    try {
+        const res = await fetch("/list-catalogs");
+        const json = await res.json();
+        _histLinks = json.links || [];
+        _renderHistLinks("todos");
+    } catch(e) {
+        cont.innerHTML = '<p style="color:#e74c3c;font-size:13px;">Error al cargar historial.</p>';
+    }
+}
+
+function filtrarHistLinks(btn) {
+    document.querySelectorAll(".hist-filter").forEach(b => {
+        b.style.background = "none"; b.style.color = "#aaa"; b.style.borderColor = "#444";
+    });
+    btn.style.background = "rgba(201,168,76,0.15)"; btn.style.color = "#C9A84C"; btn.style.borderColor = "#C9A84C";
+    _renderHistLinks(btn.dataset.f);
+}
+
+function _renderHistLinks(filtro) {
+    const cont = document.getElementById("hist-links-list");
+    let lista = _histLinks;
+    if (filtro === "cliente")  lista = lista.filter(l => l.tipo === "cliente");
+    if (filtro === "afiliado") lista = lista.filter(l => l.tipo === "afiliado");
+    if (filtro === "vencido")  lista = lista.filter(l => !l.activo);
+    if (!lista.length) {
+        cont.innerHTML = '<p style="color:#666;font-size:13px;text-align:center;padding:16px 0;">Sin registros.</p>';
+        return;
+    }
+    cont.innerHTML = lista.map(l => {
+        const esAfil  = l.tipo === "afiliado";
+        const badge   = esAfil
+            ? `<span style="background:rgba(168,125,32,0.2);color:#C9A84C;border:1px solid #C9A84C;border-radius:12px;padding:2px 9px;font-size:11px;white-space:nowrap;">🤝 Afiliado</span>`
+            : `<span style="background:rgba(14,165,233,0.15);color:#38bdf8;border:1px solid #38bdf8;border-radius:12px;padding:2px 9px;font-size:11px;white-space:nowrap;">📋 Cliente</span>`;
+        const estado  = l.activo
+            ? `<span style="color:#22c55e;font-size:12px;white-space:nowrap;">🟢 Activo</span>`
+            : `<span style="color:#ef4444;font-size:12px;white-space:nowrap;">🔴 Vencido</span>`;
+        const fCreado  = new Date(l.createdAt).toLocaleDateString("es-SV",{day:"2-digit",month:"2-digit",year:"2-digit"});
+        const fExpira  = new Date(l.expiresAt).toLocaleDateString("es-SV",{day:"2-digit",month:"2-digit",year:"2-digit"});
+        const url      = `https://admin-tienda.pages.dev/c/${l.id}`;
+        const nProd    = l.data?.prods?.length || 0;
+        return `
+        <div style="background:#1a1a1a;border:1px solid #2a2a2a;border-radius:10px;padding:12px 14px;">
+            <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:10px;flex-wrap:wrap;">
+                <div style="flex:1;min-width:0;">
+                    <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:5px;">
+                        ${badge} ${estado}
+                    </div>
+                    <div style="font-size:14px;font-weight:600;color:#fff;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">
+                        ${l.nombre || "(Sin nombre)"}${l.afiliadoCodigo ? ` <span style="color:#888;font-size:12px;">(${l.afiliadoCodigo})</span>` : ""}
+                    </div>
+                    <div style="font-size:11px;color:#666;margin-top:3px;">
+                        ${nProd} producto${nProd!==1?"s":""} · Creado: ${fCreado} · Vence: ${fExpira}
+                    </div>
+                </div>
+                <div style="display:flex;flex-direction:column;gap:6px;align-items:flex-end;flex-shrink:0;">
+                    <button onclick="navigator.clipboard.writeText('${url}');toast('✅ Link copiado','#22c55e')"
+                        style="background:none;border:1px solid #444;color:#aaa;border-radius:7px;padding:4px 10px;font-size:11px;cursor:pointer;">
+                        📋 Copiar link
+                    </button>
+                    ${!l.activo ? `
+                    <div style="display:flex;gap:5px;align-items:center;">
+                        <select id="dias-react-${l.id}" style="background:#111;border:1px solid #444;color:#fff;border-radius:7px;padding:4px 6px;font-size:11px;">
+                            <option value="7">7 días</option>
+                            <option value="15" selected>15 días</option>
+                            <option value="30">30 días</option>
+                        </select>
+                        <button onclick="reactivarLink('${l.id}')"
+                            style="background:rgba(201,168,76,0.15);border:1px solid #C9A84C;color:#C9A84C;border-radius:7px;padding:4px 10px;font-size:11px;cursor:pointer;white-space:nowrap;">
+                            ↺ Reactivar
+                        </button>
+                    </div>` : ""}
+                </div>
+            </div>
+        </div>`;
+    }).join("");
+}
+
+async function reactivarLink(id) {
+    const dias = parseInt(document.getElementById("dias-react-" + id)?.value || 15);
+    try {
+        const res  = await fetch("/reactivate-catalog", {
+            method: "POST", headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ id, dias })
+        });
+        const json = await res.json();
+        if (json.ok) {
+            toast("✅ Link reactivado por " + dias + " días", "#22c55e");
+            cargarHistorialLinks();
+        } else {
+            toast("❌ " + (json.error || "Error al reactivar"), "#ef4444");
+        }
+    } catch(e) {
+        toast("❌ " + e.message, "#ef4444");
+    }
+}
 
 function getNotaEspecial(p) {
     // "caracterEspecial" (con "er") es el nombre real que usa Consignación/el worker.

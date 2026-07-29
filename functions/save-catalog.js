@@ -29,9 +29,26 @@ export async function onRequest(context) {
             .slice(0, 6);
 
         const dias = Math.min(Math.max(parseInt(body.dias)||30, 1), 30);
-        await context.env.CATALOGS.put(id, JSON.stringify(body), {
+        const createdAt = Date.now();
+        const expiresAt = createdAt + dias * 86400000;
+        const dataWithMeta = { ...body, expiry: expiresAt, dias };
+
+        await context.env.CATALOGS.put(id, JSON.stringify(dataWithMeta), {
             expirationTtl: 60 * 60 * 24 * dias,
         });
+
+        // Registro permanente para el historial — sin TTL, no expira solo
+        const hist = {
+            id,
+            tipo: body.afiliado ? "afiliado" : "cliente",
+            nombre: body.nombre || "",
+            afiliadoCodigo: body.afiliadoCodigo || "",
+            createdAt,
+            expiresAt,
+            dias,
+            data: dataWithMeta,
+        };
+        await context.env.CATALOGS.put("__hist__" + id, JSON.stringify(hist));
 
         return new Response(JSON.stringify({ url: "/c/" + id }), { headers });
     } catch (e) {
