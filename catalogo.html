@@ -392,7 +392,15 @@
     }
 
     function render(data){
-        _prods = data.prods || [];
+        // Acero 316L es la línea secundaria/económica: se manda al final para que
+        // la plata (línea principal) sea lo primero que ve el cliente. El sort de
+        // JS es estable, así que dentro de cada grupo se respeta el orden con el
+        // que se armó el catálogo. Se ordena una copia para no alterar el payload
+        // original, y acá — en el render — para que aplique también a los links
+        // que ya se compartieron, no solo a los catálogos nuevos.
+        const esAceroProd = p => /acero/i.test(p.m || "") || /acero/i.test(p.n || "");
+        _prods = [...(data.prods || [])]
+            .sort((a, b) => (esAceroProd(a) ? 1 : 0) - (esAceroProd(b) ? 1 : 0));
         _waNum = normalizarWA(data.wa);
         _descPct = Math.min(90, Math.max(0, parseInt(data.descPct) || 0));
         _afiliadoCodigo = data.afiliadoCodigo || "";
