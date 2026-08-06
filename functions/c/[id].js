@@ -20,10 +20,22 @@ export async function onRequest(context) {
 
     // Build OG tags with absolute URLs for WhatsApp/social previews
     let catalogNombre = "Catálogo VEREX";
+    let catalogDesc = "La expresión de tu mejor versión";
     let data = null;
     try {
         data = JSON.parse(raw);
         if (data.nombre) catalogNombre = `Catálogo VEREX · ${data.nombre}`;
+
+        // Descripción dinámica con filtros del catálogo
+        const partes = [];
+        if (data.prods?.length) partes.push(`${data.prods.length} producto${data.prods.length !== 1 ? "s" : ""}`);
+        const catLabels = { AN:"Anillos", PU:"Pulseras", CD:"Cadenas", AR:"Aretes", CJ:"Conjuntos", DR:"Dijes", AL:"Alianzas", AC:"Accesorios" };
+        const cats = [...new Set((data.prods || []).map(p => catLabels[p.cat] || p.cat).filter(Boolean))];
+        if (cats.length && cats.length <= 3) partes.push(cats.join(", "));
+        const tallas = (data.talla || "").split(",").filter(Boolean);
+        if (tallas.length) partes.push("Talla " + tallas.join(", "));
+        if (data.nota_interna) partes.push(data.nota_interna);
+        if (partes.length) catalogDesc = partes.join(" · ");
     } catch(_) {}
 
     // El banner de afiliado es global (uno solo para todos sus catálogos) —
@@ -43,7 +55,7 @@ export async function onRequest(context) {
     const ogTags = `
 <meta property="og:type"        content="website">
 <meta property="og:title"       content="${catalogNombre}">
-<meta property="og:description" content="La expresión de tu mejor versión">
+<meta property="og:description" content="${catalogDesc}">
 <meta property="og:image"       content="${origin}/images/logo.jpg">
 <meta property="og:image:width" content="1500">
 <meta property="og:image:height" content="750">
