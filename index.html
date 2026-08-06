@@ -3486,44 +3486,44 @@ function _renderHistLinks(filtro) {
         const url      = `https://admin-tienda.pages.dev/c/${l.id}`;
         const nProd    = l.data?.prods?.length || 0;
         return `
-        <div style="background:#1a1a1a;border:1px solid #2a2a2a;border-radius:10px;padding:12px 14px;">
+        <div style="background:#ffffff;border:1px solid ${l.activo ? '#d1fae5' : '#fee2e2'};border-radius:10px;padding:12px 14px;">
             <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:10px;flex-wrap:wrap;">
                 <div style="flex:1;min-width:0;">
                     <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:5px;">
                         ${badge} ${estado}
                     </div>
-                    <div style="font-size:14px;font-weight:600;color:#fff;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">
-                        ${l.nombre || "(Sin nombre)"}${l.afiliadoCodigo ? ` <span style="color:#888;font-size:12px;">(${l.afiliadoCodigo})</span>` : ""}
+                    <div style="font-size:14px;font-weight:600;color:#111827;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">
+                        ${l.nombre || "(Sin nombre)"}${l.afiliadoCodigo ? ` <span style="color:#6b7280;font-size:12px;">(${l.afiliadoCodigo})</span>` : ""}
                     </div>
-                    <div style="font-size:11px;color:#666;margin-top:3px;">
+                    <div style="font-size:11px;color:#9ca3af;margin-top:3px;">
                         ${nProd} producto${nProd!==1?"s":""} · Creado: ${fCreado} · Vence: ${fExpira}
                     </div>
                 </div>
                 <div style="display:flex;flex-direction:column;gap:6px;align-items:flex-end;flex-shrink:0;">
                     <button onclick="navigator.clipboard.writeText('${url}');toast('✅ Link copiado','#22c55e')"
-                        style="background:none;border:1px solid #444;color:#aaa;border-radius:7px;padding:4px 10px;font-size:11px;cursor:pointer;">
+                        style="background:#f9fafb;border:1px solid #e5e7eb;color:#374151;border-radius:7px;padding:4px 10px;font-size:11px;cursor:pointer;">
                         📋 Copiar link
                     </button>
                     ${!l.activo ? `
                     <div style="display:flex;gap:5px;align-items:center;">
-                        <select id="dias-react-${l.id}" style="background:#111;border:1px solid #444;color:#fff;border-radius:7px;padding:4px 6px;font-size:11px;">
+                        <select id="dias-react-${l.id}" style="background:#fff;border:1px solid #fcd34d;color:#111;border-radius:7px;padding:4px 6px;font-size:11px;">
                             <option value="1">1 día</option>
                             <option value="7">7 días</option>
                             <option value="15" selected>15 días</option>
                             <option value="30">30 días</option>
                         </select>
                         <button onclick="reactivarLink('${l.id}')"
-                            style="background:rgba(201,168,76,0.15);border:1px solid #C9A84C;color:#C9A84C;border-radius:7px;padding:4px 10px;font-size:11px;cursor:pointer;white-space:nowrap;">
+                            style="background:#B8860B;border:none;color:#fff;border-radius:7px;padding:4px 10px;font-size:11px;font-weight:700;cursor:pointer;white-space:nowrap;">
                             ↺ Reactivar
                         </button>
                     </div>` : `
                     <div style="display:flex;flex-direction:column;gap:6px;align-items:flex-end;">
                         ${esAfil ? `<button onclick="abrirAgregarProductos('${l.id}','${(l.nombre||'').replace(/'/g,'\\\'')}')"
-                            style="background:rgba(34,197,94,0.1);border:1px solid #22c55e;color:#22c55e;border-radius:7px;padding:4px 10px;font-size:11px;cursor:pointer;white-space:nowrap;">
+                            style="background:#f0fdf4;border:1px solid #a7f3d0;color:#065f46;border-radius:7px;padding:4px 10px;font-size:11px;cursor:pointer;white-space:nowrap;">
                             ✚ Agregar productos
                         </button>` : ''}
                         <button onclick="eliminarLink('${l.id}')"
-                            style="background:rgba(239,68,68,0.1);border:1px solid #ef4444;color:#ef4444;border-radius:7px;padding:4px 10px;font-size:11px;cursor:pointer;white-space:nowrap;">
+                            style="background:#fef2f2;border:1px solid #fca5a5;color:#991b1b;border-radius:7px;padding:4px 10px;font-size:11px;cursor:pointer;white-space:nowrap;">
                             🗑 Eliminar
                         </button>
                     </div>`}
