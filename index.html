@@ -5161,14 +5161,14 @@ async function generarPDFCatalogo() {
 
       <!-- IA -->
       <div style="background:rgba(30,64,175,0.12);border:1px solid rgba(191,219,254,0.2);border-radius:8px;padding:10px;margin-bottom:12px;">
-        <div style="font-size:11px;font-weight:700;color:#93c5fd;margin-bottom:6px;">🤖 Armar con IA — describe lo que buscas</div>
+        <div style="font-size:11px;font-weight:700;color:#1d4ed8;margin-bottom:6px;">🤖 Armar con IA — describe lo que buscas</div>
         <div style="display:flex;gap:8px;">
           <input type="text" id="cat-ia-prompt" placeholder='Ej: "anillos talla 7 dama" o "argollas matrimonio talla 9"'
             style="flex:1;font-size:13px;" placeholder='Ej: "30 anillos laminados talla 9 dama" · "cadenas acero menos de $20" · "aretes sin conjuntos"' onkeydown="if(event.key==='Enter') aplicarPromptIA()">
           <button onclick="aplicarPromptIA()"
             style="background:#2563eb;color:#fff;border:none;padding:8px 14px;border-radius:8px;font-size:13px;font-weight:700;cursor:pointer;white-space:nowrap;">✨ Armar</button>
         </div>
-        <div id="cat-ia-resultado" style="font-size:11px;color:#93c5fd;margin-top:5px;min-height:14px;"></div>
+        <div id="cat-ia-resultado" style="font-size:11px;color:#1d4ed8;margin-top:5px;min-height:14px;"></div>
       </div>
 
       <!-- Categorías -->
@@ -5363,7 +5363,7 @@ async function generarPDFCatalogo() {
           </div>
         </div>
         <div>
-          <div style="font-size:11px;font-weight:700;color:#93c5fd;margin-bottom:6px;">✏️ Editar vigencia</div>
+          <div style="font-size:11px;font-weight:700;color:#1d4ed8;margin-bottom:6px;">✏️ Editar vigencia</div>
           <div style="display:flex;gap:8px;">
             <input type="text" id="cat-link-editar-vig" placeholder="Link completo o código" style="flex:1;">
             <select id="cat-editar-vig-dias" style="width:110px;">
