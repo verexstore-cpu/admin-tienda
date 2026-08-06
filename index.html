@@ -3627,6 +3627,7 @@ async function generarLinkCatalogo() {
     const talla      = document.getElementById("cat-talla").value;
     const genero     = document.getElementById("cat-genero")?.value || "";
     const dias       = parseInt(document.getElementById("cat-validez").value)||3;
+    const notaInterna = (document.getElementById("cat-nota-interna")?.value || "").trim();
     // Defensa adicional: en catálogo de Cliente, el número SIEMPRE es el
     // oficial de VEREX, sin importar qué haya quedado en el campo/localStorage
     // — nunca debe poder colarse el número de un afiliado por error.
@@ -3669,6 +3670,7 @@ async function generarLinkCatalogo() {
         const data={
             expiry: Date.now()+dias*864e5,
             nombre, talla, wa, banner, dias,
+            ...(notaInterna && { nota_interna: notaInterna }),
             ...(descPct > 0 && { descPct }),
             ...(esAfiliado && { afiliado: true }),
             ...(afiliadoId && { customId: afiliadoId }),
@@ -3728,6 +3730,15 @@ async function generarLinkCatalogo() {
         document.getElementById("cat-link-out").textContent=finalUrl;
         document.getElementById("cat-link-box").style.display="block";
         toast("🔗 Link listo — cópialo o compártelo por WhatsApp","#22c55e");
+        guardarEnLogCatalogos({
+            url: finalUrl,
+            nombre,
+            nota: notaInterna,
+            filtros: capturarFiltrosCatalogo(),
+            expiry: Date.now() + dias * 864e5,
+            esAfiliado
+        });
+        renderLogCatalogos();
 
         // Guardar los criterios usados y los códigos mostrados — permite
         // "Refrescar" este mismo catálogo más adelante con stock actualizado
@@ -3744,6 +3755,95 @@ async function generarLinkCatalogo() {
 
     } catch(e){ console.error(e); toast("❌ Error al generar link: "+e.message,"#ef4444"); }
     finally { btn.textContent="🔗 Link"; btn.disabled=false; }
+}
+
+// ── Catálogos: log, captura de filtros, render y reactivar ─────────────
+
+const CAT_LOG_KEY = "verex-cat-log";
+
+function capturarFiltrosCatalogo() {
+    const chips = [];
+    const cats = [...document.querySelectorAll(".cat-cat-chk:checked")].map(c => c.value);
+    const catLabels = { AN:"Anillos", PU:"Pulseras", CD:"Cadenas", AR:"Aretes", CJ:"Conjuntos", DR:"Dijes", AL:"Alianzas", AC:"Accesorios" };
+    cats.forEach(k => chips.push(catLabels[k] || k));
+    const tallas = (document.getElementById("cat-talla")?.value || "").split(",").filter(Boolean);
+    tallas.forEach(t => chips.push("T" + t));
+    const genero = document.getElementById("cat-genero")?.value;
+    if (genero === "dama") chips.push("Dama");
+    else if (genero === "caballero") chips.push("Caballero");
+    const tipoAN = document.getElementById("cat-tipo-an")?.value;
+    if (tipoAN === "pareja") chips.push("Argollas / Pareja");
+    else if (tipoAN === "sencillo") chips.push("Sencillos");
+    return chips;
+}
+
+function guardarEnLogCatalogos({ url, nombre, nota, filtros, expiry, esAfiliado }) {
+    const log = JSON.parse(localStorage.getItem(CAT_LOG_KEY) || "[]");
+    const id = url.split("/").pop();
+    const idx = log.findIndex(e => e.id === id);
+    const entry = { id, url, nombre: nombre || "Sin nombre", nota: nota || "", filtros: filtros || [], expiry, esAfiliado: !!esAfiliado, createdAt: Date.now() };
+    if (idx >= 0) log[idx] = entry; else log.unshift(entry);
+    localStorage.setItem(CAT_LOG_KEY, JSON.stringify(log.slice(0, 50)));
+}
+
+function renderLogCatalogos() {
+    const wrap = document.getElementById("cat-log-lista");
+    if (!wrap) return;
+    const log = JSON.parse(localStorage.getItem(CAT_LOG_KEY) || "[]");
+    if (!log.length) { wrap.innerHTML = '<p style="font-size:12px;color:#555;text-align:center;margin:10px 0;">Aún no hay catálogos generados.</p>'; return; }
+    const now = Date.now();
+    wrap.innerHTML = log.map(e => {
+        const activo = e.expiry > now;
+        const fechaVence = new Date(e.expiry).toLocaleDateString("es-SV", { day:"numeric", month:"short" });
+        const statusHtml = activo
+            ? `<span style="display:inline-flex;align-items:center;gap:4px;background:#0b2e1e;color:#4ade80;border:1px solid #166534;border-radius:20px;padding:3px 9px;font-size:11px;font-weight:600;">● Activo · vence ${fechaVence}</span>`
+            : `<span style="display:inline-flex;align-items:center;gap:4px;background:#2a0f0f;color:#f87171;border:1px solid #7f1d1d;border-radius:20px;padding:3px 9px;font-size:11px;font-weight:600;">✕ Vencido ${fechaVence}</span>`;
+        const chips = (e.filtros || []).map(f => `<span style="display:inline-flex;align-items:center;background:#1a2240;color:#93c5fd;border:1px solid #1e3a5f;border-radius:20px;padding:3px 9px;font-size:11px;">${f}</span>`).join("");
+        const notaHtml = e.nota ? `<div style="font-size:12px;color:#888;font-style:italic;margin-bottom:7px;">"${e.nota}"</div>` : "";
+        const acciones = activo
+            ? `<div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:8px;">
+                <button onclick="navigator.clipboard.writeText('${e.url}');toast('✅ Link copiado','#22c55e')" style="flex:1;background:#0d2218;color:#4ade80;border:1px solid #166534;padding:6px 10px;border-radius:7px;font-size:12px;font-weight:700;cursor:pointer;">📋 Copiar link</button>
+                <button onclick="window.open('${e.url}','_blank')" style="background:#111;color:#aaa;border:1px solid #333;padding:6px 10px;border-radius:7px;font-size:12px;cursor:pointer;">👁️ Ver</button>
+               </div>`
+            : `<div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-top:8px;background:#1a1100;border:1px solid #78350f;border-radius:7px;padding:8px 10px;">
+                <span style="font-size:12px;color:#d97706;flex:1;">Reactivar hasta:</span>
+                <input type="date" id="reac-fecha-${e.id}" style="font-size:12px;background:#0d0d0d;border:1px solid #78350f;border-radius:6px;padding:4px 8px;color:#fbbf24;" min="${new Date().toISOString().split('T')[0]}">
+                <button onclick="reactivarCatalogo('${e.id}','${e.url}')" style="background:#B8860B;color:#fff;border:none;padding:6px 12px;border-radius:7px;font-size:12px;font-weight:700;cursor:pointer;">Reactivar</button>
+               </div>`;
+        return `<div style="background:#111;border:1px solid ${activo ? '#1f2f1f' : '#2a1a1a'};border-radius:10px;padding:12px 14px;margin-bottom:8px;">
+            <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:8px;margin-bottom:6px;">
+                <span style="font-size:13px;font-weight:600;color:#e5e7eb;">${e.nombre || "Sin nombre"} ${e.esAfiliado ? '<span style="font-size:10px;color:#86efac;background:rgba(34,197,94,0.1);padding:2px 6px;border-radius:4px;">Afiliado</span>' : ''}</span>
+                ${statusHtml}
+            </div>
+            ${notaHtml}
+            ${chips ? `<div style="display:flex;flex-wrap:wrap;gap:5px;margin-bottom:6px;">${chips}</div>` : ""}
+            ${acciones}
+        </div>`;
+    }).join("");
+}
+
+async function reactivarCatalogo(id, url) {
+    const fechaInput = document.getElementById("reac-fecha-" + id);
+    if (!fechaInput?.value) return toast("⚠️ Elige una fecha para reactivar", "#f97316");
+    const nuevaExpiry = new Date(fechaInput.value + "T23:59:59").getTime();
+    if (nuevaExpiry <= Date.now()) return toast("⚠️ La fecha debe ser futura", "#f97316");
+    const diasRestantes = Math.max(1, Math.ceil((nuevaExpiry - Date.now()) / 864e5));
+    try {
+        const res = await fetch("/edit-catalog-expiry", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ id, dias: diasRestantes })
+        });
+        const out = await res.json();
+        if (!res.ok) throw new Error(out.error || "Error del servidor");
+        const log = JSON.parse(localStorage.getItem(CAT_LOG_KEY) || "[]");
+        const entry = log.find(e => e.id === id);
+        if (entry) { entry.expiry = nuevaExpiry; localStorage.setItem(CAT_LOG_KEY, JSON.stringify(log)); }
+        toast("✅ Catálogo reactivado", "#22c55e");
+        renderLogCatalogos();
+    } catch(err) {
+        toast("❌ No se pudo reactivar: " + err.message, "#ef4444");
+    }
 }
 
 // Link/QR fijo hacia la página de Garantía Limitada — vive en el dominio
@@ -4277,6 +4377,8 @@ function abrirModalCatalogo(tipo) {
     if (descPctEl) descPctEl.value = "";
     document.getElementById("cat-link-box").style.display  = "none";
     document.getElementById("cat-sec-talla").style.display = "block";
+    if (document.getElementById("cat-nota-interna")) document.getElementById("cat-nota-interna").value = "";
+    renderLogCatalogos();
 
     // Sección afiliado
     const afChk = document.getElementById("cat-es-afiliado");
@@ -4964,6 +5066,12 @@ async function generarPDFCatalogo() {
       </div>
     </div>
 
+    <!-- ══ NOTA INTERNA ══════════════════════════════════════════════ -->
+    <div style="margin-bottom:16px;">
+      <label style="font-size:12px;color:#aaa;margin-bottom:4px;display:block;">Nota interna <span style="color:#555;font-weight:400;">(opcional — para identificar este catálogo)</span></label>
+      <input type="text" id="cat-nota-interna" placeholder='Ej: "anillos talla 9, pidió solo dorados"' style="width:100%;box-sizing:border-box;">
+    </div>
+
     <!-- ══ PASO 2: FILTRAR PRODUCTOS ════════════════════════════════ -->
     <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px;">
       <div style="width:24px;height:24px;border-radius:50%;background:#C9A84C;color:#000;font-size:12px;font-weight:800;display:flex;align-items:center;justify-content:center;flex-shrink:0;">2</div>
@@ -5191,6 +5299,15 @@ async function generarPDFCatalogo() {
         </div>
       </div>
     </details>
+
+    <!-- ══ MIS CATÁLOGOS ════════════════════════════════════════════ -->
+    <div style="margin-top:20px;">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;">
+        <span style="font-size:13px;font-weight:700;color:#C9A84C;text-transform:uppercase;letter-spacing:.5px;">Mis catálogos</span>
+        <span style="font-size:10px;color:#555;">guardados en este dispositivo</span>
+      </div>
+      <div id="cat-log-lista"></div>
+    </div>
 
   </div>
 </div>
