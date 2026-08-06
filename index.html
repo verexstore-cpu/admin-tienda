@@ -3271,38 +3271,92 @@ async function generarImagenCatalogo() {
 }
 
 function aplicarPromptIA() {
-    const prompt = (document.getElementById("cat-ia-prompt")?.value||"").toLowerCase();
-    if (!prompt.trim()) return;
+    const promptRaw = (document.getElementById("cat-ia-prompt")?.value || "").trim();
+    if (!promptRaw) return;
+    const prompt = promptRaw.toLowerCase()
+        .replace(/á/g,'a').replace(/é/g,'e').replace(/í/g,'i')
+        .replace(/ó/g,'o').replace(/ú/g,'u').replace(/ü/g,'u').replace(/ñ/g,'n');
 
+    // ── Categorías + exclusiones ─────────────────────────────────────────
     const catKws = {
         AN: /anillo|argolla|alianza|matrimonio|solitario|novio|pareja/,
-        AR: /arete|aretes|pendiente/,
+        AR: /arete|aretes|pendiente|zarcillo/,
         CD: /cadena|collar|gargantilla/,
         PL: /pulsera|brazalete/,
         CN: /conjunto|set/,
         RL: /reloj/,
+        DJ: /dije|charm/,
     };
-    const catsDetect = Object.entries(catKws).filter(([,re])=>re.test(prompt)).map(([k])=>k);
+    const exclKws = {
+        AN: /sin anillo|no anillo|sin argolla|no argolla/,
+        AR: /sin arete|no arete|sin zarcillo|sin pendiente/,
+        CD: /sin cadena|no cadena|sin collar/,
+        PL: /sin pulsera|no pulsera|sin brazalete/,
+        CN: /sin conjunto|no conjunto/,
+    };
+    const catsDetect  = Object.entries(catKws).filter(([,re]) => re.test(prompt)).map(([k]) => k);
+    const catsExcluir = Object.entries(exclKws).filter(([,re]) => re.test(prompt)).map(([k]) => k);
 
-    const mTalla = prompt.match(/talla\s*(\d+(?:[.,]\d+)?)|t\s*(\d+(?:[.,]\d+)?)\b/);
-    const talla  = mTalla ? (mTalla[1]||mTalla[2]).replace(",",".") : "";
+    // ── Tallas: rango "del 8 al 10", lista "talla 8, 9 y 10", o una sola ─
+    let tallas = [];
+    const mRango = prompt.match(/del?\s*(\d+(?:[.,]\d+)?)\s*al?\s*(\d+(?:[.,]\d+)?)/);
+    if (mRango) {
+        const desde = parseFloat(mRango[1].replace(",",".")), hasta = parseFloat(mRango[2].replace(",","."));
+        for (let t = desde; t <= hasta + 0.01; t += 0.5)
+            tallas.push(String(t % 1 < 0.01 ? Math.round(t) : t.toFixed(1)));
+    } else {
+        const afterTalla = prompt.match(/tallas?\s*([\d.,y \-y]+)/);
+        if (afterTalla) tallas = [...afterTalla[1].matchAll(/\d+(?:[.,]\d+)?/g)].map(m => m[0].replace(",","."));
+        if (!tallas.length) {
+            const mT = prompt.match(/\bt\s*(\d+(?:[.,]\d+)?)\b/);
+            if (mT) tallas = [mT[1].replace(",",".")];
+        }
+    }
+    const tallaStr = tallas.join(",");
 
+    // ── Género ───────────────────────────────────────────────────────────
     let pfx = "";
     if (/\bdama\b|\bmujer\b/.test(prompt))            pfx = "D";
     else if (/\bcaballero\b|\bhombre\b/.test(prompt)) pfx = "C";
-    else if (/\bunico\b|\bún[io]co\b/.test(prompt))   pfx = "U";
+    else if (/\bunico\b|\bunisex\b/.test(prompt))     pfx = "U";
 
-    // Si no se pide explícitamente una alianza/argolla/pareja, se asume que el
-    // pedido es de anillos normales — así "anillos talla 8 de mujer" no mezcla
-    // alianzas, que solo deben aparecer cuando el prompt las pide a propósito.
+    // ── Tipo anillo ──────────────────────────────────────────────────────
     let tipoAN = "sencillo";
     if (/argolla|matrimonio|pareja|novios|alianza/.test(prompt)) tipoAN = "pareja";
 
-    const mNom = prompt.match(/para\s+([a-záéíóúüñ]+)/i);
-    const clienteNom = mNom ? mNom[1].charAt(0).toUpperCase()+mNom[1].slice(1) : "";
+    // ── Material ─────────────────────────────────────────────────────────
+    let materialFiltro = "";
+    if (/laminado|oro laminado|chapado/.test(prompt))        materialFiltro = "laminado";
+    else if (/acero|316/.test(prompt))                       materialFiltro = "acero";
+    else if (/plata\s*(?:925|fina)?|silver/.test(prompt))   materialFiltro = "plata";
+    else if (/\boro\b(?!.*laminado)/.test(prompt))           materialFiltro = "oro";
 
+    // ── Precio ───────────────────────────────────────────────────────────
+    let precioMax = 0, precioMin = 0;
+    const mPMax = prompt.match(/(?:menos de|hasta|maximo|no mas de)\s*\$?\s*(\d+)/);
+    const mPMin = prompt.match(/(?:mas de|desde|minimo)\s*\$?\s*(\d+)/);
+    if (mPMax) precioMax = parseFloat(mPMax[1]);
+    if (mPMin) precioMin = parseFloat(mPMin[1]);
+    if (!precioMax && /economico|barato|accesible/.test(prompt)) precioMax = 20;
+    if (!precioMin && /premium|fino|lujoso|exclusivo/.test(prompt)) precioMin = 25;
+
+    // ── Cantidad desde prompt ─────────────────────────────────────────────
+    const mCant = prompt.match(/\b(\d+)\s*(?:productos?|piezas?|referencias?)\b/) ||
+                  prompt.match(/\bunos?\s*(\d+)\b/) ||
+                  prompt.match(/\bseleccion\s*(?:de)?\s*(\d+)\b/);
+    if (mCant) {
+        const sizeEl = document.getElementById("cat-var-size");
+        if (sizeEl) sizeEl.value = mCant[1];
+    }
+
+    // ── Nombre del cliente ────────────────────────────────────────────────
+    const mNom = promptRaw.match(/para\s+([A-ZÁÉÍÓÚ][a-záéíóúüñ]+)/);
+    if (mNom) document.getElementById("cat-nombre").value = mNom[1];
+
+    // ── Aplicar categorías al UI ─────────────────────────────────────────
     document.querySelectorAll(".cat-cat-chk").forEach(chk => {
-        chk.checked = catsDetect.includes(chk.value);
+        const incluir = catsDetect.includes(chk.value) && !catsExcluir.includes(chk.value);
+        chk.checked = incluir;
         const lbl = chk.closest("label");
         if (chk.checked) { lbl.style.background="var(--azul)"; lbl.style.color="#fff"; lbl.style.borderColor="var(--azul)"; }
         else             { lbl.style.background="#fff"; lbl.style.color=""; lbl.style.borderColor="var(--borde)"; }
@@ -3310,27 +3364,39 @@ function aplicarPromptIA() {
 
     const hasAN = catsDetect.length === 0 || catsDetect.includes("AN");
     document.getElementById("cat-sec-talla").style.display = hasAN ? "block" : "none";
-    document.getElementById("cat-talla").value   = talla;
+    document.getElementById("cat-talla").value = tallaStr;
     sincronizarChipsCatTalla();
     document.getElementById("cat-tipo-an").value = tipoAN;
     document.getElementById("cat-genero").value  = "";
     const pfEl = document.getElementById("cat-prefijo-txt");
     if (pfEl) pfEl.value = pfx;
-    if (clienteNom) document.getElementById("cat-nombre").value = clienteNom;
 
     filtrarParaCatalogo();
 
-    let sinStock = 0;
+    // ── Post-filtro: stock, material y precio ────────────────────────────
+    let sinStock = 0, sinMaterial = 0, sinPrecio = 0;
     document.querySelectorAll(".cat-chk").forEach(chk => {
-        const cod = chk.dataset.cod;
-        const prod = _catFiltrada.find(p => (p._codigos?.[0]||p.codigo) === cod);
-        if (prod && !tieneStock(prod, talla)) { chk.checked = false; sinStock++; }
+        if (!chk.checked) return;
+        const cod  = chk.dataset.cod;
+        const prod = _catFiltrada.find(p => (p._codigos?.[0] || p.codigo) === cod);
+        if (!prod) return;
+
+        if (tallaStr && !tieneStock(prod, tallas[0])) { chk.checked = false; sinStock++; return; }
+
+        if (materialFiltro) {
+            const mat = (prod.material || detectarMaterial(prod.nombre) || "").toLowerCase();
+            const nom = (prod.nombre || "").toLowerCase();
+            const ok = { laminado: /laminado|chapado/.test(mat+nom), acero: /acero/.test(mat+nom),
+                         plata: /plata/.test(mat+nom), oro: /\boro\b(?!\s*laminado)/.test(mat+nom) }[materialFiltro] || false;
+            if (!ok) { chk.checked = false; sinMaterial++; return; }
+        }
+
+        const precio = parseFloat(prod.precio || 0);
+        if (precioMax > 0 && precio > precioMax) { chk.checked = false; sinPrecio++; return; }
+        if (precioMin > 0 && precio < precioMin) { chk.checked = false; sinPrecio++; return; }
     });
 
-    // Respetar el campo de cantidad de piezas (el mismo que usa "Auto-seleccionar
-    // variado") — antes marcaba TODO lo que coincidiera con el prompt sin importar
-    // ese número. Si hay más coincidencias que el límite, se recorta priorizando
-    // mayor stock, dejando el resto sin marcar.
+    // ── Recortar al límite ────────────────────────────────────────────────
     const limite = parseInt(document.getElementById("cat-var-size")?.value) || 0;
     if (limite > 0) {
         const marcados = [...document.querySelectorAll(".cat-chk:checked")]
@@ -3339,16 +3405,20 @@ function aplicarPromptIA() {
         marcados.slice(limite).forEach(({chk}) => { chk.checked = false; });
     }
 
-    const total   = document.querySelectorAll(".cat-chk").length;
+    // ── Resumen ───────────────────────────────────────────────────────────
     const activos = document.querySelectorAll(".cat-chk:checked").length;
-    const partes  = [];
-    if (catsDetect.length) partes.push(catsDetect.map(k=>CAT_MAP[k].replace(/\p{Emoji}/gu,"").trim()).join(", "));
-    if (talla)   partes.push(`talla ${talla}`);
-    if (pfx)     partes.push({D:"dama",C:"caballero",U:"único"}[pfx]||pfx);
-    if (tipoAN)  partes.push(tipoAN==="pareja"?"argollas/pareja":"sencillos");
+    const omitidos = sinStock + sinMaterial + sinPrecio;
+    const resPartes = [];
+    if (catsDetect.length)   resPartes.push(catsDetect.map(k=>CAT_MAP[k].replace(/\p{Emoji}/gu,"").trim()).join(", "));
+    if (tallas.length)       resPartes.push("Talla " + tallas.join(", "));
+    if (pfx)                 resPartes.push({D:"Dama",C:"Caballero",U:"Único"}[pfx]||pfx);
+    if (materialFiltro)      resPartes.push(materialFiltro.charAt(0).toUpperCase()+materialFiltro.slice(1));
+    if (precioMax)           resPartes.push(`máx $${precioMax}`);
+    if (precioMin)           resPartes.push(`mín $${precioMin}`);
+    if (catsExcluir.length)  resPartes.push("excluye " + catsExcluir.map(k=>CAT_MAP[k].replace(/\p{Emoji}/gu,"").trim()).join(", "));
     document.getElementById("cat-ia-resultado").textContent =
-        `✅ ${activos} producto(s) con stock listo(s)${sinStock?" · "+sinStock+" sin stock omitido(s)":""}`
-        + (partes.length ? ` — ${partes.join(", ")}` : "");
+        `✅ ${activos} producto(s) listo(s)${omitidos ? ` · ${omitidos} omitido(s)` : ""}`
+        + (resPartes.length ? ` — ${resPartes.join(" · ")}` : "");
 }
 
 let _bannerColor = "#ef4444";
@@ -5084,7 +5154,7 @@ async function generarPDFCatalogo() {
         <div style="font-size:11px;font-weight:700;color:#93c5fd;margin-bottom:6px;">🤖 Armar con IA — describe lo que buscas</div>
         <div style="display:flex;gap:8px;">
           <input type="text" id="cat-ia-prompt" placeholder='Ej: "anillos talla 7 dama" o "argollas matrimonio talla 9"'
-            style="flex:1;font-size:13px;" onkeydown="if(event.key==='Enter') aplicarPromptIA()">
+            style="flex:1;font-size:13px;" placeholder='Ej: "30 anillos laminados talla 9 dama" · "cadenas acero menos de $20" · "aretes sin conjuntos"' onkeydown="if(event.key==='Enter') aplicarPromptIA()">
           <button onclick="aplicarPromptIA()"
             style="background:#2563eb;color:#fff;border:none;padding:8px 14px;border-radius:8px;font-size:13px;font-weight:700;cursor:pointer;white-space:nowrap;">✨ Armar</button>
         </div>
