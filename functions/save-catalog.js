@@ -50,6 +50,15 @@ export async function onRequest(context) {
         };
         await context.env.CATALOGS.put("__hist__" + id, JSON.stringify(hist));
 
+        // Mantener índice por afiliado para stats rápidas
+        if (body.afiliadoCodigo) {
+            const idxKey = "__affiliate__" + body.afiliadoCodigo;
+            const rawIdx = await context.env.CATALOGS.get(idxKey);
+            const idx = rawIdx ? JSON.parse(rawIdx) : { ids: [] };
+            if (!idx.ids.includes(id)) idx.ids.push(id);
+            await context.env.CATALOGS.put(idxKey, JSON.stringify(idx));
+        }
+
         return new Response(JSON.stringify({ url: "/c/" + id }), { headers });
     } catch (e) {
         return new Response(JSON.stringify({ error: e.message }), { status: 500, headers });
