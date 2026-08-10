@@ -17,55 +17,59 @@ export async function onRequest(context) {
         if (!rawIdx) {
             return new Response(JSON.stringify({
                 totalCatalogos: 0, totalVistas: 0, ultimaVista: null,
-                catalogoActivo: null
+                catalogoActivo: null, catalogos: []
             }), { headers });
         }
 
         const { ids } = JSON.parse(rawIdx);
         const now = Date.now();
 
-        // Leer hist + views de todos los catálogos en paralelo
         const [histRaws, viewsRaws] = await Promise.all([
             Promise.all(ids.map(id => context.env.CATALOGS.get("__hist__" + id))),
             Promise.all(ids.map(id => context.env.CATALOGS.get("__views__" + id))),
         ]);
 
-        let totalVistas = 0, ultimaVista = null;
-        let catalogoActivo = null; // el más reciente que siga vigente
+        let totalVistas = 0, ultimaVista = null, catalogoActivo = null;
+        const catalogos = [];
 
         ids.forEach((id, i) => {
             const hist = histRaws[i] ? JSON.parse(histRaws[i]) : null;
             const views = viewsRaws[i] ? JSON.parse(viewsRaws[i]) : null;
 
-            // Acumular vistas totales
             if (views) {
                 totalVistas += views.count || 0;
                 if (!ultimaVista || views.last > ultimaVista) ultimaVista = views.last;
             }
 
-            // Determinar si es el catálogo activo más reciente
-            if (hist && hist.expiresAt > now) {
-                if (!catalogoActivo || hist.createdAt > catalogoActivo.createdAt) {
-                    catalogoActivo = {
-                        id,
-                        url: "https://admin-tienda.pages.dev/c/" + id,
-                        nombre: hist.nombre || "",
-                        expiresAt: hist.expiresAt,
-                        createdAt: hist.createdAt,
-                        prods: hist.data?.prods?.length || 0,
-                        vistas: views?.count || 0,
-                        ultimaVista: views?.last || null,
-                        primeraVista: views?.first || null,
-                    };
-                }
+            const activo = hist ? hist.expiresAt > now : false;
+            const cat = {
+                id,
+                url: "https://admin-tienda.pages.dev/c/" + id,
+                nombre: hist?.nombre || "",
+                createdAt: hist?.createdAt || null,
+                expiresAt: hist?.expiresAt || null,
+                activo,
+                prods: hist?.data?.prods?.length || 0,
+                vistas: views?.count || 0,
+                ultimaVista: views?.last || null,
+                primeraVista: views?.first || null,
+            };
+            catalogos.push(cat);
+
+            if (activo && (!catalogoActivo || hist.createdAt > catalogoActivo.createdAt)) {
+                catalogoActivo = cat;
             }
         });
+
+        // Ordenar del más reciente al más antiguo
+        catalogos.sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
 
         return new Response(JSON.stringify({
             totalCatalogos: ids.length,
             totalVistas,
             ultimaVista,
             catalogoActivo,
+            catalogos,
         }), { headers });
     } catch (e) {
         return new Response(JSON.stringify({ error: e.message }), { status: 500, headers });
