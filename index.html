@@ -3886,9 +3886,9 @@ function renderLogCatalogos() {
                 <button onclick="window.open('${e.url}','_blank')" style="background:#f9fafb;color:#374151;border:1px solid #e5e7eb;padding:6px 10px;border-radius:7px;font-size:12px;cursor:pointer;">👁️ Ver</button>
                </div>`
             : `<div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-top:8px;background:#fffbeb;border:1px solid #fcd34d;border-radius:7px;padding:8px 10px;">
-                <span style="font-size:12px;color:#92400e;flex:1;">Reactivar hasta:</span>
+                <span style="font-size:12px;color:#92400e;flex:1;">Nuevo link hasta:</span>
                 <input type="date" id="reac-fecha-${e.id}" style="font-size:12px;background:#fff;border:1px solid #fcd34d;border-radius:6px;padding:4px 8px;color:#111;" min="${new Date().toISOString().split('T')[0]}">
-                <button onclick="reactivarCatalogo('${e.id}','${e.url}')" style="background:#B8860B;color:#fff;border:none;padding:6px 12px;border-radius:7px;font-size:12px;font-weight:700;cursor:pointer;">↺ Reactivar</button>
+                <button onclick="clonarCatalogo('${e.id}','${e.nombre||''}')" style="background:#B8860B;color:#fff;border:none;padding:6px 12px;border-radius:7px;font-size:12px;font-weight:700;cursor:pointer;">🔗 Nuevo link</button>
                </div>`;
         return `<div style="background:#ffffff;border:1px solid ${activo ? '#d1fae5' : '#fee2e2'};border-radius:10px;padding:12px 14px;margin-bottom:8px;">
             <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:8px;margin-bottom:6px;">
@@ -3902,27 +3902,41 @@ function renderLogCatalogos() {
     }).join("");
 }
 
-async function reactivarCatalogo(id, url) {
+async function clonarCatalogo(id, nombre) {
     const fechaInput = document.getElementById("reac-fecha-" + id);
-    if (!fechaInput?.value) return toast("⚠️ Elige una fecha para reactivar", "#f97316");
+    if (!fechaInput?.value) return toast("⚠️ Elige una fecha de vigencia", "#f97316");
     const nuevaExpiry = new Date(fechaInput.value + "T23:59:59").getTime();
     if (nuevaExpiry <= Date.now()) return toast("⚠️ La fecha debe ser futura", "#f97316");
-    const diasRestantes = Math.max(1, Math.ceil((nuevaExpiry - Date.now()) / 864e5));
+    const dias = Math.max(1, Math.ceil((nuevaExpiry - Date.now()) / 864e5));
     try {
-        const res = await fetch("/edit-catalog-expiry", {
+        const res = await fetch("/clone-catalog", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ id, dias: diasRestantes })
+            body: JSON.stringify({ id, dias })
         });
         const out = await res.json();
         if (!res.ok) throw new Error(out.error || "Error del servidor");
+        const nuevaUrl = location.origin + out.url;
+        // Agregar el nuevo link al log como entrada separada
         const log = JSON.parse(localStorage.getItem(CAT_LOG_KEY) || "[]");
-        const entry = log.find(e => e.id === id);
-        if (entry) { entry.expiry = nuevaExpiry; localStorage.setItem(CAT_LOG_KEY, JSON.stringify(log)); }
-        toast("✅ Catálogo reactivado", "#22c55e");
+        const original = log.find(e => e.id === id);
+        const newEntry = {
+            id: out.url.split("/").pop(),
+            url: nuevaUrl,
+            nombre: original?.nombre || nombre || "Sin nombre",
+            nota: original?.nota || "",
+            filtros: original?.filtros || [],
+            expiry: nuevaExpiry,
+            esAfiliado: original?.esAfiliado || false,
+            createdAt: Date.now()
+        };
+        log.unshift(newEntry);
+        localStorage.setItem(CAT_LOG_KEY, JSON.stringify(log.slice(0, 50)));
+        try { await navigator.clipboard.writeText(nuevaUrl); } catch(_){}
+        toast("🔗 Nuevo link generado y copiado", "#22c55e");
         renderLogCatalogos();
     } catch(err) {
-        toast("❌ No se pudo reactivar: " + err.message, "#ef4444");
+        toast("❌ No se pudo generar el link: " + err.message, "#ef4444");
     }
 }
 
