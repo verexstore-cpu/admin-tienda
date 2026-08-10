@@ -68,6 +68,19 @@ export async function onRequest(context) {
     // Also update <title> with the catalog name
     html = html.replace(/<title>[^<]*<\/title>/, `<title>${catalogNombre}</title>`);
 
+    // Incrementar contador de vistas en background (no bloquea la respuesta)
+    context.waitUntil((async () => {
+        try {
+            const vKey = "__views__" + id;
+            const raw = await context.env.CATALOGS.get(vKey);
+            const v = raw ? JSON.parse(raw) : { count: 0, first: null, last: null };
+            v.count = (v.count || 0) + 1;
+            v.last  = Date.now();
+            if (!v.first) v.first = Date.now();
+            await context.env.CATALOGS.put(vKey, JSON.stringify(v));
+        } catch(_) {}
+    })());
+
     return new Response(html, {
         headers: { "Content-Type": "text/html;charset=UTF-8" }
     });
