@@ -46,6 +46,8 @@ export async function onRequest(context) {
                 wa: h.data?.wa || "",
                 receta: h.data?.receta || null,
                 nota: h.data?.nota_interna || "",
+                banner: h.data?.banner || null,
+                descPct: h.data?.descPct || 0,
             };
         });
 
