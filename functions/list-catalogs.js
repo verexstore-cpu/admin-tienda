@@ -44,6 +44,8 @@ export async function onRequest(context) {
                 ultimaVista: views?.last || null,
                 primeraVista: views?.first || null,
                 wa: h.data?.wa || "",
+                receta: h.data?.receta || null,
+                nota: h.data?.nota_interna || "",
             };
         });
 
