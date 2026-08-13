@@ -48,6 +48,9 @@ export async function onRequest(context) {
                 nota: h.data?.nota_interna || "",
                 banner: h.data?.banner || null,
                 descPct: h.data?.descPct || 0,
+                promoCarrito: h.data?.promoCarrito || (h.data?.promo2x50 ? { tipo: "2x50" } : null),
+                envioGratisDesde: h.data?.envioGratisDesde || 0,
+                regaloSorpresa: h.data?.regaloSorpresa || null,
             };
         });
 

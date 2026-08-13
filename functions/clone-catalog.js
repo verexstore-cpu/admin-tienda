@@ -15,7 +15,7 @@ export async function onRequest(context) {
     const headers = { "Content-Type": "application/json", "Access-Control-Allow-Origin": "*" };
 
     try {
-        const { id, dias: diasRaw, stripDescuento } = await context.request.json();
+        const { id, dias: diasRaw, stripDescuento, stripPromos } = await context.request.json();
         if (!id) return new Response(JSON.stringify({ error: "id requerido" }), { status: 400, headers });
 
         const rawHist = await context.env.CATALOGS.get("__hist__" + id);
@@ -40,6 +40,7 @@ export async function onRequest(context) {
         // confirmar — una promo vieja podría ya no estar vigente. El admin
         // decide en el front si mantenerlo o no antes de llamar este endpoint.
         if (stripDescuento) { delete newData.banner; delete newData.descPct; }
+        if (stripPromos) { delete newData.promoCarrito; delete newData.promo2x50; delete newData.envioGratisDesde; delete newData.regaloSorpresa; }
 
         await context.env.CATALOGS.put(newId, JSON.stringify(newData), {
             expirationTtl: 60 * 60 * 24 * dias,
