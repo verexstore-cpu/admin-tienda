@@ -26,6 +26,18 @@ export async function onRequest(context) {
         // Si se pide eliminar del historial también, borrar el registro permanente
         if (body?.eliminarHistorial) {
             await context.env.CATALOGS.delete("__hist__" + id);
+        } else {
+            // El tab Links calcula "activo" a partir de __hist__.expiresAt
+            // (list-catalogs.js), NO de si el link en sí sigue existiendo —
+            // sin esto, el link quedaba roto pero la lista lo seguía
+            // mostrando como ACTIVO hasta que la fecha real de vencimiento
+            // pasara sola.
+            const rawHist = await context.env.CATALOGS.get("__hist__" + id);
+            if (rawHist) {
+                const hist = JSON.parse(rawHist);
+                hist.expiresAt = Date.now() - 1000;
+                await context.env.CATALOGS.put("__hist__" + id, JSON.stringify(hist));
+            }
         }
 
         return new Response(JSON.stringify({ ok: true }), { headers });
