@@ -15,7 +15,7 @@ export async function onRequest(context) {
     const headers = { "Content-Type": "application/json", "Access-Control-Allow-Origin": "*" };
 
     try {
-        const { id, dias: diasRaw, stripDescuento, stripPromos } = await context.request.json();
+        const { id, dias: diasRaw, expiresAt: expiresAtRaw, stripDescuento, stripPromos } = await context.request.json();
         if (!id) return new Response(JSON.stringify({ error: "id requerido" }), { status: 400, headers });
 
         const rawHist = await context.env.CATALOGS.get("__hist__" + id);
@@ -25,14 +25,20 @@ export async function onRequest(context) {
         const originalData = hist.data;
         if (!originalData?.prods) return new Response(JSON.stringify({ error: "Datos de productos no disponibles" }), { status: 400, headers });
 
-        const dias = Math.min(Math.max(parseInt(diasRaw) || 3, 1), 30);
         const newId = Array.from(crypto.getRandomValues(new Uint8Array(4)))
             .map(b => b.toString(36).padStart(2, "0"))
             .join("")
             .slice(0, 6);
 
         const createdAt = Date.now();
-        const expiresAt = createdAt + dias * 86400000;
+        // Preferir la fecha EXACTA que eligió el admin (expiresAt) en vez de
+        // recalcularla a partir de "días", que redondeaba hacia arriba y
+        // producía un vencimiento un día más tarde de lo seleccionado.
+        const expiresAtElegida = parseInt(expiresAtRaw) || 0;
+        const expiresAt = (expiresAtElegida > createdAt)
+            ? expiresAtElegida
+            : createdAt + Math.min(Math.max(parseInt(diasRaw) || 3, 1), 30) * 86400000;
+        const dias = Math.max(1, Math.ceil((expiresAt - createdAt) / 86400000));
         const newData = { ...originalData, dias, expiry: expiresAt };
         // Eliminar customId para que el afiliado no sobreescriba su link fijo
         delete newData.customId;
