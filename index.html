@@ -5258,8 +5258,10 @@ function filtrarParaCatalogo() {
     // Excluir productos marcados como Reservados en Consignación — no deben ofrecerse en ningún catálogo
     lista = lista.filter(p => !p.reservado);
 
-    // Excluir productos agotados (sin stock disponible en ninguna talla/ubicación)
-    lista = lista.filter(p => _stockTotalProd(p) > 0);
+    // Excluir productos sin stock disponible en BODEGA — una pieza ya entregada
+    // a un vendedor en consignación (o puesta en tienda) no debe volver a
+    // ofrecerse para armar un catálogo nuevo, aunque globalmente no esté agotada
+    lista = lista.filter(p => _stockBodegaProd(p) > 0);
 
     // Filtro por prefijo (C, D, U...) — solo aplica a AN
     const pfxTxt = (document.getElementById("cat-prefijo-txt")?.value||"").toUpperCase();
@@ -5391,6 +5393,25 @@ function generarIdAfiliado(nombre) {
         .replace(/[^a-z0-9]+/g,'-').replace(/^-|-$/g,'');
     const el = document.getElementById('cat-afiliado-id');
     if (el) el.value = id;
+}
+
+// Solo lo que hay físicamente en BODEGA — a diferencia de _stockTotalProd
+// (que suma bodega+tienda+consignación, correcto para saber si algo está
+// "agotado" en general), esto es lo que importa al armar un catálogo NUEVO:
+// una pieza ya entregada a un vendedor en consignación no está disponible
+// para ofrecerla a otro cliente, aunque globalmente no esté "agotada".
+function _stockBodegaProd(p) {
+    if (Array.isArray(p._codigos) && p._codigos.length > 1) {
+        return p._codigos.reduce((acc, cod) => {
+            const row = productos.find(x => x.codigo === cod);
+            return acc + (row ? _stockBodegaProd(row) : 0);
+        }, 0);
+    }
+    let s = {};
+    try { s = JSON.parse(p.caracteristicas || "{}"); } catch(_) {}
+    const totalJSON = Object.values(s).reduce((a, b) => a + (parseInt(b) || 0), 0);
+    if (totalJSON > 0) return totalJSON; // producto "Nuevo Producto" del admin — no maneja bodega/consig por separado
+    return parseInt(p.stock_bodega) || 0;
 }
 
 function _stockTotalProd(p) {
