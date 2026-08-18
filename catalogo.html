@@ -1221,19 +1221,17 @@
                     if(priceEl) priceEl.innerHTML = renderPrecioHtml(p);
                 }
 
-                // Si el código ya no existe en stock (eliminado) o quedó sin
-                // unidades disponibles o fue reservado, se marca agotado.
+                // Si el código ya no existe en stock (eliminado), fue reservado,
+                // o ya no queda en BODEGA, se marca agotado para este catálogo.
                 //
-                // NO usar stock_total: ese campo NO se mantiene — no se decrementa
-                // al vender, así que la condición <= 0 no se cumplía nunca y no se
-                // ocultaba nada (al revisar, 0 de 991 productos lo tenían en 0,
-                // mientras 13 estaban realmente sin unidades). Se usa la misma
-                // fórmula que el admin en _stockTotalProd(): las unidades reales
-                // repartidas entre bodega, tienda y consignación.
-                const sinUnidades = row => !row || row.reservado ||
-                    ((parseInt(row.stock_bodega)||0)
-                   + (parseInt(row.stock_tienda)||0)
-                   + (parseInt(row.stock_consignacion)||0)) <= 0;
+                // Antes se sumaba bodega+tienda+consignación (como
+                // _stockTotalProd del admin), pero eso significaba que una
+                // pieza ya entregada a OTRO vendedor en consignación seguía
+                // apareciendo disponible aquí — un catálogo de afiliado podía
+                // mostrar productos que en realidad estaban con otro vendedor.
+                // Solo bodega representa lo que VEREX puede entregar a un
+                // cliente nuevo de ESTE catálogo.
+                const sinUnidades = row => !row || row.reservado || (parseInt(row.stock_bodega)||0) <= 0;
 
                 // Pares y tríos: el set solo se puede armar si TODAS sus piezas
                 // tienen unidades. Antes se miraba solo el código principal, así
