@@ -100,6 +100,24 @@
         }
         .card-img{cursor:zoom-in;}
 
+        /* Modal de datos del cliente (catálogos anónimos) */
+        #ci-overlay{
+            display:none;position:fixed;inset:0;
+            background:rgba(0,0,0,.5);z-index:1000;
+            align-items:flex-end;justify-content:center;
+        }
+        #ci-overlay.open{display:flex;}
+        #ci-box{
+            background:#fff;border-radius:16px 16px 0 0;
+            padding:24px 20px 32px;width:100%;max-width:480px;
+        }
+        #ci-box input{
+            display:block;width:100%;border:1.5px solid #e2e2e2;border-radius:10px;
+            padding:11px 12px;font-size:15px;margin-bottom:14px;
+            outline:none;font-family:inherit;
+        }
+        #ci-box input:focus{border-color:#7c3aed;}
+
         /* Selector de talla */
         #sz-overlay{
             display:none;position:fixed;inset:0;
@@ -127,6 +145,25 @@
 <div id="lb-overlay" onclick="cerrarLightbox()">
     <span id="lb-close">✕</span>
     <img id="lb-img" src="" alt="">
+</div>
+
+<!-- Datos del cliente (catálogos anónimos sin nombre asignado) -->
+<div id="ci-overlay">
+    <div id="ci-box">
+        <div style="font-weight:800;font-size:16px;color:#111;text-align:center;margin-bottom:4px;">¿Cómo te llamas?</div>
+        <div style="font-size:12px;color:#888;text-align:center;margin-bottom:18px;">Para registrar tu pedido</div>
+        <input id="ci-nombre" type="text" placeholder="Tu nombre completo" autocomplete="name">
+        <div style="font-size:12px;font-weight:700;color:#555;margin-bottom:6px;">Tu WhatsApp <span style="font-weight:400;color:#9ca3af;">(opcional)</span></div>
+        <input id="ci-wa" type="tel" placeholder="Ej: 3001234567" autocomplete="tel" inputmode="numeric">
+        <button onclick="confirmarDatosCliente()"
+            style="width:100%;background:#25D366;color:#fff;border:none;padding:13px;border-radius:10px;font-size:15px;font-weight:700;cursor:pointer;margin-bottom:10px;">
+            💬 Continuar y enviar pedido
+        </button>
+        <button onclick="cerrarClienteInfo()"
+            style="width:100%;background:#f0f2f5;color:#555;border:none;padding:11px;border-radius:10px;font-size:14px;cursor:pointer;">
+            Cancelar
+        </button>
+    </div>
 </div>
 
 <!-- Selector de talla -->
@@ -188,6 +225,72 @@
             }).catch(()=>{});
         } catch(_){}
     }
+
+    const LS_CI = 'vx-ci';
+    let _dataRef    = null; // populated after data is parsed
+    let _pendingCb  = null;
+    let _pendingVt  = null;
+
+    // Extrae el ID del catálogo de la URL (/c/{id}) para incluirlo en la venta.
+    const _catalogId = location.pathname.startsWith('/c/')
+        ? location.pathname.split('/').filter(Boolean).pop()
+        : '';
+
+    // Registra silenciosamente una venta directa en el Worker cuando el cliente
+    // hace un pedido. Fire-and-forget: nunca bloquea ni afecta la apertura del chat.
+    function crearVentaCatalogo(extra) {
+        try {
+            const body = {
+                accion: 'CREAR_VENTA_CATALOGO',
+                catalogId: _catalogId,
+                catalogNombre: _dataRef?.nombre || '',
+                descPct: _descPct || 0,
+                ...extra
+            };
+            fetch(API_URL, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(body)
+            }).catch(() => {});
+        } catch(_) {}
+    }
+
+    // Asegura que tengamos el nombre del cliente antes de abrir WhatsApp.
+    // Para catálogos personalizados (data.nombre) el modal no se muestra:
+    // se usa el nombre conocido y se crea la venta sin fricción extra.
+    function solicitarDatosCliente(ventaPayload, callback) {
+        const saved  = JSON.parse(localStorage.getItem(LS_CI) || '{}');
+        const nombre = (_dataRef?.nombre) || saved.nombre || '';
+        const wa     = saved.wa || '';
+        if (nombre) {
+            crearVentaCatalogo({ ...ventaPayload, clienteNombre: nombre, clienteWA: wa });
+            callback();
+            return;
+        }
+        // Catálogo anónimo: pedir datos una vez y cachearlos
+        _pendingCb = callback;
+        _pendingVt = ventaPayload;
+        document.getElementById('ci-nombre').value = '';
+        document.getElementById('ci-wa').value     = '';
+        document.getElementById('ci-overlay').classList.add('open');
+        setTimeout(() => document.getElementById('ci-nombre').focus(), 200);
+    }
+
+    window.confirmarDatosCliente = function() {
+        const nombre = document.getElementById('ci-nombre').value.trim();
+        if (!nombre) { document.getElementById('ci-nombre').focus(); return; }
+        const wa = document.getElementById('ci-wa').value.trim();
+        localStorage.setItem(LS_CI, JSON.stringify({ nombre, wa }));
+        document.getElementById('ci-overlay').classList.remove('open');
+        if (_pendingVt) crearVentaCatalogo({ ..._pendingVt, clienteNombre: nombre, clienteWA: wa });
+        if (_pendingCb) _pendingCb();
+        _pendingCb = null; _pendingVt = null;
+    };
+
+    window.cerrarClienteInfo = function() {
+        document.getElementById('ci-overlay').classList.remove('open');
+        _pendingCb = null; _pendingVt = null;
+    };
 
     function precioFinal(precio){
         const n = parseFloat(precio) || 0;
@@ -323,14 +426,16 @@
                 : `Precio individual: $${precioFinal(p.p).toFixed(2)} por pieza`;
             const msg = `Hola, me interesan estas argollas del catálogo VEREX:\n\n${p.n}\n${precioInfo}${sizesInfo ? `\n\nTallas disponibles:\n${sizesInfo}` : ''}\n\n¿Qué tallas necesita para dama y caballero?`;
             registrarLead(p);
-            window.open(`https://wa.me/${_waNum}?text=${encodeURIComponent(msg)}`,"_blank");
+            const vt = { productos: [{ codigo: p.c, nombre: p.n, precio: precioFinal(p.p), cantidad: 1 }] };
+            solicitarDatosCliente(vt, () => window.open(`https://wa.me/${_waNum}?text=${encodeURIComponent(msg)}`,"_blank"));
             return;
         }
 
         if(p.cat && p.cat !== "AN"){
             const msg=`Hola, me interesa este producto del catálogo VEREX:\n\n${p.n}\nPrecio: $${precioFinal(p.p).toFixed(2)}`;
             registrarLead(p);
-            window.open(`https://wa.me/${_waNum}?text=${encodeURIComponent(msg)}`,"_blank");
+            const vt = { productos: [{ codigo: p.c, nombre: p.n, precio: precioFinal(p.p), cantidad: 1 }] };
+            solicitarDatosCliente(vt, () => window.open(`https://wa.me/${_waNum}?text=${encodeURIComponent(msg)}`,"_blank"));
             return;
         }
 
@@ -365,7 +470,8 @@
         const msg = `Hola, me interesa este producto del catálogo VEREX:\n\n${p.n}\nPrecio: $${precioFinal(p.p).toFixed(2)}\nTalla: T${_szD}`;
         registrarLead(p);
         cerrarTallas();
-        window.open(`https://wa.me/${_waNum}?text=${encodeURIComponent(msg)}`,"_blank");
+        const vt = { productos: [{ codigo: p.c, nombre: p.n, precio: precioFinal(p.p), talla: _szD, cantidad: 1 }] };
+        solicitarDatosCliente(vt, () => window.open(`https://wa.me/${_waNum}?text=${encodeURIComponent(msg)}`,"_blank"));
     }
 
     function cerrarTallas(){
@@ -489,6 +595,7 @@
         document.body.prepend(bar);
         document.body.style.paddingTop = "34px";
     }
+    _dataRef = data;
     if(data.expiry && Date.now()>data.expiry) showExpired(data.nombre, data.wa);
     else { render(data); actualizarDisponibilidad(); }
 })();
