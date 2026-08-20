@@ -18,6 +18,13 @@
         }
         .info-bar strong{color:#111;}
 
+        /* Franja de confianza (envíos / tiempos / pago contra entrega) */
+        #franja-confianza{
+            display:flex;justify-content:center;gap:14px;flex-wrap:wrap;
+            background:#fff;border-bottom:1px solid #e2e2e2;
+            padding:9px 12px;font-size:10.5px;font-weight:700;color:#444;
+        }
+
         /* Filtro de talla — solo aparece si el catálogo tiene anillos */
         #filtro-talla-bar{
             background:#fff;border-bottom:1px solid #e2e2e2;
@@ -582,6 +589,7 @@
 
         document.getElementById("app").innerHTML=`
             <header><img class="logo" src="/images/logo.webp" alt="VEREX"></header>
+            <div id="franja-confianza">🚚 Envíos a todo el país  ·  ⏱️ 1–2 días tras despacho  ·  💵 Pagas al recibir</div>
             ${bannerHTML}
             ${promo2x50HTML}
             ${envioGratisHTML}
@@ -1158,6 +1166,14 @@
             const data = await res.json();
             const stock = data.stock || [];
             const mapa = new Map(stock.map(s => [s.codigo, s]));
+
+            // Franja de confianza — editable desde Admin VEREX → Dashboard,
+            // se actualiza aquí para que también aplique a links ya generados
+            // (no queda "congelada" en el texto que había al crear el link).
+            if (data.config?.fraseConfianza) {
+                const franja = document.getElementById("franja-confianza");
+                if (franja) franja.textContent = data.config.fraseConfianza;
+            }
 
             // Catálogos auto-generados por un vendedor desde su inventario
             // (ver inventario-sellers → compartirMiCatalogo): la tabla "stock"
