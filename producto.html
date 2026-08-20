@@ -39,10 +39,10 @@
         .card-ne{display:inline-block;font-size:10px;font-weight:700;color:#92400e;background:#fef3c7;border:1px solid #fcd34d;border-radius:5px;padding:2px 7px;margin-bottom:8px;line-height:1.5;}
 
         .wa-btn{
-            position:relative;overflow:hidden;display:flex;align-items:center;justify-content:center;
-            width:100%;background:linear-gradient(135deg,#B8933E,#D4AF5E);
+            position:relative;overflow:hidden;display:flex;flex-direction:column;align-items:center;justify-content:center;
+            gap:2px;width:100%;background:linear-gradient(135deg,#B8933E,#D4AF5E);
             color:#fff;text-decoration:none;text-shadow:0 1px 2px rgba(0,0,0,.25);
-            padding:13px;border-radius:10px;font-size:15px;font-weight:700;
+            padding:11px 13px 10px;border-radius:10px;
             border:2px solid #a3a3a3;box-shadow:0 2px 6px rgba(0,0,0,.15);cursor:pointer;
             transition:background .15s ease,transform .1s ease;
         }
@@ -50,6 +50,10 @@
             background:linear-gradient(135deg,#a17f34,#bd9750);
             transform:scale(.97);
         }
+        .wa-btn .wa-main{ font-size:15px;font-weight:700;position:relative;z-index:2; }
+        .wa-btn .wa-sub{ font-size:10.5px;font-weight:500;opacity:.88;position:relative;z-index:2; }
+        .grid-multi .wa-btn .wa-main{font-size:12px;}
+        .grid-multi .wa-btn .wa-sub{font-size:9px;}
         .wa-shine{
             position:absolute;top:0;left:-60%;width:40%;height:100%;
             background:linear-gradient(120deg,transparent,rgba(255,255,255,.85),transparent);
@@ -194,7 +198,7 @@
                            <div style="display:inline-block;font-size:11px;font-weight:800;color:#fff;background:#D85A30;border-radius:5px;padding:2px 8px;margin-bottom:6px;">-${_descPct}% OFF</div>`
                         : `<div class="card-price">$${parseFloat(p.precio||0).toFixed(2)}</div>`}
                 <div class="card-ref">Ref: ${esc(p.codigo)}</div>
-                ${agotado ? '' : `<button class="wa-btn" onclick="abrirConfirm(${idx}, this)"><span style="position:relative;z-index:2;">✦ ¡Hazlo tuyo!</span><span class="wa-shine"></span></button>`}
+                ${agotado ? '' : `<button class="wa-btn" onclick="abrirConfirm(${idx}, this)"><span class="wa-main">✦ ¡Hazlo tuyo!</span><span class="wa-sub">Presiona aquí para ordenar</span><span class="wa-shine"></span></button>`}
             </div>
         </div>`;
     }
