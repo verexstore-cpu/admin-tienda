@@ -33,6 +33,16 @@ export async function onRequest(context) {
         const expiresAt = createdAt + dias * 86400000;
         const dataWithMeta = { ...body, expiry: expiresAt, dias };
 
+        // Las promos (descuento, 2x50/3x2/monto fijo, envío gratis, regalo
+        // sorpresa) son SOLO para catálogos de Cliente — nunca de Afiliado.
+        // El front ya evita mandarlas para afiliados, pero se refuerza acá
+        // igual por si acaso, en vez de confiar solo en el cliente.
+        if (dataWithMeta.afiliado) {
+            delete dataWithMeta.banner; delete dataWithMeta.descPct;
+            delete dataWithMeta.promoCarrito; delete dataWithMeta.promo2x50;
+            delete dataWithMeta.envioGratisDesde; delete dataWithMeta.regaloSorpresa;
+        }
+
         await context.env.CATALOGS.put(id, JSON.stringify(dataWithMeta), {
             expirationTtl: 60 * 60 * 24 * dias,
         });

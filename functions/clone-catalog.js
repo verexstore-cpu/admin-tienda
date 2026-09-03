@@ -47,6 +47,16 @@ export async function onRequest(context) {
         // decide en el front si mantenerlo o no antes de llamar este endpoint.
         if (stripDescuento) { delete newData.banner; delete newData.descPct; }
         if (stripPromos) { delete newData.promoCarrito; delete newData.promo2x50; delete newData.envioGratisDesde; delete newData.regaloSorpresa; }
+        // Las promos (descuento, 2x50/3x2/monto fijo, envío gratis, regalo
+        // sorpresa) son SOLO para catálogos de Cliente, nunca de Afiliado —
+        // esto se refuerza acá SIEMPRE, sin depender de que el cliente mande
+        // stripPromos/stripDescuento correctamente, por si el catálogo
+        // original ya las tenía puestas por error o de antes de esa regla.
+        if (newData.afiliado) {
+            delete newData.banner; delete newData.descPct;
+            delete newData.promoCarrito; delete newData.promo2x50;
+            delete newData.envioGratisDesde; delete newData.regaloSorpresa;
+        }
 
         await context.env.CATALOGS.put(newId, JSON.stringify(newData), {
             expirationTtl: 60 * 60 * 24 * dias,
