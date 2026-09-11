@@ -25,7 +25,17 @@ export async function onRequest(context) {
         const p = stock.find(s => s.codigo === codigos[0]);
         if (p) {
             nombre = (p.nombre_base || p.nombre || nombre).trim();
-            if (codigos.length > 1) nombre += ` + ${codigos.length - 1} producto${codigos.length - 1 > 1 ? "s" : ""} más`;
+            // Contar DISEÑOS distintos (por codigoBase), no códigos sueltos —
+            // varias tallas del mismo anillo son un solo diseño, no varios
+            // "productos más" en la vista previa.
+            const basesUnicas = new Set(
+                codigos.map(c => {
+                    const s = stock.find(x => x.codigo === c);
+                    return (s?.codigoBase || c);
+                })
+            );
+            const extra = basesUnicas.size - 1;
+            if (extra > 0) nombre += ` + ${extra} producto${extra > 1 ? "s" : ""} más`;
             if (p.foto) foto = p.foto;
         }
     } catch (_) {}
