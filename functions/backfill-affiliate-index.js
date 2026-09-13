@@ -1,3 +1,5 @@
+import { esAdminValido, noAutorizado } from "./_auth.js";
+
 export async function onRequest(context) {
     const cors = {
         "Access-Control-Allow-Origin": "*",
@@ -10,6 +12,8 @@ export async function onRequest(context) {
     const headers = { "Content-Type": "application/json", ...cors };
 
     try {
+        const body = await context.request.json().catch(() => ({}));
+        if (!(await esAdminValido(body?._pass))) return noAutorizado(cors);
         // Listar todos los __hist__ entries
         let cursor = undefined;
         const byAfiliado = new Map(); // codigo -> Set of catalog ids

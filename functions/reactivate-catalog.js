@@ -1,15 +1,18 @@
+import { esAdminValido, noAutorizado } from "./_auth.js";
+
 export async function onRequest(context) {
-    const headers = {
-        "Content-Type": "application/json",
+    const cors = {
         "Access-Control-Allow-Origin": "*",
         "Access-Control-Allow-Methods": "POST, OPTIONS",
         "Access-Control-Allow-Headers": "Content-Type",
     };
-    if (context.request.method === "OPTIONS") return new Response(null, { headers });
+    const headers = { "Content-Type": "application/json", ...cors };
+    if (context.request.method === "OPTIONS") return new Response(null, { headers: cors });
     if (context.request.method !== "POST") return new Response("Method Not Allowed", { status: 405 });
 
     try {
         const body = await context.request.json();
+        if (!(await esAdminValido(body?._pass))) return noAutorizado(cors);
         const id = String(body?.id || "").trim();
         const dias = Math.min(Math.max(parseInt(body?.dias) || 15, 1), 30);
         if (!id) return new Response(JSON.stringify({ error: "Falta el id" }), { status: 400, headers });

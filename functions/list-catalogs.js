@@ -1,3 +1,5 @@
+import { esAdminValido, noAutorizado } from "./_auth.js";
+
 export async function onRequest(context) {
     const cors = {
         "Access-Control-Allow-Origin": "*",
@@ -10,6 +12,9 @@ export async function onRequest(context) {
     const headers = { "Content-Type": "application/json", ...cors };
 
     try {
+        const body = await context.request.json().catch(() => ({}));
+        if (!(await esAdminValido(body?._pass))) return noAutorizado(cors);
+
         // Listar todos los __hist__ entries — es el registro permanente (sin
         // TTL) que save-catalog.js escribe por cada link generado, así que
         // es la fuente autoritativa: no depende del localStorage de ningún

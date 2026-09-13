@@ -1,3 +1,5 @@
+import { esAdminValido, noAutorizado } from "./_auth.js";
+
 export async function onRequest(context) {
     const cors = {
         "Access-Control-Allow-Origin": "*",
@@ -10,7 +12,8 @@ export async function onRequest(context) {
     const headers = { "Content-Type": "application/json", ...cors };
 
     try {
-        const { afiliadoCodigo } = await context.request.json();
+        const { afiliadoCodigo, _pass } = await context.request.json();
+        if (!(await esAdminValido(_pass))) return noAutorizado(cors);
         if (!afiliadoCodigo) return new Response(JSON.stringify({ error: "afiliadoCodigo requerido" }), { status: 400, headers });
 
         const rawIdx = await context.env.CATALOGS.get("__affiliate__" + afiliadoCodigo);
