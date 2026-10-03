@@ -73,6 +73,15 @@
         /* TABS */
         .tabs{display:flex;background:#0d0d0d;border-bottom:2px solid #222;padding:8px 16px;gap:6px;overflow-x:auto;scrollbar-width:none;}
         .tabs::-webkit-scrollbar{display:none;}
+        /* Barra principal: tabs a los lados, logo al centro */
+        .hub-wrap{background:#0d0d0d;border-bottom:2px solid #222;padding:14px 16px;}
+        .hub-wrap.limpio{display:grid;align-content:center;box-sizing:border-box;min-height:calc(100vh - var(--hh,64px));}
+        .hub-bar{display:grid;grid-template-columns:1fr minmax(420px,44%) 1fr;gap:14px;align-items:stretch;max-width:1500px;width:100%;margin:0 auto;}
+        .hub-col{display:flex;flex-direction:column;gap:6px;}
+        .hub-col .tab{flex:1;display:flex;align-items:center;justify-content:center;font-size:15px;padding:9px 12px;}
+        .hub-logo{cursor:pointer;display:flex;align-items:center;}
+        .hub-logo img{width:100%;display:block;border-radius:12px;}
+        @media (max-width:1000px){.hub-bar{grid-template-columns:1fr 1fr;}.hub-logo{grid-column:1/-1;order:-1;}}
         .tab{
             padding:9px 16px;font-size:12px;font-weight:700;cursor:pointer;
             border-radius:8px;white-space:nowrap;transition:all .2s;
@@ -366,22 +375,30 @@
     </div>
 
     <!-- TABS -->
-    <div class="tabs">
-        <div class="tab active" onclick="tab(0)">🏠 Dashboard</div>
-        <div class="tab" onclick="tab(1)">📋 Pedidos</div>
-        <div class="tab" onclick="tab(2)">📦 Productos</div>
-        <div class="tab" onclick="tab(5)">👥 Clientes</div>
-        <div class="tab" onclick="tab(3)">🚚 Envío</div>
-        <div class="tab" onclick="tab(4)">🎟️ Cupones</div>
-        <div class="tab" onclick="tab(6);cargarConsignacion()">👤 Vendedores</div>
-        <div class="tab" onclick="abrirModalCatalogo('cliente')">📋 Catálogo Cliente</div>
-        <div class="tab" onclick="abrirModalCatalogo('afiliado')">🤝 Catálogo Afiliado</div>
-        <div class="tab" onclick="tab(7);cargarVentasAdmin();cargarCierresMensuales()">💰 Ventas</div>
-        <div class="tab" onclick="tab(8);cargarPanelLinks()">🔗 Links</div>
+    <!-- TABS: 6 a la izquierda, logo al centro, 5 a la derecha -->
+    <div class="hub-wrap limpio" id="hub-wrap">
+        <div class="hub-bar">
+            <div class="hub-col">
+            <div class="tab" onclick="tab(0)">🏠 Dashboard</div>
+            <div class="tab" onclick="tab(1)">📋 Pedidos</div>
+            <div class="tab" onclick="tab(2)">📦 Productos</div>
+            <div class="tab" onclick="tab(5)">👥 Clientes</div>
+            <div class="tab" onclick="tab(3)">🚚 Envío</div>
+            <div class="tab" onclick="tab(4)">🎟️ Cupones</div>
+            </div>
+            <div class="hub-logo" onclick="tab(-1)" title="Pantalla limpia"><img src="images/logo-verex.webp" alt="VEREX — La expresión de tu mejor versión"></div>
+            <div class="hub-col">
+            <div class="tab" onclick="tab(6);cargarConsignacion()">👤 Vendedores</div>
+            <div class="tab" onclick="abrirModalCatalogo('cliente')">📋 Catálogo Cliente</div>
+            <div class="tab" onclick="abrirModalCatalogo('afiliado')">🤝 Catálogo Afiliado</div>
+            <div class="tab" onclick="tab(7);cargarVentasAdmin();cargarCierresMensuales()">💰 Ventas</div>
+            <div class="tab" onclick="tab(8);cargarPanelLinks()">🔗 Links</div>
+            </div>
+        </div>
     </div>
 
     <!-- TAB 0: DASHBOARD -->
-    <div class="tab-content active" id="tab-0">
+    <div class="tab-content" id="tab-0">
         <div class="card">
             <h2>🏠 Control de Tienda</h2>
             <div class="tog-wrap">
@@ -1771,7 +1788,19 @@ function tab(i) {
         const id = parseInt(c.id.replace("tab-",""));
         c.classList.toggle("active", i === id);
     });
+    // i = -1 → pantalla limpia (solo logo y botones, centrados en vertical)
+    const hw = document.getElementById("hub-wrap");
+    if (hw) {
+        const hd = document.querySelector("header");
+        if (hd) document.documentElement.style.setProperty("--hh", hd.offsetHeight + "px");
+        hw.classList.toggle("limpio", i === -1);
+    }
 }
+// Clic sobre la pestaña ya abierta = cerrarla (pantalla limpia)
+document.getElementById("hub-wrap")?.addEventListener("click", e => {
+    const t = e.target.closest(".tab");
+    if (t && t.classList.contains("active")) { e.stopPropagation(); tab(-1); }
+}, true);
 
 // ═════════════════════════════════════════════
 //  TOAST
