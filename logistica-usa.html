@@ -381,10 +381,10 @@ function renderBoard(){
     const hoy = new Date();
     const esteMes = PEDIDOS.filter(o => {
         const f = new Date(o.fecha);
-        return f.getMonth() === hoy.getMonth() && f.getFullYear() === hoy.getFullYear();
+        return f.getMonth() === hoy.getMonth() && f.getFullYear() === hoy.getFullYear() && !o.reembolsado && !o.cancelado;
     });
     document.getElementById("stat-mes").textContent = esteMes.length;
-    const ingresos = PEDIDOS.filter(o => o.pagadoUSA).reduce((s,o) => s + (parseFloat(o.total)||0), 0);
+    const ingresos = PEDIDOS.filter(o => o.pagadoUSA && !o.reembolsado).reduce((s,o) => s + (parseFloat(o.total)||0), 0);
     document.getElementById("stat-ingresos").textContent = money(ingresos);
 }
 
