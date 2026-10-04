@@ -452,6 +452,7 @@ function abrirPedido(id){
             <button class="btn ghost" onclick="guardarNotas('${esc(o.id)}')">Guardar</button>
             ${o.reembolsable ? `<button class="btn ghost" style="color:#b42318;" onclick="reembolsarPedido('${esc(o.id)}')">Reembolsar pago (PayPal)</button>` : ""}
             ${(etapa === "pendiente" || etapa === "preparando") && !o.reembolsable ? `<button class="btn ghost" style="color:#b42318;" onclick="cancelarPedido('${esc(o.id)}')">Cancelar pedido</button>` : ""}
+            ${etapa === "cancelado" && o.pagadoUSA && !o.reembolsado && !o.reembolsable ? `<button class="btn ghost" style="color:#b42318;" onclick="marcarReembolsadoAparte('${esc(o.id)}')">Marcar como reembolsado (hecho aparte)</button>` : ""}
             ${etapa === "enviado" || etapa === "entregado" ? `<div style="font-size:11px;color:var(--ink-soft);margin-top:6px;">Pedido ya enviado: no se reembolsa ni se cancela desde aquí.</div>` : ""}
         </div>
     `;
@@ -546,6 +547,15 @@ async function reembolsarPedido(id){
             return;
         }
     }catch(_){ alert("⚠️ No se pudo conectar con el servidor"); return; }
+    await cargarPedidos();
+    cerrarDrawer();
+}
+// Solo deja constancia de un reembolso hecho fuera del panel (PayPal.me, Wompi...): no mueve dinero ni stock.
+async function marcarReembolsadoAparte(id){
+    if(!confirm("¿Confirmas que ya devolviste el dinero a este cliente por fuera del panel (PayPal.me, Wompi, etc.)?\n\nEsto solo quita el aviso y lo saca de los ingresos: no devuelve dinero ni toca el stock.")) return;
+    const o = PEDIDOS.find(x => x.id === id);
+    if(!o) return;
+    if(!await llamarLeads(o, "ACTUALIZAR_LEAD_USA", { reembolsadoManual: true })) return;
     await cargarPedidos();
     cerrarDrawer();
 }
