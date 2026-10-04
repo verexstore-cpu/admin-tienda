@@ -183,6 +183,15 @@ body{
 .dsec-row span:first-child{ color:var(--ink-soft); }
 
 .items{ display:flex; flex-direction:column; gap:6px; }
+.prod-card{ display:flex; gap:14px; align-items:center; background:var(--ground); border:1px solid var(--line); border-radius:14px; padding:10px; margin-bottom:10px; }
+.prod-foto{ width:170px; height:170px; border-radius:12px; object-fit:cover; flex-shrink:0; background:#fff; border:1px solid var(--line); cursor:zoom-in; }
+.prod-foto-ph{ display:flex; align-items:center; justify-content:center; font-size:56px; cursor:default; }
+.prod-info{ flex:1; min-width:0; }
+.prod-nombre{ font-size:17px; font-weight:700; line-height:1.25; }
+.prod-codigo{ display:inline-block; margin-top:6px; font-size:14px; font-weight:700; background:var(--accent-wash); color:var(--accent-ink); border-radius:7px; padding:3px 9px; }
+.prod-cant{ margin-top:8px; font-size:14px; color:var(--ink-soft); }
+.prod-cant b{ font-size:26px; color:var(--success); }
+.prod-precio{ margin-top:4px; font-size:13px; color:var(--ink-soft); }
 .item-row{ display:flex; align-items:center; justify-content:space-between; font-size:14px; font-weight:600; gap:12px; }
 .item-name{ flex:1; }
 .item-foto{
@@ -284,7 +293,7 @@ function fotoMini(url){
 function fotoGrande(url){
     if(!url) return "";
     if(!url.includes("imagekit.io")) return url;
-    return url.includes("?tr=") ? url + ",w-260,h-260,e-sharpen" : url + "?tr=w-260,h-260,e-sharpen";
+    return url.includes("?tr=") ? url + ",w-400,h-400,e-sharpen" : url + "?tr=w-400,h-400,e-sharpen";
 }
 function ampliarFoto(url){
     let ov = document.getElementById("foto-zoom");
@@ -454,10 +463,14 @@ function abrirPedido(id){
         <div class="dsec">
             <div class="dsec-label">Productos</div>
             <div class="items">
-                ${o.items.map(it => `<div class="item-row">
-                    ${it.foto ? `<img class="item-foto" src="${esc(fotoGrande(it.foto))}" alt="" loading="lazy" title="Clic para ampliar" onclick="ampliarFoto('${esc(it.foto)}')" onerror="this.remove()">` : `<span class="item-foto item-foto-ph">💍</span>`}
-                    <span class="item-name">${esc(it.nombre)}${it.qty>1?` ×${it.qty}`:""}${it.codigo ? ` <span class="num" style="font-size:11px;color:var(--ink-soft);">[${esc(it.codigo)}]</span>` : ""}</span>
-                    <span class="num">${money(it.precio*it.qty)}</span>
+                ${o.items.map(it => `<div class="prod-card">
+                    ${it.foto ? `<img class="prod-foto" src="${esc(fotoGrande(it.foto))}" alt="" loading="lazy" title="Clic para ampliar" onclick="ampliarFoto('${esc(it.foto)}')" onerror="this.outerHTML='<div class=\\'prod-foto prod-foto-ph\\'>💍</div>'">` : `<div class="prod-foto prod-foto-ph">💍</div>`}
+                    <div class="prod-info">
+                        <div class="prod-nombre">${esc(it.nombre)}</div>
+                        ${it.codigo ? `<div class="prod-codigo num">${esc(it.codigo)}</div>` : ""}
+                        <div class="prod-cant">Cantidad: <b>×${it.qty}</b></div>
+                        <div class="prod-precio num">${money(it.precio*it.qty)}</div>
+                    </div>
                 </div>`).join("")}
             </div>
             <div class="dsec-row" style="margin-top:6px;"><span>Envío (DHL)</span><span class="num">${money(o.envio)}</span></div>
