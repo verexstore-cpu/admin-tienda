@@ -852,7 +852,7 @@
             const availD = p.sizesD?.length ? p.sizesD : null;
             const availH = p.sizesH?.length ? p.sizesH : null;
 
-            // Sin tallas registradas: ya NO se deja pasar sin talla (no se sabría qué enviar) — se piden con la lista general.
+            // Sin tallas registradas: no se deja pasar sin talla y tampoco se inventa una lista: se avisa que no hay tallas disponibles.
             const sinRegistro = !availD && !availH;
 
             _szIdx=i; _szD=""; _szH=""; _szParMode=true; _szNoTalla=false;
@@ -863,9 +863,7 @@
             if(availD || sinRegistro){
                 document.getElementById("sz-sec-d").style.display = "";
                 document.getElementById("sz-lbl-d").textContent = "Talla dama";
-                document.getElementById("sz-grid-d").innerHTML = (availD || SIZES).map(sz=>
-                    `<button class="sz-btn" onclick="selSz('D','${sz}',this)">T${sz}</button>`
-                ).join("");
+                gridTallas('D', availD || []);
             } else {
                 document.getElementById("sz-sec-d").style.display = "none";
                 _szD = "N/A";
@@ -873,9 +871,7 @@
 
             if(availH || sinRegistro){
                 document.getElementById("sz-sec-h").style.display = "";
-                document.getElementById("sz-grid-h").innerHTML = (availH || SIZES).map(sz=>
-                    `<button class="sz-btn" onclick="selSz('H','${sz}',this)">T${sz}</button>`
-                ).join("");
+                gridTallas('H', availH || []);
             } else {
                 document.getElementById("sz-sec-h").style.display = "none";
                 _szH = "N/A";
@@ -902,7 +898,7 @@
 
         // Solo las tallas que de verdad hay: si la talla de la tarjeta se agotó, las otras disponibles; si no, las de la tarjeta.
         const otrasTallas = (p.tallasDisponibles || []).map(x => String(x).replace(/^T/i, "")).filter(Boolean);
-        const availD = otrasTallas.length ? otrasTallas : (p.sizes?.length ? p.sizes : SIZES);
+        const availD = otrasTallas.length ? otrasTallas : (p.sizes || []);
 
         document.getElementById("sz-title").textContent = p.n;
         document.getElementById("sz-sub").textContent   = "¿Qué talla necesitas?";
@@ -910,12 +906,18 @@
         document.getElementById("sz-lbl-d").textContent = "Tu talla";
         document.getElementById("sz-sec-h").style.display = "none";
 
-        document.getElementById("sz-grid-d").innerHTML = availD.map(sz=>
-            `<button class="sz-btn" onclick="selSz('D','${sz}',this)">T${sz}</button>`
-        ).join("");
+        gridTallas('D', availD);
 
         actualizarBotonSz();
         document.getElementById("sz-overlay").classList.add("open");
+    }
+
+    // Cuadros de talla: SOLO las tallas disponibles de la tarjeta (nunca una lista general). Sin tallas → aviso y no se puede confirmar.
+    function gridTallas(gen, tallas){
+        const el = document.getElementById(gen === "D" ? "sz-grid-d" : "sz-grid-h");
+        el.innerHTML = tallas.length
+            ? tallas.map(sz => `<button class="sz-btn" onclick="selSz('${gen}','${sz}',this)">T${sz}</button>`).join("")
+            : `<div style="font-size:12px;font-weight:600;color:#b42318;">Sin tallas disponibles por ahora. Escríbenos por WhatsApp y te ayudamos.</div>`;
     }
 
     function selSz(gen, sz, el){
