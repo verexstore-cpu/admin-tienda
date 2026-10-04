@@ -183,10 +183,10 @@ body{
 .dsec-row span:first-child{ color:var(--ink-soft); }
 
 .items{ display:flex; flex-direction:column; gap:6px; }
-.item-row{ display:flex; align-items:center; justify-content:space-between; font-size:12.5px; gap:8px; }
+.item-row{ display:flex; align-items:center; justify-content:space-between; font-size:14px; font-weight:600; gap:12px; }
 .item-name{ flex:1; }
 .item-foto{
-  width:34px; height:34px; border-radius:7px; object-fit:cover; flex-shrink:0;
+  width:84px; height:84px; border-radius:10px; cursor:zoom-in; object-fit:cover; flex-shrink:0;
   background:var(--ground); border:1px solid var(--line);
 }
 .item-foto-ph{ display:flex; align-items:center; justify-content:center; font-size:15px; }
@@ -280,6 +280,23 @@ function fotoMini(url){
     if(!url) return "";
     if(!url.includes("imagekit.io")) return url;
     return url.includes("?tr=") ? url + ",w-100,h-100,e-sharpen" : url + "?tr=w-100,h-100,e-sharpen";
+}
+function fotoGrande(url){
+    if(!url) return "";
+    if(!url.includes("imagekit.io")) return url;
+    return url.includes("?tr=") ? url + ",w-260,h-260,e-sharpen" : url + "?tr=w-260,h-260,e-sharpen";
+}
+function ampliarFoto(url){
+    let ov = document.getElementById("foto-zoom");
+    if(!ov){
+        ov = document.createElement("div"); ov.id = "foto-zoom";
+        ov.style.cssText = "position:fixed;inset:0;background:rgba(0,0,0,.85);z-index:50;display:none;align-items:center;justify-content:center;cursor:zoom-out;";
+        ov.onclick = () => { ov.style.display = "none"; };
+        ov.innerHTML = '<img style="max-width:92vw;max-height:92vh;border-radius:12px;background:#fff;">';
+        document.body.appendChild(ov);
+    }
+    ov.querySelector("img").src = url.includes("imagekit.io") ? (url.includes("?tr=") ? url + ",w-1400" : url + "?tr=w-1400") : url;
+    ov.style.display = "flex";
 }
 const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
 
@@ -438,7 +455,7 @@ function abrirPedido(id){
             <div class="dsec-label">Productos</div>
             <div class="items">
                 ${o.items.map(it => `<div class="item-row">
-                    ${it.foto ? `<img class="item-foto" src="${esc(fotoMini(it.foto))}" alt="" loading="lazy" onerror="this.remove()">` : `<span class="item-foto item-foto-ph">💍</span>`}
+                    ${it.foto ? `<img class="item-foto" src="${esc(fotoGrande(it.foto))}" alt="" loading="lazy" title="Clic para ampliar" onclick="ampliarFoto('${esc(it.foto)}')" onerror="this.remove()">` : `<span class="item-foto item-foto-ph">💍</span>`}
                     <span class="item-name">${esc(it.nombre)}${it.qty>1?` ×${it.qty}`:""}${it.codigo ? ` <span class="num" style="font-size:11px;color:var(--ink-soft);">[${esc(it.codigo)}]</span>` : ""}</span>
                     <span class="num">${money(it.precio*it.qty)}</span>
                 </div>`).join("")}
