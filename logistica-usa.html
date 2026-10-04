@@ -91,8 +91,8 @@ body{
 .stat .stat-ojo{ position:absolute; top:10px; right:12px; font-size:14px; opacity:.45; }
 .stat:hover .stat-ojo{ opacity:.9; }
 .stat.oculto .stat-value{ filter:blur(9px); }
-.stat.warn .stat-value{ color:var(--pending); }
-.stat.transit .stat-value{ color:var(--transit); }
+.stat.warn .stat-value{ color:color-mix(in srgb,#C9A84C 70%,#000); }
+.stat.transit .stat-value{ color:#4a90d9; }
 
 /* ── Board ───────────────────────────────────────────── */
 .board{
@@ -134,23 +134,28 @@ body{
   font-size:10.5px; font-weight:600; border-radius:6px; padding:2.5px 7px;
   letter-spacing:.2px; white-space:nowrap;
 }
-.chip.pending{ background:var(--pending-wash); color:var(--pending); }
-.chip.transit{ background:var(--transit-wash); color:var(--transit); }
-.chip.success{ background:var(--success-wash); color:var(--success); }
-.chip.prep{ background:var(--prep-wash); color:var(--prep); }
+.chip.pending{ background:color-mix(in srgb,#C9A84C 20%,#fff); color:color-mix(in srgb,#C9A84C 55%,#000); }
+.chip.transit{ background:color-mix(in srgb,#4a90d9 16%,#fff); color:color-mix(in srgb,#4a90d9 70%,#000); }
+.chip.success{ background:color-mix(in srgb,#27ae60 16%,#fff); color:color-mix(in srgb,#27ae60 75%,#000); }
+.chip.prep{ background:color-mix(in srgb,#9b59b6 16%,#fff); color:color-mix(in srgb,#9b59b6 80%,#000); }
 .chip.mono{ font-family:"IBM Plex Mono",monospace; }
 .chip.cancel{ background:#e5e5e5; color:#555; }
 /* Color por estado: encabezado de columna, borde de las tarjetas y barra superior del detalle */
-.col-pendiente{ --c:var(--pending); --cw:var(--pending-wash); }
-.col-preparando{ --c:var(--prep); --cw:var(--prep-wash); }
-.col-enviado{ --c:var(--transit); --cw:var(--transit-wash); }
-.col-entregado{ --c:var(--success); --cw:var(--success-wash); }
+.col-pendiente{ --c:#C9A84C; --cw:color-mix(in srgb,#C9A84C 18%,#fff); --ct:color-mix(in srgb,#C9A84C 55%,#000); }
+.col-preparando{ --c:#9b59b6; --cw:color-mix(in srgb,#9b59b6 16%,#fff); --ct:color-mix(in srgb,#9b59b6 80%,#000); }
+.col-enviado{ --c:#4a90d9; --cw:color-mix(in srgb,#4a90d9 16%,#fff); --ct:color-mix(in srgb,#4a90d9 70%,#000); }
+.col-entregado{ --c:#27ae60; --cw:color-mix(in srgb,#27ae60 16%,#fff); --ct:color-mix(in srgb,#27ae60 75%,#000); }
 .col-cancelado{ --c:var(--cancel); --cw:var(--cancel-wash); }
 .column[class*="col-"]{ background:color-mix(in srgb, var(--cw) 55%, var(--ground)); border:1px solid color-mix(in srgb, var(--c) 25%, transparent); border-radius:14px; padding:10px; }
-.column-head{ background:var(--cw); border-top:3px solid var(--c); border-radius:9px; padding:9px 10px !important; margin-bottom:10px; }
+.column-head{ position:relative; overflow:hidden; background:#111; color:#e8e8e8; border:1px solid color-mix(in srgb,var(--c) 45%,#111); border-radius:12px; padding:13px 14px 13px 18px !important; margin-bottom:10px; font-size:14px; box-shadow:0 2px 10px color-mix(in srgb,var(--c) 30%,transparent); }
+.column-head::before{ content:''; position:absolute; inset:0; background:linear-gradient(135deg,var(--c),transparent 62%); opacity:.30; pointer-events:none; }
+.column-head::after{ content:''; position:absolute; left:0; top:12%; bottom:12%; width:4px; border-radius:0 4px 4px 0; background:var(--c); box-shadow:0 0 10px var(--c); }
+.column-head > *{ position:relative; z-index:1; }
+.column-head .count{ background:rgba(255,255,255,.12); border-color:rgba(255,255,255,.2); color:#fff; }
+.column-head .dot{ background:var(--c) !important; box-shadow:0 0 8px var(--c); }
 .card[class*="col-"]{ border-left:5px solid var(--c); }
 .drawer[class*="col-"]{ border-top:6px solid var(--c); }
-.stage-badge{ display:inline-block; font-size:11px; font-weight:700; padding:3px 9px; border-radius:6px; background:var(--cw); color:var(--c); margin-bottom:6px; }
+.stage-badge{ display:inline-block; font-size:11px; font-weight:700; padding:3px 9px; border-radius:6px; background:var(--cw); color:var(--ct,var(--c)); margin-bottom:6px; }
 .cancelados summary{ color:var(--cancel); }
 .chip.alerta{ background:#fde2e2; color:#b42318; }
 .cancelados{ margin-top:22px; }
