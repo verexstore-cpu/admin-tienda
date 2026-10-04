@@ -91,8 +91,18 @@ body{
 .stat .stat-ojo{ position:absolute; top:10px; right:12px; font-size:14px; opacity:.45; }
 .stat:hover .stat-ojo{ opacity:.9; }
 .stat.oculto .stat-value{ filter:blur(9px); }
-.stat.warn .stat-value{ color:color-mix(in srgb,#C9A84C 70%,#000); }
-.stat.transit .stat-value{ color:#4a90d9; }
+/* Mismo estilo que los botones de cada vendedor del Hub: oscuro, brillo del color y barra lateral con luz */
+.stat{ position:relative; overflow:hidden; background:#111; border:1px solid color-mix(in srgb,var(--sc) 45%,#111); box-shadow:0 2px 10px color-mix(in srgb,var(--sc) 28%,transparent); padding-left:20px; }
+.stat::before{ content:''; position:absolute; inset:0; background:linear-gradient(135deg,var(--sc),transparent 62%); opacity:.28; pointer-events:none; }
+.stat::after{ content:''; position:absolute; left:0; top:12%; bottom:12%; width:4px; border-radius:0 4px 4px 0; background:var(--sc); box-shadow:0 0 10px var(--sc); }
+.stat > *{ position:relative; z-index:1; }
+.stat .stat-label{ color:#bdbdbd; }
+.stat .stat-value, .stat.warn .stat-value, .stat.transit .stat-value{ color:#fff; }
+.stat[data-stat=mes]{ --sc:#cd8c52; }
+.stat[data-stat=ingresos]{ --sc:#27ae60; }
+.stat[data-stat=pend]{ --sc:#C9A84C; }
+.stat[data-stat=transit]{ --sc:#4a90d9; }
+.stat .stat-ojo{ opacity:.7; }
 
 /* ── Board ───────────────────────────────────────────── */
 .board{
