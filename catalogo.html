@@ -852,26 +852,18 @@
             const availD = p.sizesD?.length ? p.sizesD : null;
             const availH = p.sizesH?.length ? p.sizesH : null;
 
-            if(!availD && !availH){
-                _szIdx=i; _szD="N/A"; _szH="N/A"; _szParMode=true; _szNoTalla=true;
-                document.getElementById("sz-title").textContent = p.n;
-                document.getElementById("sz-sub").textContent   = "¿Qué tallas necesita para dama y caballero?";
-                document.getElementById("sz-sec-d").style.display = "none";
-                document.getElementById("sz-sec-h").style.display = "none";
-                actualizarBotonSz();
-                document.getElementById("sz-overlay").classList.add("open");
-                return;
-            }
+            // Sin tallas registradas: ya NO se deja pasar sin talla (no se sabría qué enviar) — se piden con la lista general.
+            const sinRegistro = !availD && !availH;
 
             _szIdx=i; _szD=""; _szH=""; _szParMode=true; _szNoTalla=false;
 
             document.getElementById("sz-title").textContent = p.n;
             document.getElementById("sz-sub").textContent   = "¿Qué tallas necesitas?";
 
-            if(availD){
+            if(availD || sinRegistro){
                 document.getElementById("sz-sec-d").style.display = "";
                 document.getElementById("sz-lbl-d").textContent = "Talla dama";
-                document.getElementById("sz-grid-d").innerHTML = availD.map(sz=>
+                document.getElementById("sz-grid-d").innerHTML = (availD || SIZES).map(sz=>
                     `<button class="sz-btn" onclick="selSz('D','${sz}',this)">T${sz}</button>`
                 ).join("");
             } else {
@@ -879,9 +871,9 @@
                 _szD = "N/A";
             }
 
-            if(availH){
+            if(availH || sinRegistro){
                 document.getElementById("sz-sec-h").style.display = "";
-                document.getElementById("sz-grid-h").innerHTML = availH.map(sz=>
+                document.getElementById("sz-grid-h").innerHTML = (availH || SIZES).map(sz=>
                     `<button class="sz-btn" onclick="selSz('H','${sz}',this)">T${sz}</button>`
                 ).join("");
             } else {
@@ -894,7 +886,8 @@
             return;
         }
 
-        if(p.cat && p.cat !== "AN"){
+        const tieneTallasReg = !!(p.sizes?.length || p.sizesD?.length || p.sizesH?.length);
+        if(p.cat && p.cat !== "AN" && p.cat !== "CJ" && !tieneTallasReg){
             _szIdx=i; _szD="N/A"; _szH="N/A"; _szParMode=false; _szNoTalla=true;
             document.getElementById("sz-title").textContent = p.n;
             document.getElementById("sz-sub").textContent   = "Confirma tu pedido";
@@ -907,7 +900,9 @@
 
         _szIdx=i; _szD=""; _szH=""; _szParMode=false; _szNoTalla=false;
 
-        const availD = (p.sizes?.length ? p.sizes : SIZES);
+        // Solo las tallas que de verdad hay: si la talla de la tarjeta se agotó, las otras disponibles; si no, las de la tarjeta.
+        const otrasTallas = (p.tallasDisponibles || []).map(x => String(x).replace(/^T/i, "")).filter(Boolean);
+        const availD = otrasTallas.length ? otrasTallas : (p.sizes?.length ? p.sizes : SIZES);
 
         document.getElementById("sz-title").textContent = p.n;
         document.getElementById("sz-sub").textContent   = "¿Qué talla necesitas?";
@@ -986,6 +981,8 @@
 
     function confirmarTalla(){
         const p = _prods[_szIdx];
+        // Defensa extra: nunca se confirma un anillo/argolla sin su talla (aunque el botón se habilite por error)
+        if(!_szNoTalla && !(_szParMode ? (_szD && _szH) : _szD)){ miniToast("Elige la talla primero"); return; }
 
         if(_szModo === "carrito"){
             const { label, precio } = _labelYPrecioCarrito(p);
