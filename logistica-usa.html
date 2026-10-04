@@ -246,6 +246,11 @@ body{
     <div class="stat transit"><span class="stat-label">En tránsito</span><span class="stat-value num" id="stat-transit">—</span></div>
   </section>
 
+  <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin:-8px 0 18px;">
+    <button class="btn ghost" style="flex:none;" onclick="crearProductoPrueba()">🧪 Crear/reiniciar producto de prueba (W78RE)</button>
+    <button class="btn ghost" style="flex:none;color:#b42318;" onclick="limpiarPedidosPrueba()">🧹 Limpiar pedidos de prueba</button>
+    <span style="font-size:11px;color:var(--ink-soft);">Solo con PayPal en Sandbox. El producto de prueba tiene su propio stock y no cuenta en ingresos. Se pide en el catálogo USA con <b>?prueba=1</b>.</span>
+  </div>
   <div id="estado-msg" class="estado-msg" hidden></div>
   <section class="board" id="board"></section>
   <details class="cancelados" id="cancelados" hidden><summary id="cancelados-sum"></summary><div style="margin:6px 0;"><button class="btn ghost" id="btn-elim-canc" style="flex:none;color:#b42318;" onclick="eliminarCancelados()">🗑️ Eliminar cancelados</button><span id="elim-canc-info" style="font-size:11px;color:var(--ink-soft);margin-left:8px;">Solo los que no tienen dinero pendiente por devolver.</span></div><div class="cards" id="cancelados-cards" style="margin-top:8px;"></div></details>
@@ -339,6 +344,7 @@ function agruparPedidos(leads){
             // Todos los productos cancelados y sin pagar/entregar = pedido cancelado (reserva vencida o cancelado a mano)
             // (un pedido pagado con tarjeta sin stock sigue visible en el tablero para resolverlo; uno cancelado a mano, aunque ya estuviera pagado, va a Cancelados)
             cancelado: leadsGrupo.every(l => l.estado === "cancelado") && !first.entregadoUSA && !leadsGrupo.some(l => l.pagadoSinStock),
+            esPrueba: leadsGrupo.some(l => l.esPrueba === true),   // pedido del producto de prueba: no cuenta en ingresos
             pagadoUSA: !!first.pagadoUSA,
             trackingDHL: first.trackingDHL || "",
             notasUSA: first.notasUSA || "",
@@ -374,6 +380,7 @@ function renderBoard(){
                         ${o.numero ? `<div class="card-place mono" style="font-weight:600;">${esc(o.numero)}</div>` : ""}
                         <div class="card-foot">
                             ${chipForStage(o)}
+                            ${o.esPrueba ? `<span class="chip alerta">🧪 PRUEBA</span>` : ""}
                             ${o.pagadoSinStock ? `<span class="chip alerta">Pagado sin stock</span>` : ""}
                             ${st.key === "pendiente" ? `<span class="chip">${o.metodoPago === "wompi" ? "Tarjeta" : "PayPal"}</span>` : ""}
                             ${st.key === "pendiente" && dias >= 2 ? `<span class="chip days">${dias} días</span>` : ""}
@@ -390,7 +397,7 @@ function renderBoard(){
     document.getElementById("cancelados-sum").textContent = `Cancelados (${canc.length})`;
     document.getElementById("cancelados-cards").innerHTML = canc.map(o => `<button class="card col-cancelado" onclick="abrirPedido('${esc(o.id)}')">
         <div class="card-top"><span class="card-name">${esc(o.nombre)}</span><span class="card-total num">${money(o.total)}</span></div>
-        <div class="card-foot"><span class="chip cancel">Cancelado</span>${o.reembolsado ? `<span class="chip">Reembolsado</span>` : o.pagadoUSA ? `<span class="chip alerta">Ya pagado: reembolsar</span>` : ""}<span class="chip">${diasDesde(o.fecha)} días</span></div></button>`).join("");
+        <div class="card-foot"><span class="chip cancel">Cancelado</span>${o.esPrueba ? `<span class="chip alerta">🧪 PRUEBA</span>` : ""}${o.reembolsado ? `<span class="chip">Reembolsado</span>` : o.pagadoUSA ? `<span class="chip alerta">Ya pagado: reembolsar</span>` : ""}<span class="chip">${diasDesde(o.fecha)} días</span></div></button>`).join("");
 
     document.getElementById("stat-pend").textContent = PEDIDOS.filter(o => etapaDe(o)==="pendiente").length;
     document.getElementById("stat-transit").textContent = PEDIDOS.filter(o => etapaDe(o)==="enviado").length;
@@ -398,10 +405,10 @@ function renderBoard(){
     const hoy = new Date();
     const esteMes = PEDIDOS.filter(o => {
         const f = new Date(o.fecha);
-        return f.getMonth() === hoy.getMonth() && f.getFullYear() === hoy.getFullYear() && !o.reembolsado && !o.cancelado;
+        return f.getMonth() === hoy.getMonth() && f.getFullYear() === hoy.getFullYear() && !o.reembolsado && !o.cancelado && !o.esPrueba;
     });
     document.getElementById("stat-mes").textContent = esteMes.length;
-    const ingresos = PEDIDOS.filter(o => o.pagadoUSA && !o.reembolsado && !o.cancelado).reduce((s,o) => s + (parseFloat(o.total)||0), 0);
+    const ingresos = PEDIDOS.filter(o => o.pagadoUSA && !o.reembolsado && !o.cancelado && !o.esPrueba).reduce((s,o) => s + (parseFloat(o.total)||0), 0);
     document.getElementById("stat-ingresos").textContent = money(ingresos);
 }
 
@@ -416,7 +423,7 @@ function abrirPedido(id){
     const NOMBRE_ETAPA = { pendiente:"Pago pendiente", preparando:"Pagado · Preparando", enviado:"Enviado", entregado:"Entregado", cancelado:"Cancelado" };
     drawer.innerHTML = `
         <button class="drawer-close" onclick="cerrarDrawer()">Cerrar ✕</button>
-        <span class="stage-badge">${NOMBRE_ETAPA[etapa]}</span>
+        <span class="stage-badge">${NOMBRE_ETAPA[etapa]}</span>${o.esPrueba ? ` <span class="stage-badge" style="background:#fde2e2;color:#b42318;">🧪 PEDIDO DE PRUEBA</span>` : ""}
         <h2>${esc(o.nombre)}</h2>
         <div class="sub">${o.numero ? `<b>${esc(o.numero)}</b> · ` : ""}${esc(o.ciudad)}${o.ciudad && o.estado ? ", " : ""}${esc(o.estado)} · ${new Date(o.fecha).toLocaleDateString("es-CO",{day:"numeric",month:"short",year:"numeric"})}</div>
 
@@ -589,6 +596,24 @@ async function eliminarCancelados(){
         const r = await apiUSA("ELIMINAR_CANCELADOS_USA", { pedidoIds: lista.map(o => o.id) });
         if(!r || r.ok === false){ alert("⚠️ " + (r?.error || "El servidor no aceptó el cambio")); return; }
         alert(`✅ Eliminados: ${r.borrados}` + (r.omitidos?.length ? ` · Omitidos: ${r.omitidos.length}` : ""));
+    }catch(_){ alert("⚠️ No se pudo conectar con el servidor"); return; }
+    await cargarPedidos();
+}
+const ERR_PRUEBA = { solo_en_sandbox: "Solo funciona con PayPal en Sandbox (ahora está en cobros reales).", codigo_en_uso_por_producto_real: "Ese código ya lo usa un producto real; no se toca.", codigo_invalido: "Código inválido." };
+async function crearProductoPrueba(){
+    if(!confirm("¿Crear (o reiniciar) el producto de prueba W78RE con 50 unidades propias?\n\nNo toca ningún producto real.")) return;
+    try{
+        const r = await apiUSA("CREAR_PRODUCTO_PRUEBA", { codigo: "W78RE" });
+        if(!r || r.ok === false){ alert("⚠️ " + (ERR_PRUEBA[r?.error] || r?.error || "El servidor no aceptó el cambio")); return; }
+        alert(`✅ Producto ${r.codigo} listo con ${r.cantidad} unidades.\n\nPídelo en: https://us.verexstore.com/?prueba=1`);
+    }catch(_){ alert("⚠️ No se pudo conectar con el servidor"); }
+}
+async function limpiarPedidosPrueba(){
+    if(!confirm("¿Borrar TODOS los pedidos de prueba y reiniciar el stock del producto de prueba?\n\nNo toca productos ni pedidos reales. No se puede deshacer.")) return;
+    try{
+        const r = await apiUSA("LIMPIAR_PEDIDOS_PRUEBA", {});
+        if(!r || r.ok === false){ alert("⚠️ " + (ERR_PRUEBA[r?.error] || r?.error || "El servidor no aceptó el cambio")); return; }
+        alert(`✅ Pedidos de prueba borrados: ${r.pedidosBorrados}`);
     }catch(_){ alert("⚠️ No se pudo conectar con el servidor"); return; }
     await cargarPedidos();
 }
