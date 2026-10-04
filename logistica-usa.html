@@ -22,6 +22,10 @@
   --transit-wash:#e4eef5;
   --success:#2f7d52;
   --success-wash:#e4f1e8;
+  --prep:#6d4aa8;
+  --prep-wash:#ece5f7;
+  --cancel:#6b6b6b;
+  --cancel-wash:#ececec;
   --attention:#a8432f;
   --attention-wash:#f7e6e1;
   --shadow: 0 1px 2px rgba(36,31,22,.06), 0 6px 20px -10px rgba(36,31,22,.18);
@@ -103,7 +107,8 @@ body{
 .dot.pending{ background:var(--pending); }
 .dot.transit{ background:var(--transit); }
 .dot.success{ background:var(--success); }
-.dot.prep{ background:var(--accent); }
+.dot.prep{ background:var(--prep); }
+.dot.cancel{ background:var(--cancel); }
 
 .cards{ display:flex; flex-direction:column; gap:10px; }
 .vacio{ font-size:12px; color:var(--ink-soft); padding:8px 2px; }
@@ -128,9 +133,20 @@ body{
 .chip.pending{ background:var(--pending-wash); color:var(--pending); }
 .chip.transit{ background:var(--transit-wash); color:var(--transit); }
 .chip.success{ background:var(--success-wash); color:var(--success); }
-.chip.prep{ background:var(--accent-wash); color:var(--accent-ink); }
+.chip.prep{ background:var(--prep-wash); color:var(--prep); }
 .chip.mono{ font-family:"IBM Plex Mono",monospace; }
 .chip.cancel{ background:#e5e5e5; color:#555; }
+/* Color por estado: encabezado de columna, borde de las tarjetas y barra superior del detalle */
+.col-pendiente{ --c:var(--pending); --cw:var(--pending-wash); }
+.col-preparando{ --c:var(--prep); --cw:var(--prep-wash); }
+.col-enviado{ --c:var(--transit); --cw:var(--transit-wash); }
+.col-entregado{ --c:var(--success); --cw:var(--success-wash); }
+.col-cancelado{ --c:var(--cancel); --cw:var(--cancel-wash); }
+.column-head{ background:var(--cw); border-top:3px solid var(--c); border-radius:9px; padding:9px 10px !important; margin-bottom:10px; }
+.card[class*="col-"]{ border-left:5px solid var(--c); }
+.drawer[class*="col-"]{ border-top:6px solid var(--c); }
+.stage-badge{ display:inline-block; font-size:11px; font-weight:700; padding:3px 9px; border-radius:6px; background:var(--cw); color:var(--c); margin-bottom:6px; }
+.cancelados summary{ color:var(--cancel); }
 .chip.alerta{ background:#fde2e2; color:#b42318; }
 .cancelados{ margin-top:22px; }
 .cancelados summary{ cursor:pointer; font-weight:600; padding:8px 0; color:var(--ink-soft); }
@@ -272,9 +288,9 @@ function sesionValidaHoy(){
 function etapaDe(o){
     if(o.cancelado) return "cancelado";
     if(o.entregadoUSA) return "entregado";
+    if(!o.pagadoUSA) return "pendiente";   // un tracking tecleado en un pedido sin pagar no lo convierte en "Enviado"
     if(o.trackingDHL) return "enviado";
-    if(o.pagadoUSA) return "preparando";
-    return "pendiente";
+    return "preparando";
 }
 
 function diasDesde(fechaISO){
@@ -343,12 +359,12 @@ function renderBoard(){
     const board = document.getElementById("board");
     board.innerHTML = STAGES.map(st => {
         const enEtapa = PEDIDOS.filter(o => etapaDe(o) === st.key);
-        return `<div class="column">
+        return `<div class="column col-${st.key}">
             <div class="column-head"><span class="dot ${st.dot}"></span>${st.label}<span class="count">${enEtapa.length}</span></div>
             <div class="cards">
                 ${enEtapa.map(o => {
                     const dias = diasDesde(o.fecha);
-                    return `<button class="card" onclick="abrirPedido('${esc(o.id)}')">
+                    return `<button class="card col-${st.key}" onclick="abrirPedido('${esc(o.id)}')">
                         <div class="card-top">
                             <span class="card-name">${esc(o.nombre)}</span>
                             <span class="card-total num">${money(o.total)}</span>
@@ -371,7 +387,7 @@ function renderBoard(){
     const dc = document.getElementById("cancelados");
     dc.hidden = !canc.length;
     document.getElementById("cancelados-sum").textContent = `Cancelados (${canc.length})`;
-    document.getElementById("cancelados-cards").innerHTML = canc.map(o => `<button class="card" onclick="abrirPedido('${esc(o.id)}')">
+    document.getElementById("cancelados-cards").innerHTML = canc.map(o => `<button class="card col-cancelado" onclick="abrirPedido('${esc(o.id)}')">
         <div class="card-top"><span class="card-name">${esc(o.nombre)}</span><span class="card-total num">${money(o.total)}</span></div>
         <div class="card-foot"><span class="chip cancel">Cancelado</span>${o.reembolsado ? `<span class="chip">Reembolsado</span>` : o.pagadoUSA ? `<span class="chip alerta">Ya pagado: reembolsar</span>` : ""}<span class="chip">${diasDesde(o.fecha)} días</span></div></button>`).join("");
 
@@ -384,7 +400,7 @@ function renderBoard(){
         return f.getMonth() === hoy.getMonth() && f.getFullYear() === hoy.getFullYear() && !o.reembolsado && !o.cancelado;
     });
     document.getElementById("stat-mes").textContent = esteMes.length;
-    const ingresos = PEDIDOS.filter(o => o.pagadoUSA && !o.reembolsado).reduce((s,o) => s + (parseFloat(o.total)||0), 0);
+    const ingresos = PEDIDOS.filter(o => o.pagadoUSA && !o.reembolsado && !o.cancelado).reduce((s,o) => s + (parseFloat(o.total)||0), 0);
     document.getElementById("stat-ingresos").textContent = money(ingresos);
 }
 
@@ -395,8 +411,11 @@ function abrirPedido(id){
     const overlay = document.getElementById("overlay");
     const etapa = etapaDe(o);
 
+    drawer.className = "drawer col-" + etapa;
+    const NOMBRE_ETAPA = { pendiente:"Pago pendiente", preparando:"Pagado · Preparando", enviado:"Enviado", entregado:"Entregado", cancelado:"Cancelado" };
     drawer.innerHTML = `
         <button class="drawer-close" onclick="cerrarDrawer()">Cerrar ✕</button>
+        <span class="stage-badge">${NOMBRE_ETAPA[etapa]}</span>
         <h2>${esc(o.nombre)}</h2>
         <div class="sub">${o.numero ? `<b>${esc(o.numero)}</b> · ` : ""}${esc(o.ciudad)}${o.ciudad && o.estado ? ", " : ""}${esc(o.estado)} · ${new Date(o.fecha).toLocaleDateString("es-CO",{day:"numeric",month:"short",year:"numeric"})}</div>
 
