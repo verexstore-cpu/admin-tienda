@@ -87,6 +87,10 @@ body{
 }
 .stat-label{ display:block; font-size:11px; color:var(--ink-soft); text-transform:uppercase; letter-spacing:.6px; margin-bottom:6px; }
 .stat-value{ display:block; font-size:24px; font-weight:600; }
+.stat{ cursor:pointer; position:relative; user-select:none; }
+.stat .stat-ojo{ position:absolute; top:10px; right:12px; font-size:14px; opacity:.45; }
+.stat:hover .stat-ojo{ opacity:.9; }
+.stat.oculto .stat-value{ filter:blur(9px); }
 .stat.warn .stat-value{ color:var(--pending); }
 .stat.transit .stat-value{ color:var(--transit); }
 
@@ -251,10 +255,10 @@ body{
   </header>
 
   <section class="stats">
-    <div class="stat"><span class="stat-label">Pedidos este mes</span><span class="stat-value num" id="stat-mes">—</span></div>
-    <div class="stat"><span class="stat-label">Ingresos cobrados</span><span class="stat-value num" id="stat-ingresos">—</span></div>
-    <div class="stat warn"><span class="stat-label">Pago pendiente</span><span class="stat-value num" id="stat-pend">—</span></div>
-    <div class="stat transit"><span class="stat-label">En tránsito</span><span class="stat-value num" id="stat-transit">—</span></div>
+    <div class="stat" data-stat="mes"><span class="stat-ojo"></span><span class="stat-label">Pedidos este mes</span><span class="stat-value num" id="stat-mes">—</span></div>
+    <div class="stat oculto" data-stat="ingresos"><span class="stat-ojo"></span><span class="stat-label">Ingresos cobrados</span><span class="stat-value num" id="stat-ingresos">—</span></div>
+    <div class="stat warn" data-stat="pend"><span class="stat-ojo"></span><span class="stat-label">Pago pendiente</span><span class="stat-value num" id="stat-pend">—</span></div>
+    <div class="stat transit" data-stat="transit"><span class="stat-ojo"></span><span class="stat-label">En tránsito</span><span class="stat-value num" id="stat-transit">—</span></div>
   </section>
 
   <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin:-8px 0 18px;">
@@ -871,6 +875,25 @@ async function intentarSSO(){
         if(r.ok && r.hash) localStorage.setItem("vx_sesion_dia", JSON.stringify({ fecha: new Date().toDateString(), hash: r.hash }));
     }catch(_){}
 }
+
+// Cifras del encabezado: el ingreso sale borroso por defecto (por si alguien mira la pantalla); un clic en cualquier tarjeta
+// la muestra u oculta, y el panel recuerda tu elección en este navegador.
+(function cifras(){
+    let guardado = {};
+    try{ guardado = JSON.parse(localStorage.getItem("vx_logusa_cifras") || "{}"); }catch(_){}
+    document.querySelectorAll(".stat[data-stat]").forEach(el => {
+        const k = el.dataset.stat;
+        if(k in guardado) el.classList.toggle("oculto", !!guardado[k]);
+        const ojo = () => { el.querySelector(".stat-ojo").textContent = el.classList.contains("oculto") ? "🙈" : "👁️"; };
+        ojo();
+        el.title = "Clic para mostrar u ocultar";
+        el.addEventListener("click", () => {
+            el.classList.toggle("oculto"); ojo();
+            guardado[k] = el.classList.contains("oculto");
+            try{ localStorage.setItem("vx_logusa_cifras", JSON.stringify(guardado)); }catch(_){}
+        });
+    });
+})();
 
 (async function boot(){
     await intentarSSO();
