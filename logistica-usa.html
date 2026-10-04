@@ -248,7 +248,7 @@ body{
 
   <div id="estado-msg" class="estado-msg" hidden></div>
   <section class="board" id="board"></section>
-  <details class="cancelados" id="cancelados" hidden><summary id="cancelados-sum"></summary><div class="cards" id="cancelados-cards" style="margin-top:8px;"></div></details>
+  <details class="cancelados" id="cancelados" hidden><summary id="cancelados-sum"></summary><div style="margin:6px 0;"><button class="btn ghost" id="btn-elim-canc" style="flex:none;color:#b42318;" onclick="eliminarCancelados()">🗑️ Eliminar cancelados</button><span id="elim-canc-info" style="font-size:11px;color:var(--ink-soft);margin-left:8px;">Solo los que no tienen dinero pendiente por devolver.</span></div><div class="cards" id="cancelados-cards" style="margin-top:8px;"></div></details>
 </div>
 
 <div class="overlay" id="overlay"></div>
@@ -578,6 +578,19 @@ async function marcarReembolsadoAparte(id){
     if(!await llamarLeads(o, "ACTUALIZAR_LEAD_USA", { reembolsadoManual: true })) return;
     await cargarPedidos();
     cerrarDrawer();
+}
+// Borra de forma definitiva los cancelados sin dinero pendiente (pruebas, reservas vencidas). Los cancelados con pago sin reembolsar se quedan.
+async function eliminarCancelados(){
+    const lista = PEDIDOS.filter(o => etapaDe(o) === "cancelado" && (!o.pagadoUSA || o.reembolsado));
+    const quedan = PEDIDOS.filter(o => etapaDe(o) === "cancelado").length - lista.length;
+    if(!lista.length){ alert("No hay cancelados que se puedan eliminar" + (quedan ? ` (${quedan} tienen un pago sin reembolsar: reembólsalos o márcalos «hecho aparte» primero).` : ".")); return; }
+    if(!confirm(`¿Eliminar DEFINITIVAMENTE ${lista.length} pedido(s) cancelado(s)?\n\nNo se puede deshacer. No toca el stock.` + (quedan ? `\n\n${quedan} cancelado(s) con pago sin reembolsar se quedan.` : ""))) return;
+    try{
+        const r = await apiUSA("ELIMINAR_CANCELADOS_USA", { pedidoIds: lista.map(o => o.id) });
+        if(!r || r.ok === false){ alert("⚠️ " + (r?.error || "El servidor no aceptó el cambio")); return; }
+        alert(`✅ Eliminados: ${r.borrados}` + (r.omitidos?.length ? ` · Omitidos: ${r.omitidos.length}` : ""));
+    }catch(_){ alert("⚠️ No se pudo conectar con el servidor"); return; }
+    await cargarPedidos();
 }
 async function cancelarPedido(id){
     const o = PEDIDOS.find(x => x.id === id);
