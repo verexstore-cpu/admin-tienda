@@ -326,7 +326,7 @@ function agruparPedidos(leads){
             estado: first.estadoUS || "",
             zip: first.zipUS || "",
             fecha: first.fecha,
-            items: leadsGrupo.map(l => ({ nombre: l.nombre, qty: parseInt(l.qty)||1, precio: parseFloat(l.precio)||0, foto: l.foto || "" })),
+            items: leadsGrupo.map(l => ({ nombre: l.nombre, qty: parseInt(l.qty)||1, precio: parseFloat(l.precio)||0, foto: l.foto || "", codigo: l.codigo || "" })),
             subtotal,
             envio: first.envioUSD,
             total: first.totalPedidoUSD != null ? first.totalPedidoUSD : subtotal,
@@ -439,7 +439,7 @@ function abrirPedido(id){
             <div class="items">
                 ${o.items.map(it => `<div class="item-row">
                     ${it.foto ? `<img class="item-foto" src="${esc(fotoMini(it.foto))}" alt="" loading="lazy" onerror="this.remove()">` : `<span class="item-foto item-foto-ph">💍</span>`}
-                    <span class="item-name">${esc(it.nombre)}${it.qty>1?` ×${it.qty}`:""}</span>
+                    <span class="item-name">${esc(it.nombre)}${it.qty>1?` ×${it.qty}`:""}${it.codigo ? ` <span class="num" style="font-size:11px;color:var(--ink-soft);">[${esc(it.codigo)}]</span>` : ""}</span>
                     <span class="num">${money(it.precio*it.qty)}</span>
                 </div>`).join("")}
             </div>
@@ -818,6 +818,10 @@ async function cargarPedidos(){
         msg.hidden = PEDIDOS.length > 0;
         if(!PEDIDOS.length) msg.textContent = "Todavía no hay pedidos del catálogo de Estados Unidos.";
         renderBoard();
+        if(PEDIDO_A_ABRIR){
+            const id = PEDIDO_A_ABRIR; PEDIDO_A_ABRIR = "";
+            if(PEDIDOS.some(x => x.id === id)) abrirPedido(id);
+        }
     }catch(e){
         msg.textContent = "⚠️ Error conectando con la API.";
         msg.hidden = false;
@@ -825,6 +829,7 @@ async function cargarPedidos(){
 }
 
 // Entrada directa desde el Hub (?sso=...): canjea el token de un solo uso y guarda la sesión del día.
+let PEDIDO_A_ABRIR = new URLSearchParams(location.search).get("pedido") || "";   // ?pedido=ID → abre ese pedido al cargar
 async function intentarSSO(){
     const token = new URLSearchParams(location.search).get("sso");
     if(!token) return;
