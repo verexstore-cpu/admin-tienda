@@ -799,7 +799,19 @@ async function cargarPedidos(){
     }
 }
 
-(function boot(){
+// Entrada directa desde el Hub (?sso=...): canjea el token de un solo uso y guarda la sesión del día.
+async function intentarSSO(){
+    const token = new URLSearchParams(location.search).get("sso");
+    if(!token) return;
+    history.replaceState({}, "", location.pathname);   // el token no se queda en la URL ni en el historial
+    try{
+        const r = await fetch(API_URL, { method:"POST", body: JSON.stringify({ accion:"SSO_CANJEAR_TOKEN", token }) }).then(x => x.json());
+        if(r.ok && r.hash) localStorage.setItem("vx_sesion_dia", JSON.stringify({ fecha: new Date().toDateString(), hash: r.hash }));
+    }catch(_){}
+}
+
+(async function boot(){
+    await intentarSSO();
     const hash = sesionValidaHoy();
     if(!hash){
         document.getElementById("gate").hidden = false;
