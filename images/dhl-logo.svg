@@ -1,9 +1,0 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 40" width="120" height="40" role="img" aria-label="DHL">
-  <rect width="120" height="40" rx="4" fill="#FFCC00"/>
-  <g fill="#D40511">
-    <text x="60" y="30" text-anchor="middle" font-family="Arial Black, Arial, Helvetica, sans-serif" font-weight="900" font-style="italic" font-size="28" letter-spacing="-1">DHL</text>
-  </g>
-  <g stroke="#FFCC00" stroke-width="1.6">
-    <line x1="14" y1="16" x2="106" y2="16"/><line x1="14" y1="21" x2="106" y2="21"/><line x1="14" y1="26" x2="106" y2="26"/>
-  </g>
-</svg>
