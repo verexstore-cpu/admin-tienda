@@ -883,7 +883,7 @@
         }
 
         const tieneTallasReg = !!(p.sizes?.length || p.sizesD?.length || p.sizesH?.length);
-        if(p.cat && p.cat !== "AN" && p.cat !== "CJ" && !tieneTallasReg){
+        if(p.cat && p.cat !== "AN" && !tieneTallasReg){
             _szIdx=i; _szD="N/A"; _szH="N/A"; _szParMode=false; _szNoTalla=true;
             document.getElementById("sz-title").textContent = p.n;
             document.getElementById("sz-sub").textContent   = "Confirma tu pedido";
