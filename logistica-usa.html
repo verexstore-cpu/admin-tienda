@@ -142,6 +142,7 @@ body{
 .col-enviado{ --c:var(--transit); --cw:var(--transit-wash); }
 .col-entregado{ --c:var(--success); --cw:var(--success-wash); }
 .col-cancelado{ --c:var(--cancel); --cw:var(--cancel-wash); }
+.column[class*="col-"]{ background:color-mix(in srgb, var(--cw) 55%, var(--ground)); border:1px solid color-mix(in srgb, var(--c) 25%, transparent); border-radius:14px; padding:10px; }
 .column-head{ background:var(--cw); border-top:3px solid var(--c); border-radius:9px; padding:9px 10px !important; margin-bottom:10px; }
 .card[class*="col-"]{ border-left:5px solid var(--c); }
 .drawer[class*="col-"]{ border-top:6px solid var(--c); }
