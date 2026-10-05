@@ -429,18 +429,38 @@ html,body{ max-width:100%; overflow-x:clip; overscroll-behavior-x:none; }
 
     // Registro silencioso del interés del cliente ANTES de abrir WhatsApp — no bloquea
     // la apertura del chat aunque falle (la venta nunca debe depender de esto).
-    function registrarLead(p, telefono, nombreCliente, direccionCliente){
+    // piezas = [{gen,talla}] de lo que eligió el cliente (null si el producto no lleva talla); qty = cuántas veces; label = texto de talla.
+    // Se registra un lead por cada código de talla realmente elegido, para que la reserva de stock caiga en la talla correcta.
+    function registrarLead(p, telefono, nombreCliente, direccionCliente, piezas, qty, label){
         if (!p?.c) return;
         try {
-            fetch(API_URL, {
+            const q = Math.max(1, parseInt(qty) || 1);
+            const viva = (piezas && piezas.length) ? tallasVivas(p.c) : null;
+            let envios = [];   // [{codigo, qty, precio}]
+            if (viva) {
+                const par = piezas.length > 1;
+                piezas.forEach(z => {
+                    const e = viva[z.gen] && viva[z.gen][z.talla];
+                    const codigo = e && e.codigo ? e.codigo : p.c;
+                    const unit = par
+                        ? (z.gen === "D" && p.pD != null ? precioFinal(p.pD) : z.gen === "H" && p.pH != null ? precioFinal(p.pH) : precioFinal(p.p) / piezas.length)
+                        : precioFinal(p.p);
+                    const ya = envios.find(x => x.codigo === codigo);
+                    if (ya) ya.qty += q; else envios.push({ codigo, qty: q, precio: unit });
+                });
+            } else {
+                envios = [{ codigo: p.c, qty: q, precio: precioFinal(p.p) }];
+            }
+            envios.forEach(en => fetch(API_URL, {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({
                     accion: "REGISTRAR_LEAD",
                     afiliado: _afiliadoCodigo || "",
-                    codigo: p.c,
-                    nombre: p.n || "",
-                    precio: precioFinal(p.p),
+                    codigo: en.codigo,
+                    qty: en.qty,
+                    nombre: (p.n || "") + (label ? " (" + label + ")" : ""),
+                    precio: en.precio,
                     foto: p.i || "",
                     // Teléfono y nombre capturados ANTES de abrir WhatsApp — si el
                     // envío falla o el cliente no lo manda, ya queda un dato de
@@ -453,8 +473,66 @@ html,body{ max-width:100%; overflow-x:clip; overscroll-behavior-x:none; }
                     nombreCliente: nombreCliente || "",
                     direccionCliente: direccionCliente || ""
                 })
-            }).catch(()=>{});
+            }).catch(()=>{}));
         } catch(_){}
+    }
+
+    // ── Existencias por talla (en vivo) ─────────────────────────────────────────────────────────────
+    // Cada talla es su propio código en Stock: anillos ANL037T6, pares ANP175DT7 (dama) / ANP175CT10 (caballero).
+    // El link solo guarda el código de UNA talla, así que se buscan las demás por el código base.
+    let _stockVivo = null;   // se llena en actualizarDisponibilidad(); null = no se pudo leer → no se bloquea nada
+    function infoCodigo(codigo){
+        const c = String(codigo || "");
+        // El código base termina en dígitos (ANL037); la talla va después: T6 / DT7 / CT10 / H9 …
+        const m = c.match(/^(.*\d)(DT|CT|HT|[TCDHU])(\d+(?:\.\d+)?)$/i);
+        if(!m) return { base: c, gen: "", talla: "" };
+        const L = m[2].toUpperCase()[0];
+        return { base: m[1], gen: L === "D" ? "D" : (L === "C" || L === "H") ? "H" : "G", talla: m[3] };
+    }
+    // Unidades que se pueden vender a un cliente de este link: bodega + tienda (afiliados: solo bodega); nada si está reservado/inactivo.
+    function unidadesFila(r){
+        if(!r || r.reservado || r.estado === "inactivo") return 0;
+        return (parseInt(r.stock_bodega) || 0) + (_afiliadoCodigo ? 0 : (parseInt(r.stock_tienda) || 0));
+    }
+    // → { G:{talla:{n,codigo}}, D:{...}, H:{...} } del producto al que pertenece `codigoRef`, o null si no hay datos en vivo.
+    function tallasVivas(codigoRef){
+        if(!_stockVivo) return null;
+        const b = infoCodigo(codigoRef).base, out = { G: {}, D: {}, H: {} };
+        let hallo = false;
+        _stockVivo.forEach(r => {
+            const i = infoCodigo(r.codigo);
+            if(i.base !== b || !i.talla) return;
+            hallo = true;
+            const g = out[i.gen], e = g[i.talla] || (g[i.talla] = { n: 0, codigo: r.codigo });
+            e.n += unidadesFila(r);
+            if(unidadesFila(r) > 0) e.codigo = r.codigo;
+        });
+        return hallo ? out : null;
+    }
+    // Piezas que consume una selección: [{gen, talla}] — anillo suelto: 1 pieza; pareja: dama + caballero (misma lista general si no hay D/H separadas)
+    function piezasDeSeleccion(p, tD, tH, par){
+        if(!par) return [{ gen: "G", talla: tD }];
+        const separado = !!(p.sizesD?.length || p.sizesH?.length);
+        return [{ gen: separado ? "D" : "G", talla: tD }, { gen: separado ? "H" : "G", talla: tH }];
+    }
+    // Demanda total por (producto, lista, talla) de lo que hay en el carrito + lo extra que se quiere agregar
+    function demandaCarrito(extra, incluirCarrito){
+        const dem = new Map();
+        const sumar = (ref, piezas, qty) => piezas.forEach(z => { const k = infoCodigo(ref).base + "|" + z.gen + "|" + z.talla; dem.set(k, (dem.get(k) || 0) + qty); });
+        if(incluirCarrito !== false) _carrito.forEach(it => { if(it.piezas && it.codigo) sumar(it.codigo, it.piezas, it.qty); });
+        if(extra) sumar(extra.codigo, extra.piezas, extra.qty);
+        return dem;
+    }
+    // Devuelve null si todo alcanza, o { talla, n } de la primera talla que no alcanza
+    function primerExceso(dem){
+        if(!_stockVivo) return null;
+        for(const [k, need] of dem){
+            const [base, gen, talla] = k.split("|");
+            const viva = tallasVivas(base);
+            const e = viva && viva[gen] && viva[gen][talla];
+            if(e && need > e.n) return { talla, n: e.n };
+        }
+        return null;
     }
 
     function precioFinal(precio){
@@ -856,8 +934,10 @@ html,body{ max-width:100%; overflow-x:clip; overscroll-behavior-x:none; }
         if(esPareja){
             // Si el par solo trae una lista general de tallas (la que muestra la tarjeta), esa misma lista sirve para dama y caballero.
             const soloGeneral = !p.sizesD?.length && !p.sizesH?.length && p.sizes?.length;
-            const availD = p.sizesD?.length ? p.sizesD : (soloGeneral ? p.sizes : null);
-            const availH = p.sizesH?.length ? p.sizesH : (soloGeneral ? p.sizes : null);
+            const vivaP = tallasVivas(p.c);
+            const conStock = (lista, gen) => (!vivaP || !Object.keys(vivaP[gen]).length) ? lista : lista.filter(t => (vivaP[gen][t]?.n || 0) > 0);
+            const availD = p.sizesD?.length ? conStock(p.sizesD, "D") : (soloGeneral ? conStock(p.sizes, "G") : null);
+            const availH = p.sizesH?.length ? conStock(p.sizesH, "H") : (soloGeneral ? conStock(p.sizes, "G") : null);
 
             // Sin tallas registradas: no se deja pasar sin talla y tampoco se inventa una lista: se avisa que no hay tallas disponibles.
             const sinRegistro = !availD && !availH;
@@ -905,7 +985,9 @@ html,body{ max-width:100%; overflow-x:clip; overscroll-behavior-x:none; }
 
         // Solo las tallas que de verdad hay: si la talla de la tarjeta se agotó, las otras disponibles; si no, las de la tarjeta.
         const otrasTallas = (p.tallasDisponibles || []).map(x => String(x).replace(/^T/i, "")).filter(Boolean);
-        const availD = otrasTallas.length ? otrasTallas : (p.sizes || []);
+        const vivaR = tallasVivas(p.c);
+        const soloConStock = (lista, gen) => (!vivaR || !Object.keys(vivaR[gen]).length) ? lista : lista.filter(t => (vivaR[gen][t]?.n || 0) > 0);
+        const availD = soloConStock(otrasTallas.length ? otrasTallas : (p.sizes || []), "G");
 
         document.getElementById("sz-title").textContent = p.n;
         document.getElementById("sz-sub").textContent   = "¿Qué talla necesitas?";
@@ -959,7 +1041,26 @@ html,body{ max-width:100%; overflow-x:clip; overscroll-behavior-x:none; }
         _szTel = telInput ? telInput.value.trim() : "";
         _szNombreCliente = nombreInput ? nombreInput.value.trim() : "";
         _szDireccion = direccionInput ? direccionInput.value.trim() : "";
-        const listo = tallaLista && telOk && nombreOk && direccionOk;
+        let listo = tallaLista && telOk && nombreOk && direccionOk;
+        // Existencia: lo que el cliente elige no puede pasar de las unidades que hay de esa talla (en una alianza con la misma talla para dama y caballero hacen falta 2)
+        let aviso = "";
+        const pSel = _prods[_szIdx];
+        if(tallaLista && !_szNoTalla && pSel && _stockVivo){
+            const piezasSel = piezasDeSeleccion(pSel, _szD, _szH, _szParMode);
+            const ex = primerExceso(demandaCarrito({ codigo: pSel.c, piezas: piezasSel, qty: 1 }, _szModo === "carrito"));
+            if(ex){
+                listo = false;
+                aviso = ex.n <= 0 ? `La talla ${ex.talla} ya no tiene existencia.`
+                    : `Solo ${ex.n === 1 ? "queda 1 pieza" : "quedan " + ex.n + " piezas"} en talla ${ex.talla}${_szParMode ? ". Elige otra talla para una de las dos piezas." : "."}`;
+            }
+        }
+        let av = document.getElementById("sz-aviso");
+        if(!av){
+            av = document.createElement("div"); av.id = "sz-aviso";
+            av.style.cssText = "font-size:13px;font-weight:700;color:#b42318;background:#fde2e2;border-radius:8px;padding:9px 12px;margin-bottom:10px;display:none;";
+            document.getElementById("sz-confirm").before(av);
+        }
+        av.textContent = aviso; av.style.display = aviso ? "block" : "none";
         const btn = document.getElementById("sz-confirm");
         btn.disabled = !listo;
         btn.style.opacity = listo ? "1" : ".5";
@@ -992,6 +1093,7 @@ html,body{ max-width:100%; overflow-x:clip; overscroll-behavior-x:none; }
         const p = _prods[_szIdx];
         // Defensa extra: nunca se confirma un anillo/argolla sin su talla (aunque el botón se habilite por error)
         if(!_szNoTalla && !(_szParMode ? (_szD && _szH) : _szD)){ miniToast("Elige la talla primero"); return; }
+        if(document.getElementById("sz-confirm").disabled) return;   // incluye el bloqueo por falta de existencia
 
         if(_szModo === "carrito"){
             const { label, precio } = _labelYPrecioCarrito(p);
@@ -1029,7 +1131,7 @@ html,body{ max-width:100%; overflow-x:clip; overscroll-behavior-x:none; }
         } else {
             msg = `Hola, me interesa este producto del catálogo VEREX:\n\n${p.n}\nPrecio: $${precioFinal(p.p).toFixed(2)}\nTalla: T${_szD}${telLinea}`;
         }
-        registrarLead(p, _szTel, _szNombreCliente, _szDireccion);
+        registrarLead(p, _szTel, _szNombreCliente, _szDireccion, _szNoTalla ? null : piezasDeSeleccion(p, _szD, _szH, _szParMode), 1, _labelYPrecioCarrito(p).label);
         cerrarTallas();
         window.open(`https://wa.me/${_waNum}?text=${encodeURIComponent(msg)}`,"_blank");
     }
@@ -1197,8 +1299,9 @@ html,body{ max-width:100%; overflow-x:clip; overscroll-behavior-x:none; }
     function agregarACarrito(p, tallaLabel, precioUnit){
         const key = (p.c || p.n) + "|" + tallaLabel;
         const existente = _carrito.find(it => it.key === key);
+        const piezas = _szNoTalla ? null : piezasDeSeleccion(p, _szD, _szH, _szParMode);
         if(existente) existente.qty++;
-        else _carrito.push({ key, codigo: p.c || "", nombre: p.n, tallaLabel, precioUnit, qty: 1 });
+        else _carrito.push({ key, codigo: p.c || "", nombre: p.n, tallaLabel, precioUnit, qty: 1, piezas });
         guardarCarrito();
         renderCarritoFab();
     }
@@ -1240,6 +1343,10 @@ html,body{ max-width:100%; overflow-x:clip; overscroll-behavior-x:none; }
         const it = _carrito.find(x => x.key === key);
         if(!it) return;
         it.qty += delta;
+        if(delta > 0){
+            const ex = primerExceso(demandaCarrito());
+            if(ex){ it.qty -= delta; miniToast(ex.n <= 0 ? `La talla ${ex.talla} ya no tiene existencia` : `Solo ${ex.n === 1 ? "queda 1 pieza" : "quedan " + ex.n + " piezas"} en talla ${ex.talla}`); return; }
+        }
         if(it.qty <= 0) _carrito = _carrito.filter(x => x.key !== key);
         guardarCarrito();
         renderCarritoFab();
@@ -1305,7 +1412,7 @@ html,body{ max-width:100%; overflow-x:clip; overscroll-behavior-x:none; }
         // que el flujo directo, no debe bloquear el envío si falla.
         _carrito.forEach(it => {
             const prod = _prods.find(p => p.c === it.codigo);
-            if(prod) registrarLead(prod, tel, nombreCliente, direccionCliente);
+            if(prod) registrarLead(prod, tel, nombreCliente, direccionCliente, it.piezas, it.qty, it.tallaLabel);
         });
 
         _carrito = [];
@@ -1328,6 +1435,7 @@ html,body{ max-width:100%; overflow-x:clip; overscroll-behavior-x:none; }
             const data = await res.json();
             const stock = data.stock || [];
             const mapa = new Map(stock.map(s => [s.codigo, s]));
+            _stockVivo = stock;   // existencias en vivo por talla (ver tallasVivas)
 
             // Reglas de envío globales — mismo dato que usa la tienda pública.
             if (data.config?.reglasEnvio) _reglasEnvioGlobal = data.config.reglasEnvio;
