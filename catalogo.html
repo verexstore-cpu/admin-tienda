@@ -830,7 +830,9 @@ html,body{ max-width:100%; overflow-x:clip; overscroll-behavior-x:none; }
         if(!p) return;
         if(p._agotado){ alert("Este producto ya no está disponible — el stock se agotó."); return; }
 
-        const esPareja = ES_PAR.test(p.n) || p.par;
+        // Pareja = el producto lo marca (p.par) o el nombre lo dice Y trae tallas de dama/caballero. Un "Alianza"/"Pareja" con una sola lista
+        // de tallas (la que muestra la tarjeta) se pide como un anillo normal con esas mismas tallas.
+        const esPareja = !!p.par || (ES_PAR.test(p.n) && !!(p.sizesD?.length || p.sizesH?.length));
 
         // Nombre + teléfono obligatorios SIEMPRE (cliente y afiliado) cuando se
         // manda directo por WhatsApp — un mismo link de catálogo se puede
@@ -853,8 +855,10 @@ html,body{ max-width:100%; overflow-x:clip; overscroll-behavior-x:none; }
         // Si no hay info de tallas, se pide el teléfono (si aplica) y se
         // manda por WhatsApp con el mensaje de siempre.
         if(esPareja){
-            const availD = p.sizesD?.length ? p.sizesD : null;
-            const availH = p.sizesH?.length ? p.sizesH : null;
+            // Si el par solo trae una lista general de tallas (la que muestra la tarjeta), esa misma lista sirve para dama y caballero.
+            const soloGeneral = !p.sizesD?.length && !p.sizesH?.length && p.sizes?.length;
+            const availD = p.sizesD?.length ? p.sizesD : (soloGeneral ? p.sizes : null);
+            const availH = p.sizesH?.length ? p.sizesH : (soloGeneral ? p.sizes : null);
 
             // Sin tallas registradas: no se deja pasar sin talla y tampoco se inventa una lista: se avisa que no hay tallas disponibles.
             const sinRegistro = !availD && !availH;
