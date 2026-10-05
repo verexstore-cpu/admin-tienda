@@ -830,9 +830,8 @@ html,body{ max-width:100%; overflow-x:clip; overscroll-behavior-x:none; }
         if(!p) return;
         if(p._agotado){ alert("Este producto ya no está disponible — el stock se agotó."); return; }
 
-        // Pareja = el producto lo marca (p.par) o el nombre lo dice Y trae tallas de dama/caballero. Un "Alianza"/"Pareja" con una sola lista
-        // de tallas (la que muestra la tarjeta) se pide como un anillo normal con esas mismas tallas.
-        const esPareja = !!p.par || (ES_PAR.test(p.n) && !!(p.sizesD?.length || p.sizesH?.length));
+        // Pareja = el producto lo marca (p.par) o el nombre lo dice (Alianza, Pareja, Novios, Matrimonio): el cliente elige DOS tallas (dama y caballero).
+        const esPareja = ES_PAR.test(p.n) || p.par;
 
         // Nombre + teléfono obligatorios SIEMPRE (cliente y afiliado) cuando se
         // manda directo por WhatsApp — un mismo link de catálogo se puede
