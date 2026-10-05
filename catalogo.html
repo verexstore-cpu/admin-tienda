@@ -368,7 +368,7 @@ html,body{ max-width:100%; overflow-x:clip; overscroll-behavior-x:none; }
     const params = new URLSearchParams(location.search);
     const c = params.get("c");
 
-    let _prods = [], _waNum = "", _szIdx = -1, _szD = "", _szH = "", _descPct = 0, _afiliadoCodigo = "", _szParMode = false, _szTel = "", _szNombreCliente = "", _szDireccion = "", _szNoTalla = false, _szModo = "wa";
+    let _prods = [], _waNum = "", _szIdx = -1, _szD = "", _szH = "", _descPct = 0, _afiliadoCodigo = "", _szParMode = false, _szTel = "", _szNombreCliente = "", _szDireccion = "", _szNoTalla = false, _szModo = "wa", _linkTalla = "";
     // Con pocas piezas el carrusel se ve mejor (una tarjeta grande a la
     // vez); con muchas, la cuadrícula sigue siendo más práctica para
     // comparar de un vistazo. _indiceActivo trackea qué tarjeta está
@@ -475,6 +475,36 @@ html,body{ max-width:100%; overflow-x:clip; overscroll-behavior-x:none; }
                 })
             }).catch(()=>{}));
         } catch(_){}
+    }
+
+    // Chips de tallas de la tarjeta (solo anillos) — se usa al armar la tarjeta y cuando se refrescan las tallas con el stock en vivo
+    const szChip = sz => `<span style="padding:2px 7px;background:#e8f4fd;border-radius:5px;font-size:10px;font-weight:700;color:#0277bd;">T${sz}</span>`;
+    function sizesHtmlDe(p){
+        if (p.cat !== "AN") return "";
+        if (p.par && (p.sizesD?.length || p.sizesH?.length)) {
+            return `<div style="margin:5px 0;font-size:10px;line-height:1.8;">
+                ${p.sizesD?.length ? `<div><span style="color:#9333ea;font-weight:700;">Dama:</span> ${p.sizesD.map(szChip).join(" ")}</div>` : ""}
+                ${p.sizesH?.length ? `<div><span style="color:#2563eb;font-weight:700;">Caballero:</span> ${p.sizesH.map(szChip).join(" ")}</div>` : ""}
+            </div>`;
+        }
+        if (p.sizes?.length) return `<div style="display:flex;flex-wrap:wrap;gap:3px;justify-content:center;margin:5px 0;">${p.sizes.map(szChip).join("")}</div>`;
+        return "";
+    }
+    // El link guarda las tallas del momento en que se armó. Con el stock en vivo se ponen las que HOY tienen existencia (y se quitan las agotadas).
+    function refrescarTallasVivas(){
+        if (!_stockVivo || _linkTalla) return;
+        const ordenar = o => Object.keys(o).filter(t => o[t].n > 0).sort((a, b) => parseFloat(a) - parseFloat(b));
+        _prods.forEach((p, i) => {
+            if (p.cat !== "AN") return;
+            const v = tallasVivas(p.c);
+            if (!v) return;
+            const separado = !!(p.sizesD?.length || p.sizesH?.length);
+            if (!separado && Object.keys(v.G).length) p.sizes = ordenar(v.G);
+            if (p.sizesD?.length && Object.keys(v.D).length) p.sizesD = ordenar(v.D);
+            if (p.sizesH?.length && Object.keys(v.H).length) p.sizesH = ordenar(v.H);
+            const el = document.getElementById("sizes-" + i);
+            if (el) el.innerHTML = sizesHtmlDe(p);
+        });
     }
 
     // ── Existencias por talla (en vivo) ─────────────────────────────────────────────────────────────
@@ -608,6 +638,7 @@ html,body{ max-width:100%; overflow-x:clip; overscroll-behavior-x:none; }
         _prods = [...(data.prods || [])]
             .sort((a, b) => (esAceroProd(a) ? 1 : 0) - (esAceroProd(b) ? 1 : 0));
         _waNum = normalizarWA(data.wa);
+        _linkTalla = data.talla || "";   // link armado para una talla concreta: no se le agregan tallas en vivo
         _descPct = Math.min(90, Math.max(0, parseInt(data.descPct) || 0));
         _promo2x50 = !!data.promo2x50;
         // Compatibilidad: links viejos guardaron solo "promo2x50:true" sin el
@@ -633,19 +664,8 @@ html,body{ max-width:100%; overflow-x:clip; overscroll-behavior-x:none; }
         if(talla) subParts.push(`Talla: <strong>${esc(talla)}</strong>`);
         const subHTML = subParts.join(" &nbsp;·&nbsp; ");
 
-        const szChip = sz => `<span style="padding:2px 7px;background:#e8f4fd;border-radius:5px;font-size:10px;font-weight:700;color:#0277bd;">T${sz}</span>`;
         const cards = _prods.map((p,i)=>{
-            let sizesHtml = "";
-            if (p.cat === "AN") {
-                if (p.par && (p.sizesD?.length || p.sizesH?.length)) {
-                    sizesHtml = `<div style="margin:5px 0;font-size:10px;line-height:1.8;">
-                        ${p.sizesD?.length ? `<div><span style="color:#9333ea;font-weight:700;">Dama:</span> ${p.sizesD.map(szChip).join(" ")}</div>` : ""}
-                        ${p.sizesH?.length ? `<div><span style="color:#2563eb;font-weight:700;">Caballero:</span> ${p.sizesH.map(szChip).join(" ")}</div>` : ""}
-                    </div>`;
-                } else if (p.sizes?.length) {
-                    sizesHtml = `<div style="display:flex;flex-wrap:wrap;gap:3px;justify-content:center;margin:5px 0;">${p.sizes.map(szChip).join("")}</div>`;
-                }
-            }
+            const sizesHtml = `<div id="sizes-${i}">${sizesHtmlDe(p)}</div>`;
             return `
             <div class="card${p.bajoPedido?' bajopedido':''}${(p.tallasDisponibles&&p.tallasDisponibles.length)?' otrastallas':''}" data-idx="${i}" data-cod="${esc(p.c||'')}">
                 <div class="card-img-wrap">
@@ -1436,6 +1456,7 @@ html,body{ max-width:100%; overflow-x:clip; overscroll-behavior-x:none; }
             const stock = data.stock || [];
             const mapa = new Map(stock.map(s => [s.codigo, s]));
             _stockVivo = stock;   // existencias en vivo por talla (ver tallasVivas)
+            if(!_esAutoGeneradoVendedor) refrescarTallasVivas();   // muestra en la tarjeta las tallas que hoy sí hay (p. ej. una talla nueva en Stock)
 
             // Reglas de envío globales — mismo dato que usa la tienda pública.
             if (data.config?.reglasEnvio) _reglasEnvioGlobal = data.config.reglasEnvio;
@@ -1545,11 +1566,16 @@ html,body{ max-width:100%; overflow-x:clip; overscroll-behavior-x:none; }
 
                 const claveCard = claveVivo(p.c, (p.sizes && p.sizes[0]) || "");
                 const vivoInfo = vivosVendedorPorClave ? vivosVendedorPorClave.get(claveCard) : undefined;
-                const agotado = vivosVendedorPorClave
+                let agotado = vivosVendedorPorClave
                     ? !vivoInfo
                     : (piezas.length
                         ? piezas.some(cod => sinUnidades(mapa.get(cod)))
                         : sinUnidades(s));
+                // Anillo suelto: solo está agotado si NINGUNA talla tiene existencia (antes bastaba con que se acabara la talla guardada en el link)
+                if(!vivosVendedorPorClave && !piezas.length && !p.par && p.cat === "AN"){
+                    const vivaA = tallasVivas(p.c);
+                    if(vivaA) agotado = !Object.values(vivaA).some(g => Object.values(g).some(e => e.n > 0));
+                }
 
                 if (vivosVendedorPorClave && card) {
                     p.bajoPedido = !!vivoInfo?.bajoPedido;
