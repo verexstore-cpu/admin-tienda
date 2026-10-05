@@ -489,11 +489,10 @@ html,body{ max-width:100%; overflow-x:clip; overscroll-behavior-x:none; }
         const L = m[2].toUpperCase()[0];
         return { base: m[1], gen: L === "D" ? "D" : (L === "C" || L === "H") ? "H" : "G", talla: m[3] };
     }
-    // Unidades que se pueden vender a un cliente de este link: SOLO las de bodega (igual que la regla de "agotado" de este catálogo y la
-    // alerta "Última unidad" de Stock). Lo de tienda/consignación no se promete; nada si está reservado/inactivo.
+    // Unidades que se pueden vender a un cliente de este link: bodega + tienda (la consignación no cuenta); nada si está reservado/inactivo.
     function unidadesFila(r){
         if(!r || r.reservado || r.estado === "inactivo") return 0;
-        return parseInt(r.stock_bodega) || 0;
+        return (parseInt(r.stock_bodega) || 0) + (parseInt(r.stock_tienda) || 0);
     }
     // → { G:{talla:{n,codigo}}, D:{...}, H:{...} } del producto al que pertenece `codigoRef`, o null si no hay datos en vivo.
     function tallasVivas(codigoRef){
