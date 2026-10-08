@@ -24,6 +24,24 @@ export async function esAdminValido(pass, context) {
   }
 }
 
+// Valida a un vendedor con su token de Inventario Sellers (+ PIN si lo tiene)
+// usando el mismo VERIFICAR_TOKEN del Worker con el que entra a su página.
+// Devuelve el registro del vendedor, o null si no es válido / su corte venció.
+export async function vendedorValido(vendedor, token, pin, context) {
+  if (!vendedor || !token) return null;
+  try {
+    const r = await fetch("https://verex-api.verexstore.workers.dev/", {
+      method: "POST",
+      headers: { "Content-Type": "application/json", ...cabecerasInternas(context) },
+      body: JSON.stringify({ accion: "VERIFICAR_TOKEN", vendedor, token, pin: pin || "" }),
+    });
+    const data = await r.json();
+    return data?.ok === true && data.vendedor ? data.vendedor : null;
+  } catch (e) {
+    return null;
+  }
+}
+
 // El Worker limita los intentos fallidos por IP. Desde una Function, la IP que ve el Worker es la de
 // Cloudflare (compartida por todos), así que reenviamos la IP real del cliente; el Worker solo la
 // acepta si además llega INTERNAL_SECRET (definido igual en el Worker y en este proyecto de Pages).

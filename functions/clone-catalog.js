@@ -42,6 +42,7 @@ export async function onRequest(context) {
             : createdAt + Math.min(Math.max(parseInt(diasRaw) || 3, 1), 30) * 86400000;
         const dias = Math.max(1, Math.ceil((expiresAt - createdAt) / 86400000));
         const newData = { ...originalData, dias, expiry: expiresAt };
+        delete newData._pass;   // catálogos viejos la guardaban por error
         // Eliminar customId para que el afiliado no sobreescriba su link fijo
         delete newData.customId;
         // El banner/descuento del catálogo original NO se copia por defecto sin

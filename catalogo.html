@@ -1510,10 +1510,22 @@ html,body{ max-width:100%; overflow-x:clip; overscroll-behavior-x:none; }
 
                 // Refrescar la foto si cambió en Stock desde que se generó el link —
                 // así no hace falta regenerar el catálogo solo por una foto nueva.
-                if(s?.foto && s.foto !== p.i){
-                    p.i = s.foto;
+                // Piezas con talla (anillos): el link guarda el código base
+                // (ANL037) pero en Stock cada talla es su propia fila
+                // (ANL037T7, ANL037T8…), así que mapa.get(p.c) no la encuentra
+                // y la foto se quedaba congelada. Se busca por codigoBase —
+                // primero la misma talla, si no cualquier talla del modelo.
+                let filaFoto = s;
+                if(!filaFoto?.foto){
+                    const base = String(p.c).toUpperCase();
+                    const talla = String((p.sizes && p.sizes[0]) || "").trim();
+                    const hermanas = stock.filter(r => r.foto && String(r.codigoBase || infoCodigo(r.codigo).base).toUpperCase() === base);
+                    filaFoto = hermanas.find(r => talla && String(r.talla || infoCodigo(r.codigo).talla).trim() === talla) || hermanas[0];
+                }
+                if(filaFoto?.foto && filaFoto.foto !== p.i){
+                    p.i = filaFoto.foto;
                     const img = card?.querySelector(".card-img");
-                    if(img) img.src = ikSharp(s.foto);
+                    if(img) img.src = ikSharp(filaFoto.foto);
                 }
 
                 // Refrescar el precio si cambió en Stock — así un ajuste de precio
