@@ -742,8 +742,10 @@ html,body{ max-width:100%; overflow-x:clip; overscroll-behavior-x:none; }
     // se arma con el total real de cada pedido en el momento del checkout.
     const PAYPAL_ME_USER = "verexst";
 
+    // Escapa también comillas: se usa dentro de atributos (alt="…", onclick="fn(${esc(JSON.stringify(x))})");
+    // sin eso las comillas del JSON cerraban el atributo y los botones de talla, filtro, zoom y carrito no hacían nada.
     function esc(s){
-        const d=document.createElement("div"); d.textContent=String(s||""); return d.innerHTML;
+        return String(s || "").replace(/[&<>"']/g, ch => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[ch]));
     }
 
     // Las fotos se suben tal cual las manda el vendedor, sin ningún realce —
@@ -1111,7 +1113,7 @@ html,body{ max-width:100%; overflow-x:clip; overscroll-behavior-x:none; }
                     <span class="card-bajopedido-badge">${t('bajoPedido')}</span>
                     <span class="card-otrastallas-badge" id="otrastallas-${i}">${t('tallaAgotadaDisp')} ${esc((p.tallasDisponibles||[]).join(", "))}</span>
                     ${p.i
-                        ?`<img class="card-img" src="${esc(ikSharp(p.i))}" alt="${esc(traducirNombre(p.n))}" loading="lazy" style="cursor:zoom-in;" onclick="abrirFotoZoom(${esc(JSON.stringify(String(ikSharp(p.i))))})" onerror="this.outerHTML='<div class=\'card-img-ph\'>💍</div>'">`
+                        ?`<img class="card-img" src="${esc(ikSharp(p.i))}" alt="${esc(traducirNombre(p.n))}" loading="lazy" style="cursor:zoom-in;" onclick="abrirFotoZoom(${esc(JSON.stringify(String(ikSharp(p.i))))})" onerror="this.outerHTML='<div class=card-img-ph>💍</div>'">`
                         :`<div class="card-img-ph">💍</div>`}
                 </div>
                 <div class="card-body">

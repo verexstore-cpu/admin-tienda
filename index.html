@@ -1160,6 +1160,7 @@ html,body{ max-width:100%; overflow-x:clip; overscroll-behavior-x:none; }
             <option value="">Todos (clientes y afiliados)</option>
             <option value="cliente">Solo clientes</option>
             <option value="afiliado">Solo afiliados</option>
+            <option value="lyra">🤖 Creados por Lyra</option>
         </select>
         <select id="lk-estado" onchange="renderPanelLinks()"
             style="padding:9px 10px;background:#fff;border:1px solid #d1d5db;border-radius:8px;color:#1a1a1a;font-size:13px;">
@@ -5031,7 +5032,8 @@ function renderPanelLinks() {
     const filtroEstado = document.getElementById("lk-estado")?.value || "";
 
     let lista = _todosLosLinks;
-    if (filtroTipo) lista = lista.filter(c => c.tipo === filtroTipo);
+    if (filtroTipo === "lyra") lista = lista.filter(c => c.creadoPor === "lyra");
+    else if (filtroTipo) lista = lista.filter(c => c.tipo === filtroTipo);
     if (filtroEstado === "activo") lista = lista.filter(c => c.activo);
     if (filtroEstado === "vencido") lista = lista.filter(c => !c.activo);
     if (busq) lista = lista.filter(c =>
@@ -5062,7 +5064,7 @@ function renderPanelLinks() {
             <div style="display:flex;justify-content:space-between;align-items:start;gap:10px;flex-wrap:wrap;">
                 <div style="min-width:0;">
                     <div style="font-weight:700;color:#111827;font-size:14px;">${esc(c.nombre || "(Sin nombre)")}</div>
-                    <div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:4px;">${badgeTipo}${badgeEstado}</div>
+                    <div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:4px;">${badgeTipo}${c.creadoPor === "lyra" ? `<span style="font-size:10px;font-weight:700;color:#be185d;background:#fce7f3;border-radius:5px;padding:2px 8px;">🤖 Creado por Lyra</span>` : ""}${badgeEstado}</div>
                     ${c.nota ? `<div style="font-size:11px;color:#6b7280;margin-top:5px;font-style:italic;">📝 ${esc(c.nota)}</div>` : ""}
                 </div>
                 <div style="text-align:right;font-size:11px;color:#6b7280;flex-shrink:0;">

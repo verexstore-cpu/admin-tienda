@@ -418,8 +418,10 @@ html,body{ max-width:100%; overflow-x:clip; overscroll-behavior-x:none; }
     const ES_PAR  = /matrimonio|novios|pareja|alianza/i;
     const API_URL = "https://verex-api.verexstore.workers.dev/";
 
+    // Escapa también comillas: se usa dentro de atributos (alt="…", onclick="fn(${esc(JSON.stringify(x))})");
+    // sin eso las comillas del JSON cerraban el atributo y los botones de talla, filtro, zoom y carrito no hacían nada.
     function esc(s){
-        const d=document.createElement("div"); d.textContent=String(s||""); return d.innerHTML;
+        return String(s || "").replace(/[&<>"']/g, ch => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[ch]));
     }
 
     // Las fotos se suben tal cual las manda el vendedor, sin ningún realce —
@@ -698,7 +700,7 @@ html,body{ max-width:100%; overflow-x:clip; overscroll-behavior-x:none; }
                     <span class="card-enmano-badge">✓ DISPONIBLE YA</span>
                     <span class="card-otrastallas-badge" id="otrastallas-${i}">📏 Talla agotada — disponible: ${esc((p.tallasDisponibles||[]).join(", "))}</span>
                     ${p.i
-                        ?`<img class="card-img" src="${esc(ikSharp(p.i))}" alt="${esc(p.n)}" loading="lazy" style="cursor:zoom-in;" onclick="abrirFotoZoom(${esc(JSON.stringify(String(ikSharp(p.i))))})" onerror="this.outerHTML='<div class=\'card-img-ph\'>💍</div>'">`
+                        ?`<img class="card-img" src="${esc(ikSharp(p.i))}" alt="${esc(p.n)}" loading="lazy" style="cursor:zoom-in;" onclick="abrirFotoZoom(${esc(JSON.stringify(String(ikSharp(p.i))))})" onerror="this.outerHTML='<div class=card-img-ph>💍</div>'">`
                         :`<div class="card-img-ph">💍</div>`}
                 </div>
                 <div class="card-body">
