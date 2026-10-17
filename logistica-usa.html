@@ -387,7 +387,10 @@ const jsAttr = v => esc(JSON.stringify(String(v ?? "")));
 function sesionValidaHoy(){
     try{
         const data = JSON.parse(localStorage.getItem("vx_sesion_dia") || "{}");
-        return data.fecha === new Date().toDateString() && data.hash ? data.hash : null;
+        if(!data.hash) return null;
+        // Pase de sesión del Worker: vale hasta "exp" (8 h). Sin exp = sesión vieja, solo hoy.
+        if(data.exp) return Date.now() < data.exp ? data.hash : null;
+        return data.fecha === new Date().toDateString() ? data.hash : null;
     }catch(_){ return null; }
 }
 
@@ -1110,7 +1113,7 @@ async function intentarSSO(){
     history.replaceState({}, "", location.pathname);   // el token no se queda en la URL ni en el historial
     try{
         const r = await fetch(API_URL, { method:"POST", body: JSON.stringify({ accion:"SSO_CANJEAR_TOKEN", token }) }).then(x => x.json());
-        if(r.ok && r.hash) localStorage.setItem("vx_sesion_dia", JSON.stringify({ fecha: new Date().toDateString(), hash: r.hash }));
+        if(r.ok && r.hash) localStorage.setItem("vx_sesion_dia", JSON.stringify({ fecha: new Date().toDateString(), hash: r.hash, exp: r.exp || 0 }));
     }catch(_){}
 }
 
@@ -1149,6 +1152,8 @@ async function intentarSSO(){
     setInterval(() => cargarRentabilidad().then(refrescarRent), 300000);   // costos/ajustes cambiados desde otro equipo
     cargarPedidos();
     setInterval(cargarPedidos, 45000);
+    // Sesión vencida (8 h) o cerrada desde el Admin: volver a la pantalla de entrada.
+    setInterval(() => { if(!sesionValidaHoy()) location.reload(); }, 60000);
 })();
 </script>
 </body>
